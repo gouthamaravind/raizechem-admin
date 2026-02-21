@@ -873,10 +873,15 @@ export type Database = {
           created_by: string | null
           dealer_id: string
           id: string
+          net_amount: number
           notes: string | null
           payment_date: string
           payment_mode: string
           reference_number: string | null
+          tcs_amount: number
+          tcs_rate: number
+          tds_amount: number
+          tds_rate: number
         }
         Insert: {
           amount: number
@@ -884,10 +889,15 @@ export type Database = {
           created_by?: string | null
           dealer_id: string
           id?: string
+          net_amount?: number
           notes?: string | null
           payment_date?: string
           payment_mode?: string
           reference_number?: string | null
+          tcs_amount?: number
+          tcs_rate?: number
+          tds_amount?: number
+          tds_rate?: number
         }
         Update: {
           amount?: number
@@ -895,10 +905,15 @@ export type Database = {
           created_by?: string | null
           dealer_id?: string
           id?: string
+          net_amount?: number
           notes?: string | null
           payment_date?: string
           payment_mode?: string
           reference_number?: string | null
+          tcs_amount?: number
+          tcs_rate?: number
+          tds_amount?: number
+          tds_rate?: number
         }
         Relationships: [
           {
