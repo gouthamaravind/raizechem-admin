@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,21 +12,33 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Trash2, Download } from "lucide-react";
+import { Search, Plus, Trash2, Download, Printer } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { calculateGST } from "@/lib/gst";
 
 type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string };
 
+function getFinancialYear(): string {
+  const now = new Date();
+  const year = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return String(year);
+}
+
 export default function Invoices() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dealerId, setDealerId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [items, setItems] = useState<InvItem[]>([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
+  // E-way bill fields
+  const [transportMode, setTransportMode] = useState("");
+  const [vehicleNo, setVehicleNo] = useState("");
+  const [dispatchFrom, setDispatchFrom] = useState("");
+  const [deliveryTo, setDeliveryTo] = useState("");
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["invoices"],
@@ -39,6 +52,7 @@ export default function Invoices() {
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, state_code, payment_terms_days").eq("status", "active").order("name"); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); return data || []; } });
   const { data: batches = [] } = useQuery({ queryKey: ["batches-available"], queryFn: async () => { const { data } = await supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); return data || []; } });
+  const { data: companySettings } = useQuery({ queryKey: ["company-settings-inv"], queryFn: async () => { const { data } = await supabase.from("company_settings").select("invoice_series, next_invoice_number").limit(1).single(); return data; } });
 
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
 
@@ -59,25 +73,36 @@ export default function Invoices() {
       const validItems = computedItems.filter((i) => i.product_id && i.batch_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item with batch");
 
-      // Check batch qty
       for (const item of validItems) {
         const batch = batches.find((b: any) => b.id === item.batch_id) as any;
         if (!batch || Number(batch.current_qty) < item.qty) throw new Error(`Insufficient stock for batch ${batch?.batch_no || item.batch_id}`);
       }
 
-      const invNum = `RC/${Date.now().toString(36).toUpperCase()}`;
+      // Generate invoice number: PREFIX/YYYY/001
+      const prefix = (companySettings as any)?.invoice_series || "RC";
+      const nextNum = (companySettings as any)?.next_invoice_number || 1;
+      const fy = getFinancialYear();
+      const invNum = `${prefix}/${fy}/${String(nextNum).padStart(3, "0")}`;
+
       const dueDate = selectedDealer?.payment_terms_days
         ? new Date(Date.now() + Number(selectedDealer.payment_terms_days) * 86400000).toISOString().split("T")[0]
         : null;
+
+      const placeOfSupply = selectedDealer?.state_code === "36" ? "Telangana" : (selectedDealer?.state || "");
 
       const { data: inv, error } = await supabase.from("invoices").insert({
         invoice_number: invNum, dealer_id: dealerId, invoice_date: invoiceDate,
         due_date: dueDate, subtotal, cgst_total: cgstTotal, sgst_total: sgstTotal,
         igst_total: igstTotal, total_amount: grandTotal, created_by: user?.id,
-      }).select("id").single();
+        transport_mode: transportMode || null, vehicle_no: vehicleNo || null,
+        dispatch_from: dispatchFrom || null, delivery_to: deliveryTo || null,
+        place_of_supply: placeOfSupply || null,
+      } as any).select("id").single();
       if (error) throw error;
 
-      // Insert items
+      // Increment invoice number
+      await supabase.from("company_settings").update({ next_invoice_number: nextNum + 1 } as any).not("id", "is", null);
+
       const invItems = validItems.map((i) => ({
         invoice_id: inv.id, product_id: i.product_id, batch_id: i.batch_id,
         hsn_code: i.hsn_code, qty: i.qty, rate: i.rate, amount: i.amount,
@@ -87,7 +112,6 @@ export default function Invoices() {
       const { error: itemErr } = await supabase.from("invoice_items").insert(invItems);
       if (itemErr) throw itemErr;
 
-      // Reduce batch qty + create inventory txn
       for (const item of validItems) {
         const batch = batches.find((b: any) => b.id === item.batch_id) as any;
         await supabase.from("product_batches").update({ current_qty: Number(batch.current_qty) - item.qty }).eq("id", item.batch_id);
@@ -98,7 +122,6 @@ export default function Invoices() {
         });
       }
 
-      // Create ledger entry (debit)
       await supabase.from("ledger_entries").insert({
         dealer_id: dealerId, entry_date: invoiceDate, entry_type: "invoice",
         ref_id: inv.id, description: `Invoice ${invNum}`, debit: grandTotal, credit: 0,
@@ -108,7 +131,10 @@ export default function Invoices() {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["batches-available"] });
-      setDialogOpen(false); setDealerId(""); setItems([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
+      qc.invalidateQueries({ queryKey: ["company-settings-inv"] });
+      setDialogOpen(false); setDealerId("");
+      setItems([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
+      setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo("");
       toast.success("Invoice created with GST and ledger entry");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -170,6 +196,18 @@ export default function Invoices() {
                     })}
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
+                  {/* E-way Bill Fields */}
+                  <div className="space-y-2 border-t pt-3">
+                    <Label className="text-muted-foreground">E-Way Bill Details (optional)</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1"><Label className="text-xs">Transport Mode</Label>
+                        <Select value={transportMode} onValueChange={setTransportMode}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent><SelectItem value="road">Road</SelectItem><SelectItem value="rail">Rail</SelectItem><SelectItem value="air">Air</SelectItem><SelectItem value="ship">Ship</SelectItem></SelectContent></Select>
+                      </div>
+                      <div className="space-y-1"><Label className="text-xs">Vehicle No</Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="e.g. TS09AB1234" /></div>
+                      <div className="space-y-1"><Label className="text-xs">Dispatch From</Label><Input value={dispatchFrom} onChange={(e) => setDispatchFrom(e.target.value)} placeholder="City, State" /></div>
+                      <div className="space-y-1"><Label className="text-xs">Delivery To</Label><Input value={deliveryTo} onChange={(e) => setDeliveryTo(e.target.value)} placeholder="City, State" /></div>
+                    </div>
+                  </div>
                   <div className="border-t pt-3 space-y-1 text-sm text-right">
                     <p>Subtotal: ₹{subtotal.toFixed(2)}</p>
                     {cgstTotal > 0 && <p>CGST: ₹{cgstTotal.toFixed(2)}</p>}
@@ -188,7 +226,7 @@ export default function Invoices() {
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No invoices yet.</p> : (
               <Table>
-                <TableHeader><TableRow><TableHead>Invoice #</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Subtotal</TableHead><TableHead>CGST</TableHead><TableHead>SGST</TableHead><TableHead>IGST</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Invoice #</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Subtotal</TableHead><TableHead>CGST</TableHead><TableHead>SGST</TableHead><TableHead>IGST</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
                 <TableBody>
                   {filtered.map((inv: any) => (
                     <TableRow key={inv.id}>
@@ -201,6 +239,7 @@ export default function Invoices() {
                       <TableCell>₹{Number(inv.igst_total).toFixed(2)}</TableCell>
                       <TableCell className="font-semibold">₹{Number(inv.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge></TableCell>
+                      <TableCell><Button variant="ghost" size="icon" onClick={() => navigate(`/sales/invoices/${inv.id}/print`)}><Printer className="h-4 w-4" /></Button></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -1,9 +1,13 @@
 import {
   LayoutDashboard, Users, Package, Boxes, ArrowDownToLine, AlertTriangle,
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
+  BarChart3, TrendingDown, ClipboardList, PackageSearch,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import { MODULE_ACCESS } from "@/types/roles";
+import type { AppRole } from "@/types/roles";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader,
@@ -12,10 +16,12 @@ import {
 const navGroups = [
   {
     label: "",
+    module: "dashboard",
     items: [{ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard }],
   },
   {
     label: "Masters",
+    module: "masters",
     items: [
       { title: "Dealers", url: "/masters/dealers", icon: Users },
       { title: "Products", url: "/masters/products", icon: Package },
@@ -23,6 +29,7 @@ const navGroups = [
   },
   {
     label: "Inventory",
+    module: "inventory",
     items: [
       { title: "Batches", url: "/inventory/batches", icon: Boxes },
       { title: "Stock In", url: "/inventory/stock-in", icon: ArrowDownToLine },
@@ -31,6 +38,7 @@ const navGroups = [
   },
   {
     label: "Sales",
+    module: "sales",
     items: [
       { title: "Orders", url: "/sales/orders", icon: ShoppingCart },
       { title: "Invoices", url: "/sales/invoices", icon: FileText },
@@ -39,6 +47,7 @@ const navGroups = [
   },
   {
     label: "Finance",
+    module: "finance",
     items: [
       { title: "Ledger", url: "/finance/ledger", icon: BookOpen },
       { title: "Outstanding", url: "/finance/outstanding", icon: CreditCard },
@@ -46,13 +55,31 @@ const navGroups = [
     ],
   },
   {
+    label: "Reports",
+    module: "reports",
+    items: [
+      { title: "Sales Register", url: "/reports/sales-register", icon: BarChart3 },
+      { title: "Purchase Register", url: "/reports/purchase-register", icon: ClipboardList },
+      { title: "Outstanding Aging", url: "/reports/outstanding-aging", icon: TrendingDown },
+      { title: "Batch Stock", url: "/reports/batch-stock", icon: PackageSearch },
+    ],
+  },
+  {
     label: "Settings",
+    module: "settings",
     items: [{ title: "Company", url: "/settings/company", icon: Building2 }],
   },
 ];
 
 export function AppSidebar() {
   const location = useLocation();
+  const { userRoles } = useAuth();
+
+  const hasModuleAccess = (module: string) => {
+    const allowed = MODULE_ACCESS[module];
+    if (!allowed) return true;
+    return userRoles.some((r: AppRole) => allowed.includes(r));
+  };
 
   return (
     <Sidebar className="border-r-0">
@@ -69,7 +96,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        {navGroups.map((group) => (
+        {navGroups.filter((g) => hasModuleAccess(g.module)).map((group) => (
           <SidebarGroup key={group.label || "main"}>
             {group.label && (
               <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
