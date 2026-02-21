@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ArrowDownToLine, AlertTriangle,
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
-  Truck, FileInput, Undo2,
+  Truck, FileInput, Undo2, CalendarDays,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -82,6 +82,7 @@ const navGroups = [
     items: [
       { title: "Company", url: "/settings/company", icon: Building2 },
       { title: "Users", url: "/settings/users", icon: UserCog },
+      { title: "Financial Years", url: "/settings/financial-years", icon: CalendarDays },
     ],
   },
 ];
