@@ -27,6 +27,8 @@ export type Database = {
           email: string | null
           gst_number: string | null
           id: string
+          invoice_series: string | null
+          legal_name: string | null
           logo_url: string | null
           pan_number: string | null
           phone: string | null
@@ -46,6 +48,8 @@ export type Database = {
           email?: string | null
           gst_number?: string | null
           id?: string
+          invoice_series?: string | null
+          legal_name?: string | null
           logo_url?: string | null
           pan_number?: string | null
           phone?: string | null
@@ -65,6 +69,8 @@ export type Database = {
           email?: string | null
           gst_number?: string | null
           id?: string
+          invoice_series?: string | null
+          legal_name?: string | null
           logo_url?: string | null
           pan_number?: string | null
           phone?: string | null
@@ -73,6 +79,142 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      credit_note_items: {
+        Row: {
+          amount: number
+          batch_id: string
+          cgst_amount: number
+          created_at: string
+          credit_note_id: string
+          gst_rate: number
+          hsn_code: string | null
+          id: string
+          igst_amount: number
+          product_id: string
+          qty: number
+          rate: number
+          sgst_amount: number
+          total_amount: number
+        }
+        Insert: {
+          amount: number
+          batch_id: string
+          cgst_amount?: number
+          created_at?: string
+          credit_note_id: string
+          gst_rate?: number
+          hsn_code?: string | null
+          id?: string
+          igst_amount?: number
+          product_id: string
+          qty: number
+          rate: number
+          sgst_amount?: number
+          total_amount?: number
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          cgst_amount?: number
+          created_at?: string
+          credit_note_id?: string
+          gst_rate?: number
+          hsn_code?: string | null
+          id?: string
+          igst_amount?: number
+          product_id?: string
+          qty?: number
+          rate?: number
+          sgst_amount?: number
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_note_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_note_items_credit_note_id_fkey"
+            columns: ["credit_note_id"]
+            isOneToOne: false
+            referencedRelation: "credit_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_note_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_notes: {
+        Row: {
+          cgst_total: number
+          created_at: string
+          created_by: string | null
+          credit_date: string
+          credit_note_number: string
+          dealer_id: string
+          id: string
+          igst_total: number
+          invoice_id: string
+          reason: string | null
+          sgst_total: number
+          subtotal: number
+          total_amount: number
+        }
+        Insert: {
+          cgst_total?: number
+          created_at?: string
+          created_by?: string | null
+          credit_date?: string
+          credit_note_number: string
+          dealer_id: string
+          id?: string
+          igst_total?: number
+          invoice_id: string
+          reason?: string | null
+          sgst_total?: number
+          subtotal?: number
+          total_amount?: number
+        }
+        Update: {
+          cgst_total?: number
+          created_at?: string
+          created_by?: string | null
+          credit_date?: string
+          credit_note_number?: string
+          dealer_id?: string
+          id?: string
+          igst_total?: number
+          invoice_id?: string
+          reason?: string | null
+          sgst_total?: number
+          subtotal?: number
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_notes_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_notes_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dealers: {
         Row: {
@@ -87,9 +229,16 @@ export type Database = {
           gst_number: string | null
           id: string
           name: string
+          payment_terms_days: number | null
           phone: string | null
           pincode: string | null
+          shipping_address_line1: string | null
+          shipping_address_line2: string | null
+          shipping_city: string | null
+          shipping_pincode: string | null
+          shipping_state: string | null
           state: string | null
+          state_code: string | null
           status: string
           updated_at: string
         }
@@ -105,9 +254,16 @@ export type Database = {
           gst_number?: string | null
           id?: string
           name: string
+          payment_terms_days?: number | null
           phone?: string | null
           pincode?: string | null
+          shipping_address_line1?: string | null
+          shipping_address_line2?: string | null
+          shipping_city?: string | null
+          shipping_pincode?: string | null
+          shipping_state?: string | null
           state?: string | null
+          state_code?: string | null
           status?: string
           updated_at?: string
         }
@@ -123,13 +279,455 @@ export type Database = {
           gst_number?: string | null
           id?: string
           name?: string
+          payment_terms_days?: number | null
           phone?: string | null
           pincode?: string | null
+          shipping_address_line1?: string | null
+          shipping_address_line2?: string | null
+          shipping_city?: string | null
+          shipping_pincode?: string | null
+          shipping_state?: string | null
           state?: string | null
+          state_code?: string | null
           status?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      inventory_txn: {
+        Row: {
+          batch_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          product_id: string
+          qty_in: number
+          qty_out: number
+          rate: number
+          ref_id: string | null
+          ref_type: string | null
+          txn_type: Database["public"]["Enums"]["inventory_txn_type"]
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id: string
+          qty_in?: number
+          qty_out?: number
+          rate?: number
+          ref_id?: string | null
+          ref_type?: string | null
+          txn_type: Database["public"]["Enums"]["inventory_txn_type"]
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          product_id?: string
+          qty_in?: number
+          qty_out?: number
+          rate?: number
+          ref_id?: string | null
+          ref_type?: string | null
+          txn_type?: Database["public"]["Enums"]["inventory_txn_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_txn_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_txn_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoice_items: {
+        Row: {
+          amount: number
+          batch_id: string
+          cgst_amount: number
+          created_at: string
+          gst_rate: number
+          hsn_code: string | null
+          id: string
+          igst_amount: number
+          invoice_id: string
+          product_id: string
+          qty: number
+          rate: number
+          sgst_amount: number
+          total_amount: number
+        }
+        Insert: {
+          amount: number
+          batch_id: string
+          cgst_amount?: number
+          created_at?: string
+          gst_rate?: number
+          hsn_code?: string | null
+          id?: string
+          igst_amount?: number
+          invoice_id: string
+          product_id: string
+          qty: number
+          rate: number
+          sgst_amount?: number
+          total_amount?: number
+        }
+        Update: {
+          amount?: number
+          batch_id?: string
+          cgst_amount?: number
+          created_at?: string
+          gst_rate?: number
+          hsn_code?: string | null
+          id?: string
+          igst_amount?: number
+          invoice_id?: string
+          product_id?: string
+          qty?: number
+          rate?: number
+          sgst_amount?: number
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          amount_paid: number
+          cgst_total: number
+          created_at: string
+          created_by: string | null
+          dealer_id: string
+          due_date: string | null
+          id: string
+          igst_total: number
+          invoice_date: string
+          invoice_number: string
+          notes: string | null
+          order_id: string | null
+          sgst_total: number
+          status: string
+          subtotal: number
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          amount_paid?: number
+          cgst_total?: number
+          created_at?: string
+          created_by?: string | null
+          dealer_id: string
+          due_date?: string | null
+          id?: string
+          igst_total?: number
+          invoice_date?: string
+          invoice_number: string
+          notes?: string | null
+          order_id?: string | null
+          sgst_total?: number
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_paid?: number
+          cgst_total?: number
+          created_at?: string
+          created_by?: string | null
+          dealer_id?: string
+          due_date?: string | null
+          id?: string
+          igst_total?: number
+          invoice_date?: string
+          invoice_number?: string
+          notes?: string | null
+          order_id?: string | null
+          sgst_total?: number
+          status?: string
+          subtotal?: number
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ledger_entries: {
+        Row: {
+          created_at: string
+          credit: number
+          dealer_id: string
+          debit: number
+          description: string | null
+          entry_date: string
+          entry_type: string
+          id: string
+          ref_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          credit?: number
+          dealer_id: string
+          debit?: number
+          description?: string | null
+          entry_date?: string
+          entry_type: string
+          id?: string
+          ref_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          credit?: number
+          dealer_id?: string
+          debit?: number
+          description?: string | null
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          ref_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_items: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          order_id: string
+          product_id: string
+          qty: number
+          rate: number
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          order_id: string
+          product_id: string
+          qty: number
+          rate: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          product_id?: string
+          qty?: number
+          rate?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          dealer_id: string
+          id: string
+          notes: string | null
+          order_date: string
+          order_number: string
+          status: Database["public"]["Enums"]["order_status"]
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          dealer_id: string
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_number: string
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          dealer_id?: string
+          id?: string
+          notes?: string | null
+          order_date?: string
+          order_number?: string
+          status?: Database["public"]["Enums"]["order_status"]
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          dealer_id: string
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_mode: string
+          reference_number: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          dealer_id: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode?: string
+          reference_number?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          dealer_id?: string
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_mode?: string
+          reference_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_batches: {
+        Row: {
+          batch_no: string
+          created_at: string
+          created_by: string | null
+          current_qty: number
+          exp_date: string | null
+          id: string
+          mfg_date: string | null
+          product_id: string
+          purchase_rate: number
+          updated_at: string
+        }
+        Insert: {
+          batch_no: string
+          created_at?: string
+          created_by?: string | null
+          current_qty?: number
+          exp_date?: string | null
+          id?: string
+          mfg_date?: string | null
+          product_id: string
+          purchase_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          batch_no?: string
+          created_at?: string
+          created_by?: string | null
+          current_qty?: number
+          exp_date?: string | null
+          id?: string
+          mfg_date?: string | null
+          product_id?: string
+          purchase_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       products: {
         Row: {
@@ -141,7 +739,11 @@ export type Database = {
           hsn_code: string | null
           id: string
           is_active: boolean
+          min_stock_alert_qty: number | null
           name: string
+          purchase_price_default: number | null
+          sale_price: number | null
+          slug: string | null
           unit: string
           updated_at: string
         }
@@ -154,7 +756,11 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           is_active?: boolean
+          min_stock_alert_qty?: number | null
           name: string
+          purchase_price_default?: number | null
+          sale_price?: number | null
+          slug?: string | null
           unit?: string
           updated_at?: string
         }
@@ -167,7 +773,11 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           is_active?: boolean
+          min_stock_alert_qty?: number | null
           name?: string
+          purchase_price_default?: number | null
+          sale_price?: number | null
+          slug?: string | null
           unit?: string
           updated_at?: string
         }
@@ -240,6 +850,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "sales" | "warehouse"
+      inventory_txn_type: "PURCHASE" | "SALE" | "SALE_RETURN" | "ADJUSTMENT"
+      order_status:
+        | "draft"
+        | "confirmed"
+        | "dispatched"
+        | "delivered"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -368,6 +985,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "sales", "warehouse"],
+      inventory_txn_type: ["PURCHASE", "SALE", "SALE_RETURN", "ADJUSTMENT"],
+      order_status: [
+        "draft",
+        "confirmed",
+        "dispatched",
+        "delivered",
+        "cancelled",
+      ],
     },
   },
 } as const
