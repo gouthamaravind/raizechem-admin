@@ -22,6 +22,7 @@ import Ledger from "./pages/finance/Ledger";
 import Outstanding from "./pages/finance/Outstanding";
 import Payments from "./pages/finance/Payments";
 import CompanySettings from "./pages/settings/CompanySettings";
+import UserManagement from "./pages/settings/UserManagement";
 import SalesRegister from "./pages/reports/SalesRegister";
 import PurchaseRegister from "./pages/reports/PurchaseRegister";
 import OutstandingAging from "./pages/reports/OutstandingAging";
@@ -54,6 +55,7 @@ const App = () => (
             <Route path="/finance/outstanding" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Outstanding /></RoleGuard></P>} />
             <Route path="/finance/payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Payments /></RoleGuard></P>} />
             <Route path="/settings/company" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><CompanySettings /></RoleGuard></P>} />
+            <Route path="/settings/users" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><UserManagement /></RoleGuard></P>} />
             <Route path="/reports/sales-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><SalesRegister /></RoleGuard></P>} />
             <Route path="/reports/purchase-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><PurchaseRegister /></RoleGuard></P>} />
             <Route path="/reports/outstanding-aging" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><OutstandingAging /></RoleGuard></P>} />
