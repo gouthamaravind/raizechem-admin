@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ArrowDownToLine, AlertTriangle,
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
-  Truck, FileInput, Undo2, CalendarDays,
+  Truck, FileInput, Undo2, CalendarDays, Landmark,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -74,6 +74,7 @@ const navGroups = [
       { title: "Outstanding Aging", url: "/reports/outstanding-aging", icon: TrendingDown },
       { title: "Batch Stock", url: "/reports/batch-stock", icon: PackageSearch },
       { title: "GST Summary", url: "/reports/gst-summary", icon: Receipt },
+      { title: "TDS / TCS", url: "/reports/tds-tcs", icon: Landmark },
     ],
   },
   {

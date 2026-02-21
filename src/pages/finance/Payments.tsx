@@ -25,6 +25,12 @@ export default function Payments() {
   const [refNo, setRefNo] = useState("");
   const [notes, setNotes] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+  const [tdsRate, setTdsRate] = useState(0);
+  const [tcsRate, setTcsRate] = useState(0);
+
+  const tdsAmount = amount > 0 ? +(amount * tdsRate / 100).toFixed(2) : 0;
+  const tcsAmount = amount > 0 ? +(amount * tcsRate / 100).toFixed(2) : 0;
+  const netAmount = amount > 0 ? +(amount - tdsAmount + tcsAmount).toFixed(2) : 0;
 
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["payments"],
@@ -45,17 +51,20 @@ export default function Payments() {
         dealer_id: dealerId, payment_date: paymentDate, amount,
         payment_mode: mode, reference_number: refNo || null, notes: notes || null,
         created_by: user?.id,
+        tds_rate: tdsRate, tds_amount: tdsAmount,
+        tcs_rate: tcsRate, tcs_amount: tcsAmount,
+        net_amount: netAmount,
       }).select("id").single();
       if (error) throw error;
 
-      // Ledger entry (credit)
+      // Ledger entry (credit) - use net_amount for actual cash received
       await supabase.from("ledger_entries").insert({
         dealer_id: dealerId, entry_date: paymentDate, entry_type: "payment",
-        ref_id: payment.id, description: `Payment received (${mode}) ${refNo ? `Ref: ${refNo}` : ""}`,
+        ref_id: payment.id, description: `Payment received (${mode}) ${refNo ? `Ref: ${refNo}` : ""}${tdsAmount > 0 ? ` TDS: ₹${tdsAmount}` : ""}${tcsAmount > 0 ? ` TCS: ₹${tcsAmount}` : ""}`,
         debit: 0, credit: amount,
       });
 
-      // Auto-apply to oldest unpaid invoices
+      // Auto-apply to oldest unpaid invoices (apply gross amount against invoice)
       let remaining = amount;
       const { data: unpaid } = await supabase.from("invoices").select("id, total_amount, amount_paid").eq("dealer_id", dealerId).neq("status", "paid").order("invoice_date");
       if (unpaid) {
@@ -75,11 +84,16 @@ export default function Payments() {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["outstanding-invoices"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
-      setDialogOpen(false); setDealerId(""); setAmount(0); setMode("bank_transfer"); setRefNo(""); setNotes("");
+      setDialogOpen(false); resetForm();
       toast.success("Payment recorded and applied to invoices");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const resetForm = () => {
+    setDealerId(""); setAmount(0); setMode("bank_transfer"); setRefNo(""); setNotes("");
+    setTdsRate(0); setTcsRate(0);
+  };
 
   const filtered = payments.filter((p: any) => {
     const s = search.toLowerCase();
@@ -92,19 +106,30 @@ export default function Payments() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <div><h1 className="text-2xl font-bold tracking-tight">Payments</h1><p className="text-muted-foreground">Record payments from dealers</p></div>
+          <div><h1 className="text-2xl font-bold tracking-tight">Payments</h1><p className="text-muted-foreground">Record payments from dealers with TDS/TCS</p></div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Record Payment</Button></DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg">
               <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createPayment.mutate(); }} className="space-y-4">
                 <div className="space-y-2"><Label>Dealer *</Label><Select value={dealerId} onValueChange={setDealerId}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{dealers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label>Amount (₹) *</Label><Input type="number" required min={0.01} step="0.01" value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} /></div>
+                  <div className="space-y-2"><Label>Gross Amount (₹) *</Label><Input type="number" required min={0.01} step="0.01" value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} /></div>
                   <div className="space-y-2"><Label>Date</Label><Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} /></div>
                   <div className="space-y-2"><Label>Mode</Label><Select value={mode} onValueChange={setMode}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bank_transfer">Bank Transfer</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="upi">UPI</SelectItem></SelectContent></Select></div>
                   <div className="space-y-2"><Label>Reference No.</Label><Input value={refNo} onChange={(e) => setRefNo(e.target.value)} /></div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label>TDS Rate (%)</Label><Input type="number" min={0} max={100} step="0.01" value={tdsRate || ""} onChange={(e) => setTdsRate(Number(e.target.value))} /></div>
+                  <div className="space-y-2"><Label>TCS Rate (%)</Label><Input type="number" min={0} max={100} step="0.01" value={tcsRate || ""} onChange={(e) => setTcsRate(Number(e.target.value))} /></div>
+                </div>
+                {(tdsRate > 0 || tcsRate > 0) && (
+                  <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+                    {tdsRate > 0 && <div className="flex justify-between"><span>TDS ({tdsRate}%)</span><span className="text-destructive">− ₹{tdsAmount.toLocaleString("en-IN")}</span></div>}
+                    {tcsRate > 0 && <div className="flex justify-between"><span>TCS ({tcsRate}%)</span><span className="text-primary">+ ₹{tcsAmount.toLocaleString("en-IN")}</span></div>}
+                    <div className="flex justify-between font-semibold border-t pt-1"><span>Net Receivable</span><span>₹{netAmount.toLocaleString("en-IN")}</span></div>
+                  </div>
+                )}
                 <div className="space-y-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                 <Button type="submit" className="w-full" disabled={createPayment.isPending}>{createPayment.isPending ? "Recording..." : "Record Payment"}</Button>
               </form>
@@ -115,21 +140,25 @@ export default function Payments() {
           <CardHeader className="pb-3"><div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search payments..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div></CardHeader>
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No payments recorded.</p> : (
-              <Table>
-                <TableHeader><TableRow><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Amount</TableHead><TableHead>Mode</TableHead><TableHead>Reference</TableHead><TableHead>Notes</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {filtered.map((p: any) => (
-                    <TableRow key={p.id}>
-                      <TableCell className="font-medium">{p.dealers?.name}</TableCell>
-                      <TableCell>{p.payment_date}</TableCell>
-                      <TableCell className="font-semibold text-success">₹{Number(p.amount).toLocaleString("en-IN")}</TableCell>
-                      <TableCell><Badge variant="outline">{modeLabels[p.payment_mode] || p.payment_mode}</Badge></TableCell>
-                      <TableCell className="text-sm">{p.reference_number || "—"}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{p.notes || "—"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader><TableRow><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Gross Amt</TableHead><TableHead>TDS</TableHead><TableHead>TCS</TableHead><TableHead>Net Amt</TableHead><TableHead>Mode</TableHead><TableHead>Reference</TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {filtered.map((p: any) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.dealers?.name}</TableCell>
+                        <TableCell>{p.payment_date}</TableCell>
+                        <TableCell>₹{Number(p.amount).toLocaleString("en-IN")}</TableCell>
+                        <TableCell>{Number(p.tds_amount) > 0 ? <span className="text-destructive">₹{Number(p.tds_amount).toLocaleString("en-IN")} ({p.tds_rate}%)</span> : "—"}</TableCell>
+                        <TableCell>{Number(p.tcs_amount) > 0 ? <span className="text-primary">₹{Number(p.tcs_amount).toLocaleString("en-IN")} ({p.tcs_rate}%)</span> : "—"}</TableCell>
+                        <TableCell className="font-semibold">₹{Number(p.net_amount).toLocaleString("en-IN")}</TableCell>
+                        <TableCell><Badge variant="outline">{modeLabels[p.payment_mode] || p.payment_mode}</Badge></TableCell>
+                        <TableCell className="text-sm">{p.reference_number || "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
