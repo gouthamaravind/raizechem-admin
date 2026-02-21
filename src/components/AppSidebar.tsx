@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Users, Package, Boxes, ArrowDownToLine, AlertTriangle,
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
-  BarChart3, TrendingDown, ClipboardList, PackageSearch,
+  BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -67,7 +67,10 @@ const navGroups = [
   {
     label: "Settings",
     module: "settings",
-    items: [{ title: "Company", url: "/settings/company", icon: Building2 }],
+    items: [
+      { title: "Company", url: "/settings/company", icon: Building2 },
+      { title: "Users", url: "/settings/users", icon: UserCog },
+    ],
   },
 ];
 
