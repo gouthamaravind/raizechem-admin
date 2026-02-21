@@ -1,0 +1,169 @@
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { DashboardLayout } from "@/components/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Search, Plus, Pencil, Download } from "lucide-react";
+import { toast } from "sonner";
+import { exportToCsv } from "@/lib/csv-export";
+
+const emptyForm = {
+  name: "", gst_number: "", contact_person: "", phone: "", email: "",
+  address_line1: "", address_line2: "", city: "", state: "", state_code: "",
+  pincode: "", payment_terms_days: 30,
+};
+
+export default function Suppliers() {
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const qc = useQueryClient();
+
+  const { data: suppliers = [], isLoading } = useQuery({
+    queryKey: ["suppliers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("suppliers").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (values: any) => {
+      const { id, ...rest } = values;
+      if (id) {
+        const { error } = await supabase.from("suppliers").update(rest).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("suppliers").insert(rest);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["suppliers"] });
+      setDialogOpen(false); setEditId(null); setForm(emptyForm);
+      toast.success(editId ? "Supplier updated" : "Supplier added");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const filtered = suppliers.filter((s: any) => {
+    const q = search.toLowerCase();
+    const match = s.name?.toLowerCase().includes(q) || s.city?.toLowerCase().includes(q) || s.gst_number?.toLowerCase().includes(q);
+    return match && (statusFilter === "all" || s.status === statusFilter);
+  });
+
+  const openEdit = (s: any) => {
+    setEditId(s.id);
+    setForm({
+      name: s.name || "", gst_number: s.gst_number || "", contact_person: s.contact_person || "",
+      phone: s.phone || "", email: s.email || "", address_line1: s.address_line1 || "",
+      address_line2: s.address_line2 || "", city: s.city || "", state: s.state || "",
+      state_code: s.state_code || "", pincode: s.pincode || "",
+      payment_terms_days: s.payment_terms_days || 30,
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    mutation.mutate(editId ? { ...form, id: editId } : form);
+  };
+
+  const handleExport = () => {
+    exportToCsv("suppliers.csv", filtered, [
+      { key: "name", label: "Name" }, { key: "gst_number", label: "GSTIN" },
+      { key: "phone", label: "Phone" }, { key: "city", label: "City" },
+      { key: "state", label: "State" }, { key: "state_code", label: "State Code" },
+      { key: "status", label: "Status" },
+    ]);
+  };
+
+  const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Suppliers</h1>
+            <p className="text-muted-foreground">Manage your supplier network</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />CSV</Button>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); } }}>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Supplier</Button></DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>{editId ? "Edit Supplier" : "Add Supplier"}</DialogTitle></DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 space-y-2"><Label>Name *</Label><Input required value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>GSTIN</Label><Input value={form.gst_number} onChange={(e) => set("gst_number", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Contact Person</Label><Input value={form.contact_person} onChange={(e) => set("contact_person", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Phone</Label><Input value={form.phone} onChange={(e) => set("phone", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></div>
+                  </div>
+                  <h4 className="font-semibold text-sm pt-2">Address</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2 space-y-2"><Label>Address Line 1</Label><Input value={form.address_line1} onChange={(e) => set("address_line1", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>City</Label><Input value={form.city} onChange={(e) => set("city", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>State</Label><Input value={form.state} onChange={(e) => set("state", e.target.value)} /></div>
+                    <div className="space-y-2"><Label>State Code</Label><Input value={form.state_code} onChange={(e) => set("state_code", e.target.value)} placeholder="e.g. 36" /></div>
+                    <div className="space-y-2"><Label>Pincode</Label><Input value={form.pincode} onChange={(e) => set("pincode", e.target.value)} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-2"><Label>Payment Terms (days)</Label><Input type="number" value={form.payment_terms_days} onChange={(e) => set("payment_terms_days", Number(e.target.value))} /></div>
+                  </div>
+                  <Button type="submit" className="w-full" disabled={mutation.isPending}>
+                    {mutation.isPending ? "Saving..." : editId ? "Update Supplier" : "Add Supplier"}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search suppliers..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No suppliers found.</p> : (
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>City</TableHead>
+                  <TableHead>State Code</TableHead><TableHead>Phone</TableHead>
+                  <TableHead>Status</TableHead><TableHead className="w-10"></TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {filtered.map((s: any) => (
+                    <TableRow key={s.id}>
+                      <TableCell className="font-medium">{s.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{s.gst_number || "—"}</TableCell>
+                      <TableCell>{s.city || "—"}</TableCell>
+                      <TableCell>{s.state_code || "—"}</TableCell>
+                      <TableCell>{s.phone || "—"}</TableCell>
+                      <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
+                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
+  );
+}

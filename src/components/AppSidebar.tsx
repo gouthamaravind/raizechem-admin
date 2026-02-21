@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ArrowDownToLine, AlertTriangle,
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
+  Truck, FileInput, Undo2,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -24,6 +25,7 @@ const navGroups = [
     module: "masters",
     items: [
       { title: "Dealers", url: "/masters/dealers", icon: Users },
+      { title: "Suppliers", url: "/masters/suppliers", icon: Truck },
       { title: "Products", url: "/masters/products", icon: Package },
     ],
   },
@@ -43,6 +45,15 @@ const navGroups = [
       { title: "Orders", url: "/sales/orders", icon: ShoppingCart },
       { title: "Invoices", url: "/sales/invoices", icon: FileText },
       { title: "Returns", url: "/sales/returns", icon: RotateCcw },
+    ],
+  },
+  {
+    label: "Purchase",
+    module: "purchase",
+    items: [
+      { title: "Orders", url: "/purchase/orders", icon: FileInput },
+      { title: "Invoices", url: "/purchase/invoices", icon: FileText },
+      { title: "Returns", url: "/purchase/returns", icon: Undo2 },
     ],
   },
   {
