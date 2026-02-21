@@ -1,12 +1,28 @@
-import { LogOut, Search, Bell } from "lucide-react";
+import { LogOut, Search, Bell, FlaskConical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
+import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function TopBar() {
   const { profile, userRoles, signOut } = useAuth();
+  const qc = useQueryClient();
+  const [demoMode, setDemoMode] = useState(() => localStorage.getItem("demo-mode") === "true");
+
+  useEffect(() => {
+    localStorage.setItem("demo-mode", String(demoMode));
+  }, [demoMode]);
+
+  const toggleDemo = (on: boolean) => {
+    setDemoMode(on);
+    // Refetch all queries to reflect data
+    qc.invalidateQueries();
+  };
 
   return (
     <header className="h-14 border-b bg-card flex items-center justify-between px-4 shrink-0">
@@ -19,6 +35,19 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Demo Mode Toggle */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted/60 border">
+          <FlaskConical className={`h-3.5 w-3.5 ${demoMode ? "text-primary" : "text-muted-foreground"}`} />
+          <Label htmlFor="demo-toggle" className="text-xs font-medium cursor-pointer select-none">Demo</Label>
+          <Switch id="demo-toggle" checked={demoMode} onCheckedChange={toggleDemo} className="scale-75" />
+        </div>
+
+        {demoMode && (
+          <Badge variant="outline" className="text-[10px] border-primary/40 text-primary bg-primary/5 animate-pulse">
+            Sample Data Active
+          </Badge>
+        )}
+
         <Button variant="ghost" size="icon" className="relative h-9 w-9">
           <Bell className="h-4 w-4" />
         </Button>
