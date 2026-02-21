@@ -34,6 +34,10 @@ import OutstandingAging from "./pages/reports/OutstandingAging";
 import BatchStockReport from "./pages/reports/BatchStockReport";
 import GSTSummary from "./pages/reports/GSTSummary";
 import TdsTcsReport from "./pages/reports/TdsTcsReport";
+import HrEmployees from "./pages/hr/Employees";
+import SalaryComponents from "./pages/hr/SalaryComponents";
+import HrPayroll from "./pages/hr/Payroll";
+import HrPayslips from "./pages/hr/Payslips";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +78,10 @@ const App = () => (
             <Route path="/reports/batch-stock" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><BatchStockReport /></RoleGuard></P>} />
             <Route path="/reports/gst-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GSTSummary /></RoleGuard></P>} />
             <Route path="/reports/tds-tcs" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><TdsTcsReport /></RoleGuard></P>} />
+            <Route path="/hr/employees" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrEmployees /></RoleGuard></P>} />
+            <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
+            <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
+            <Route path="/hr/payslips" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayslips /></RoleGuard></P>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

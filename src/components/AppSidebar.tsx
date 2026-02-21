@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Users, Package, Boxes, ArrowDownToLine, AlertTriangle,
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
-  Truck, FileInput, Undo2, CalendarDays, Landmark,
+  Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -75,6 +75,16 @@ const navGroups = [
       { title: "Batch Stock", url: "/reports/batch-stock", icon: PackageSearch },
       { title: "GST Summary", url: "/reports/gst-summary", icon: Receipt },
       { title: "TDS / TCS", url: "/reports/tds-tcs", icon: Landmark },
+    ],
+  },
+  {
+    label: "HR & Payroll",
+    module: "hr",
+    items: [
+      { title: "Employees", url: "/hr/employees", icon: UserCheck },
+      { title: "Salary Structure", url: "/hr/salary-components", icon: Calculator },
+      { title: "Payroll", url: "/hr/payroll", icon: Wallet },
+      { title: "Payslips", url: "/hr/payslips", icon: FileBarChart },
     ],
   },
   {

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Building2, MapPin, Landmark, FileText, Upload, Loader2, Trash2 } from "lucide-react";
@@ -18,7 +19,7 @@ export default function CompanySettings() {
     company_name: "", legal_name: "", gst_number: "", pan_number: "",
     address_line1: "", address_line2: "", city: "", state: "", pincode: "",
     phone: "", email: "", bank_name: "", bank_account: "", bank_ifsc: "",
-    invoice_series: "RC", logo_url: "",
+    invoice_series: "RC", logo_url: "", invoice_template: "standard",
   });
 
   const { data: settings, isLoading } = useQuery({
@@ -40,7 +41,7 @@ export default function CompanySettings() {
         phone: settings.phone || "", email: settings.email || "",
         bank_name: settings.bank_name || "", bank_account: settings.bank_account || "",
         bank_ifsc: settings.bank_ifsc || "", invoice_series: settings.invoice_series || "RC",
-        logo_url: settings.logo_url || "",
+        logo_url: settings.logo_url || "", invoice_template: (settings as any).invoice_template || "standard",
       });
     }
   }, [settings]);
@@ -259,6 +260,37 @@ export default function CompanySettings() {
                   <Label>IFSC Code</Label>
                   <Input value={form.bank_ifsc} onChange={(e) => set("bank_ifsc", e.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" maxLength={11} className="font-mono" />
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Invoice Template */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Invoice Template</CardTitle>
+                  <CardDescription>Choose the layout used when printing invoices</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-w-xs">
+                <Label>Template</Label>
+                <Select value={form.invoice_template} onValueChange={(v) => set("invoice_template", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="standard">Standard (Full Page)</SelectItem>
+                    <SelectItem value="retail">Retail (Thermal / POS)</SelectItem>
+                    <SelectItem value="export">Export / Commercial</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {form.invoice_template === "standard" && "Full A4 tax invoice with GST breakup, bank details, and signatures."}
+                  {form.invoice_template === "retail" && "Compact receipt format for thermal printers (80mm width)."}
+                  {form.invoice_template === "export" && "Formal commercial invoice for export / SEZ supplies."}
+                </p>
               </div>
             </CardContent>
           </Card>

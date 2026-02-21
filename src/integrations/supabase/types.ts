@@ -28,6 +28,7 @@ export type Database = {
           gst_number: string | null
           id: string
           invoice_series: string | null
+          invoice_template: string
           legal_name: string | null
           logo_url: string | null
           next_invoice_number: number
@@ -50,6 +51,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           invoice_series?: string | null
+          invoice_template?: string
           legal_name?: string | null
           logo_url?: string | null
           next_invoice_number?: number
@@ -72,6 +74,7 @@ export type Database = {
           gst_number?: string | null
           id?: string
           invoice_series?: string | null
+          invoice_template?: string
           legal_name?: string | null
           logo_url?: string | null
           next_invoice_number?: number
@@ -432,6 +435,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      employees: {
+        Row: {
+          bank_account: string | null
+          basic_salary: number
+          created_at: string
+          created_by: string | null
+          date_of_joining: string | null
+          department: string | null
+          designation: string | null
+          email: string | null
+          id: string
+          name: string
+          pan: string | null
+          phone: string | null
+          status: string
+          uan: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_account?: string | null
+          basic_salary?: number
+          created_at?: string
+          created_by?: string | null
+          date_of_joining?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          pan?: string | null
+          phone?: string | null
+          status?: string
+          uan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_account?: string | null
+          basic_salary?: number
+          created_at?: string
+          created_by?: string | null
+          date_of_joining?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          pan?: string | null
+          phone?: string | null
+          status?: string
+          uan?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       financial_years: {
         Row: {
@@ -925,6 +982,99 @@ export type Database = {
           },
         ]
       }
+      payroll_runs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          month: number
+          processed_at: string | null
+          status: string
+          total_deductions: number
+          total_gross: number
+          total_net: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month: number
+          processed_at?: string | null
+          status?: string
+          total_deductions?: number
+          total_gross?: number
+          total_net?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month?: number
+          processed_at?: string | null
+          status?: string
+          total_deductions?: number
+          total_gross?: number
+          total_net?: number
+          year?: number
+        }
+        Relationships: []
+      }
+      payslips: {
+        Row: {
+          basic: number
+          created_at: string
+          deductions: Json
+          earnings: Json
+          employee_id: string
+          gross: number
+          id: string
+          net_pay: number
+          payment_status: string
+          payroll_run_id: string
+        }
+        Insert: {
+          basic?: number
+          created_at?: string
+          deductions?: Json
+          earnings?: Json
+          employee_id: string
+          gross?: number
+          id?: string
+          net_pay?: number
+          payment_status?: string
+          payroll_run_id: string
+        }
+        Update: {
+          basic?: number
+          created_at?: string
+          deductions?: Json
+          earnings?: Json
+          employee_id?: string
+          gross?: number
+          id?: string
+          net_pay?: number
+          payment_status?: string
+          payroll_run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslips_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payslips_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_batches: {
         Row: {
           batch_no: string
@@ -1289,6 +1439,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      salary_components: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_percentage: boolean
+          name: string
+          type: string
+          value: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_percentage?: boolean
+          name: string
+          type?: string
+          value?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_percentage?: boolean
+          name?: string
+          type?: string
+          value?: number
+        }
+        Relationships: []
       }
       suppliers: {
         Row: {
