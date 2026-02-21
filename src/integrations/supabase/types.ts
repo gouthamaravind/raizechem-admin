@@ -433,6 +433,42 @@ export type Database = {
           },
         ]
       }
+      financial_years: {
+        Row: {
+          closing_notes: string | null
+          created_at: string
+          end_date: string
+          fy_code: string
+          id: string
+          is_active: boolean
+          is_closed: boolean
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          closing_notes?: string | null
+          created_at?: string
+          end_date: string
+          fy_code: string
+          id?: string
+          is_active?: boolean
+          is_closed?: boolean
+          start_date: string
+          updated_at?: string
+        }
+        Update: {
+          closing_notes?: string | null
+          created_at?: string
+          end_date?: string
+          fy_code?: string
+          id?: string
+          is_active?: boolean
+          is_closed?: boolean
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       inventory_txn: {
         Row: {
           batch_id: string
@@ -696,6 +732,44 @@ export type Database = {
             columns: ["dealer_id"]
             isOneToOne: false
             referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opening_balances: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          fy_id: string
+          id: string
+          opening_credit: number
+          opening_debit: number
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type?: string
+          fy_id: string
+          id?: string
+          opening_credit?: number
+          opening_debit?: number
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          fy_id?: string
+          id?: string
+          opening_credit?: number
+          opening_debit?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opening_balances_fy_id_fkey"
+            columns: ["fy_id"]
+            isOneToOne: false
+            referencedRelation: "financial_years"
             referencedColumns: ["id"]
           },
         ]
