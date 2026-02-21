@@ -5,6 +5,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { RoleGuard } from "@/components/RoleGuard";
+import { MODULE_ACCESS } from "@/types/roles";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Dealers from "./pages/masters/Dealers";
@@ -14,11 +16,16 @@ import StockIn from "./pages/inventory/StockIn";
 import Alerts from "./pages/inventory/Alerts";
 import Orders from "./pages/sales/Orders";
 import Invoices from "./pages/sales/Invoices";
+import InvoicePrint from "./pages/sales/InvoicePrint";
 import Returns from "./pages/sales/Returns";
 import Ledger from "./pages/finance/Ledger";
 import Outstanding from "./pages/finance/Outstanding";
 import Payments from "./pages/finance/Payments";
 import CompanySettings from "./pages/settings/CompanySettings";
+import SalesRegister from "./pages/reports/SalesRegister";
+import PurchaseRegister from "./pages/reports/PurchaseRegister";
+import OutstandingAging from "./pages/reports/OutstandingAging";
+import BatchStockReport from "./pages/reports/BatchStockReport";
 
 const queryClient = new QueryClient();
 
@@ -34,18 +41,23 @@ const App = () => (
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/dashboard" element={<P><Dashboard /></P>} />
-            <Route path="/masters/dealers" element={<P><Dealers /></P>} />
-            <Route path="/masters/products" element={<P><Products /></P>} />
-            <Route path="/inventory/batches" element={<P><Batches /></P>} />
-            <Route path="/inventory/stock-in" element={<P><StockIn /></P>} />
-            <Route path="/inventory/alerts" element={<P><Alerts /></P>} />
-            <Route path="/sales/orders" element={<P><Orders /></P>} />
-            <Route path="/sales/invoices" element={<P><Invoices /></P>} />
-            <Route path="/sales/returns" element={<P><Returns /></P>} />
-            <Route path="/finance/ledger" element={<P><Ledger /></P>} />
-            <Route path="/finance/outstanding" element={<P><Outstanding /></P>} />
-            <Route path="/finance/payments" element={<P><Payments /></P>} />
-            <Route path="/settings/company" element={<P><CompanySettings /></P>} />
+            <Route path="/masters/dealers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealers /></RoleGuard></P>} />
+            <Route path="/masters/products" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Products /></RoleGuard></P>} />
+            <Route path="/inventory/batches" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><Batches /></RoleGuard></P>} />
+            <Route path="/inventory/stock-in" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><StockIn /></RoleGuard></P>} />
+            <Route path="/inventory/alerts" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><Alerts /></RoleGuard></P>} />
+            <Route path="/sales/orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Orders /></RoleGuard></P>} />
+            <Route path="/sales/invoices" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Invoices /></RoleGuard></P>} />
+            <Route path="/sales/invoices/:id/print" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><InvoicePrint /></RoleGuard></P>} />
+            <Route path="/sales/returns" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Returns /></RoleGuard></P>} />
+            <Route path="/finance/ledger" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Ledger /></RoleGuard></P>} />
+            <Route path="/finance/outstanding" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Outstanding /></RoleGuard></P>} />
+            <Route path="/finance/payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Payments /></RoleGuard></P>} />
+            <Route path="/settings/company" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><CompanySettings /></RoleGuard></P>} />
+            <Route path="/reports/sales-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><SalesRegister /></RoleGuard></P>} />
+            <Route path="/reports/purchase-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><PurchaseRegister /></RoleGuard></P>} />
+            <Route path="/reports/outstanding-aging" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><OutstandingAging /></RoleGuard></P>} />
+            <Route path="/reports/batch-stock" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><BatchStockReport /></RoleGuard></P>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

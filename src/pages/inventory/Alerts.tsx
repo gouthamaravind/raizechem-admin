@@ -32,13 +32,13 @@ export default function Alerts() {
     return { ...p, totalQty, isLow: totalQty < Number(p.min_stock_alert_qty) && Number(p.min_stock_alert_qty) > 0 };
   }).filter((p) => p.isLow);
 
-  // Expiring soon (within 90 days)
+  // Expiring soon (within 60 days)
   const now = new Date();
   const expiringSoon = batches.filter((b: any) => {
     if (!b.exp_date) return false;
     const d = new Date(b.exp_date);
     const diff = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-    return diff > 0 && diff < 90;
+    return diff > 0 && diff < 60;
   }).map((b: any) => {
     const product = products.find((p: any) => p.id === b.product_id);
     return { ...b, productName: product?.name || "Unknown", unit: product?.unit || "" };
@@ -71,7 +71,7 @@ export default function Alerts() {
           <Card>
             <CardHeader><CardTitle className="flex items-center gap-2"><Clock className="h-5 w-5 text-warning" />Expiring Soon ({expiringSoon.length})</CardTitle></CardHeader>
             <CardContent>
-              {expiringSoon.length === 0 ? <p className="text-muted-foreground text-center py-8">No batches expiring within 90 days.</p> : (
+              {expiringSoon.length === 0 ? <p className="text-muted-foreground text-center py-8">No batches expiring within 60 days.</p> : (
                 <Table>
                   <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Qty</TableHead><TableHead>Exp Date</TableHead></TableRow></TableHeader>
                   <TableBody>
