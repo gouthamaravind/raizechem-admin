@@ -30,6 +30,7 @@ export type Database = {
           invoice_series: string | null
           legal_name: string | null
           logo_url: string | null
+          next_invoice_number: number
           pan_number: string | null
           phone: string | null
           pincode: string | null
@@ -51,6 +52,7 @@ export type Database = {
           invoice_series?: string | null
           legal_name?: string | null
           logo_url?: string | null
+          next_invoice_number?: number
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
@@ -72,6 +74,7 @@ export type Database = {
           invoice_series?: string | null
           legal_name?: string | null
           logo_url?: string | null
+          next_invoice_number?: number
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
@@ -434,6 +437,8 @@ export type Database = {
           created_at: string
           created_by: string | null
           dealer_id: string
+          delivery_to: string | null
+          dispatch_from: string | null
           due_date: string | null
           id: string
           igst_total: number
@@ -441,11 +446,14 @@ export type Database = {
           invoice_number: string
           notes: string | null
           order_id: string | null
+          place_of_supply: string | null
           sgst_total: number
           status: string
           subtotal: number
           total_amount: number
+          transport_mode: string | null
           updated_at: string
+          vehicle_no: string | null
         }
         Insert: {
           amount_paid?: number
@@ -453,6 +461,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dealer_id: string
+          delivery_to?: string | null
+          dispatch_from?: string | null
           due_date?: string | null
           id?: string
           igst_total?: number
@@ -460,11 +470,14 @@ export type Database = {
           invoice_number: string
           notes?: string | null
           order_id?: string | null
+          place_of_supply?: string | null
           sgst_total?: number
           status?: string
           subtotal?: number
           total_amount?: number
+          transport_mode?: string | null
           updated_at?: string
+          vehicle_no?: string | null
         }
         Update: {
           amount_paid?: number
@@ -472,6 +485,8 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           dealer_id?: string
+          delivery_to?: string | null
+          dispatch_from?: string | null
           due_date?: string | null
           id?: string
           igst_total?: number
@@ -479,11 +494,14 @@ export type Database = {
           invoice_number?: string
           notes?: string | null
           order_id?: string | null
+          place_of_supply?: string | null
           sgst_total?: number
           status?: string
           subtotal?: number
           total_amount?: number
+          transport_mode?: string | null
           updated_at?: string
+          vehicle_no?: string | null
         }
         Relationships: [
           {
@@ -849,7 +867,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "sales" | "warehouse"
+      app_role: "admin" | "sales" | "warehouse" | "accounts" | "inventory"
       inventory_txn_type: "PURCHASE" | "SALE" | "SALE_RETURN" | "ADJUSTMENT"
       order_status:
         | "draft"
@@ -984,7 +1002,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "sales", "warehouse"],
+      app_role: ["admin", "sales", "warehouse", "accounts", "inventory"],
       inventory_txn_type: ["PURCHASE", "SALE", "SALE_RETURN", "ADJUSTMENT"],
       order_status: [
         "draft",
