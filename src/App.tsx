@@ -9,13 +9,20 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Dealers from "./pages/masters/Dealers";
 import Products from "./pages/masters/Products";
-import StubPage from "./pages/StubPage";
+import Batches from "./pages/inventory/Batches";
+import StockIn from "./pages/inventory/StockIn";
+import Alerts from "./pages/inventory/Alerts";
+import Orders from "./pages/sales/Orders";
+import Invoices from "./pages/sales/Invoices";
+import Returns from "./pages/sales/Returns";
+import Ledger from "./pages/finance/Ledger";
+import Outstanding from "./pages/finance/Outstanding";
+import Payments from "./pages/finance/Payments";
+import CompanySettings from "./pages/settings/CompanySettings";
 
 const queryClient = new QueryClient();
 
-const ProtectedStub = ({ title, description }: { title: string; description: string }) => (
-  <ProtectedRoute><StubPage title={title} description={description} /></ProtectedRoute>
-);
+const P = ({ children }: { children: React.ReactNode }) => <ProtectedRoute>{children}</ProtectedRoute>;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -26,19 +33,19 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
-            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/masters/dealers" element={<ProtectedRoute><Dealers /></ProtectedRoute>} />
-            <Route path="/masters/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-            <Route path="/inventory/batches" element={<ProtectedStub title="Batches" description="Manage product batches" />} />
-            <Route path="/inventory/stock-in" element={<ProtectedStub title="Stock In" description="Record incoming stock" />} />
-            <Route path="/inventory/alerts" element={<ProtectedStub title="Alerts" description="Low stock and expiry alerts" />} />
-            <Route path="/sales/orders" element={<ProtectedStub title="Orders" description="Manage sales orders" />} />
-            <Route path="/sales/invoices" element={<ProtectedStub title="Invoices" description="Generate and manage invoices" />} />
-            <Route path="/sales/returns" element={<ProtectedStub title="Returns" description="Process sales returns" />} />
-            <Route path="/finance/ledger" element={<ProtectedStub title="Ledger" description="Dealer-wise ledger" />} />
-            <Route path="/finance/outstanding" element={<ProtectedStub title="Outstanding" description="Pending payment tracking" />} />
-            <Route path="/finance/payments" element={<ProtectedStub title="Payments" description="Record received payments" />} />
-            <Route path="/settings/company" element={<ProtectedStub title="Company Settings" description="Manage company profile" />} />
+            <Route path="/dashboard" element={<P><Dashboard /></P>} />
+            <Route path="/masters/dealers" element={<P><Dealers /></P>} />
+            <Route path="/masters/products" element={<P><Products /></P>} />
+            <Route path="/inventory/batches" element={<P><Batches /></P>} />
+            <Route path="/inventory/stock-in" element={<P><StockIn /></P>} />
+            <Route path="/inventory/alerts" element={<P><Alerts /></P>} />
+            <Route path="/sales/orders" element={<P><Orders /></P>} />
+            <Route path="/sales/invoices" element={<P><Invoices /></P>} />
+            <Route path="/sales/returns" element={<P><Returns /></P>} />
+            <Route path="/finance/ledger" element={<P><Ledger /></P>} />
+            <Route path="/finance/outstanding" element={<P><Outstanding /></P>} />
+            <Route path="/finance/payments" element={<P><Payments /></P>} />
+            <Route path="/settings/company" element={<P><CompanySettings /></P>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
