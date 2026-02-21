@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGuard } from "@/components/RoleGuard";
 import { MODULE_ACCESS } from "@/types/roles";
@@ -46,6 +47,7 @@ const P = ({ children }: { children: React.ReactNode }) => <ProtectedRoute>{chil
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
+      <DemoModeProvider>
       <TooltipProvider>
         <Toaster />
         <Sonner />
@@ -87,6 +89,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
+      </DemoModeProvider>
     </AuthProvider>
   </QueryClientProvider>
 );
