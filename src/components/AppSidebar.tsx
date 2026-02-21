@@ -89,12 +89,12 @@ export function AppSidebar() {
     <Sidebar className="border-r-0">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center">
-            <span className="text-sidebar-primary-foreground font-bold text-sm">R</span>
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-sm">R</span>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-sidebar-foreground">Raizechem</h2>
-            <p className="text-[10px] text-sidebar-foreground/60">Admin Panel</p>
+            <h2 className="text-sm font-semibold">Raizechem</h2>
+            <p className="text-[10px] text-muted-foreground">Admin Panel</p>
           </div>
         </div>
       </SidebarHeader>
