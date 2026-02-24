@@ -119,6 +119,17 @@ export default function PurchaseReturns() {
           notes: `Purchase return - ${dnNum}`,
         });
       }
+
+      // Supplier ledger entry (debit = supplier owes us for return)
+      await supabase.from("supplier_ledger_entries" as any).insert({
+        supplier_id: selectedPI.supplier_id,
+        entry_date: new Date().toISOString().split("T")[0],
+        entry_type: "debit_note",
+        ref_id: dn.id,
+        description: `Debit Note ${dnNum} (Purchase Return)`,
+        debit: total,
+        credit: 0,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["debit-notes"] });

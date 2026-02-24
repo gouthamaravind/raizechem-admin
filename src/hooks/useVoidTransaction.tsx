@@ -36,6 +36,7 @@ export function useVoidTransaction({ table, invalidateKeys }: VoidOptions) {
         await reverseCreditNote(id, user?.id);
       } else if (table === "debit_notes") {
         await reverseDebitNote(id, user?.id);
+        await reverseDebitNoteSupplierLedger(id);
       } else if (table === "purchase_invoices") {
         await reversePurchaseInvoice(id, user?.id);
       }
@@ -187,6 +188,17 @@ async function reversePurchaseInvoice(piId: string, userId?: string) {
   const { data: pi } = await supabase.from("purchase_invoices").select("*, purchase_invoice_items(*)").eq("id", piId).single();
   if (!pi) return;
 
+  // Reversing supplier ledger entry (debit to offset the original credit)
+  await supabase.from("supplier_ledger_entries" as any).insert({
+    supplier_id: pi.supplier_id,
+    entry_date: new Date().toISOString().split("T")[0],
+    entry_type: "void",
+    ref_id: piId,
+    description: `VOID: Purchase Invoice ${pi.pi_number}`,
+    debit: Number(pi.total_amount),
+    credit: 0,
+  });
+
   // Reverse inventory (remove stock that was added)
   const items = (pi as any).purchase_invoice_items || [];
   for (const item of items) {
@@ -210,4 +222,23 @@ async function reversePurchaseInvoice(piId: string, userId?: string) {
       notes: `VOID reversal: Purchase Invoice ${pi.pi_number}`,
     });
   }
+
+  // Reset amount_paid
+  await supabase.from("purchase_invoices").update({ amount_paid: 0 } as any).eq("id", piId);
+}
+
+async function reverseDebitNoteSupplierLedger(dnId: string) {
+  const { data: dn } = await supabase.from("debit_notes").select("*").eq("id", dnId).single();
+  if (!dn) return;
+
+  // Reversing supplier ledger entry (credit to offset the original debit)
+  await supabase.from("supplier_ledger_entries" as any).insert({
+    supplier_id: dn.supplier_id,
+    entry_date: new Date().toISOString().split("T")[0],
+    entry_type: "void",
+    ref_id: dnId,
+    description: `VOID: Debit Note ${dn.debit_note_number}`,
+    debit: 0,
+    credit: Number(dn.total_amount),
+  });
 }

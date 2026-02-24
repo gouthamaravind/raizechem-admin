@@ -61,9 +61,12 @@ const navGroups = [
     label: "Finance",
     module: "finance",
     items: [
-      { title: "Ledger", url: "/finance/ledger", icon: BookOpen },
-      { title: "Outstanding", url: "/finance/outstanding", icon: CreditCard },
-      { title: "Payments", url: "/finance/payments", icon: Banknote },
+      { title: "Dealer Ledger", url: "/finance/ledger", icon: BookOpen },
+      { title: "Dealer Outstanding", url: "/finance/outstanding", icon: CreditCard },
+      { title: "Dealer Payments", url: "/finance/payments", icon: Banknote },
+      { title: "Supplier Ledger", url: "/finance/supplier-ledger", icon: BookOpen },
+      { title: "Supplier Outstanding", url: "/finance/supplier-outstanding", icon: CreditCard },
+      { title: "Supplier Payments", url: "/finance/supplier-payments", icon: Banknote },
     ],
   },
   {
