@@ -355,6 +355,7 @@ export type Database = {
           payment_terms_days: number | null
           phone: string | null
           pincode: string | null
+          price_level_id: string | null
           shipping_address_line1: string | null
           shipping_address_line2: string | null
           shipping_city: string | null
@@ -380,6 +381,7 @@ export type Database = {
           payment_terms_days?: number | null
           phone?: string | null
           pincode?: string | null
+          price_level_id?: string | null
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
           shipping_city?: string | null
@@ -405,6 +407,7 @@ export type Database = {
           payment_terms_days?: number | null
           phone?: string | null
           pincode?: string | null
+          price_level_id?: string | null
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
           shipping_city?: string | null
@@ -415,7 +418,15 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "dealers_price_level_id_fkey"
+            columns: ["price_level_id"]
+            isOneToOne: false
+            referencedRelation: "price_levels"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       debit_note_items: {
         Row: {
@@ -1566,6 +1577,33 @@ export type Database = {
           },
         ]
       }
+      price_levels: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_default: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       product_batches: {
         Row: {
           batch_no: string
@@ -1606,6 +1644,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "product_batches_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_price_levels: {
+        Row: {
+          created_at: string
+          id: string
+          price: number
+          price_level_id: string
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          price?: number
+          price_level_id: string
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          price?: number
+          price_level_id?: string
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_price_levels_price_level_id_fkey"
+            columns: ["price_level_id"]
+            isOneToOne: false
+            referencedRelation: "price_levels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_price_levels_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
