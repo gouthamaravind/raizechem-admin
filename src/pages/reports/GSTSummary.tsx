@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileJson } from "lucide-react";
+import { Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { exportToCsv } from "@/lib/csv-export";
 import { generateGSTR1JSON, calculateGSTR3B, downloadJSON } from "@/lib/gstr-export";
+import { exportToXlsx } from "@/lib/xlsx-export";
 import { toast } from "sonner";
 
 const fmt = (n: number) => `₹${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -229,7 +230,10 @@ export default function GSTSummary() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>HSN-wise Tax Summary</CardTitle>
-                <Button variant="outline" size="sm" onClick={exportHSN}><Download className="h-4 w-4 mr-2" />CSV</Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={exportHSN}><Download className="h-4 w-4 mr-2" />CSV</Button>
+                  <Button variant="outline" size="sm" onClick={() => exportToXlsx("hsn-summary.xlsx", hsnRows.map((r) => ({ ...r, taxableValue: r.taxableValue.toFixed(2), cgst: r.cgst.toFixed(2), sgst: r.sgst.toFixed(2), igst: r.igst.toFixed(2), total: r.total.toFixed(2) })), [{ key: "hsn", label: "HSN Code" }, { key: "product", label: "Product" }, { key: "gstRate", label: "GST %" }, { key: "qty", label: "Qty" }, { key: "taxableValue", label: "Taxable Value" }, { key: "cgst", label: "CGST" }, { key: "sgst", label: "SGST" }, { key: "igst", label: "IGST" }, { key: "total", label: "Total" }])}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <DateFilters />
@@ -279,6 +283,7 @@ export default function GSTSummary() {
                 <CardTitle>GSTR-1 — Outward Supplies</CardTitle>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={exportGSTR1CSV}><Download className="h-4 w-4 mr-2" />CSV</Button>
+                  <Button variant="outline" size="sm" onClick={() => exportToXlsx("gstr1-b2b.xlsx", b2bRows.map((r) => ({ ...r, taxableValue: r.taxableValue.toFixed(2), cgst: r.cgst.toFixed(2), sgst: r.sgst.toFixed(2), igst: r.igst.toFixed(2), total: r.total.toFixed(2) })), [{ key: "gstin", label: "GSTIN" }, { key: "dealer", label: "Dealer" }, { key: "invoices", label: "Invoices" }, { key: "taxableValue", label: "Taxable Value" }, { key: "cgst", label: "CGST" }, { key: "sgst", label: "SGST" }, { key: "igst", label: "IGST" }, { key: "total", label: "Invoice Value" }])}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
                   <Button size="sm" onClick={exportGSTR1JSON}><FileJson className="h-4 w-4 mr-2" />Export GSTR-1 JSON</Button>
                 </div>
               </CardHeader>

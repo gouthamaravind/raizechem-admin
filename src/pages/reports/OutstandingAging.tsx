@@ -4,8 +4,9 @@ import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { exportToCsv } from "@/lib/csv-export";
+import { exportToXlsx } from "@/lib/xlsx-export";
 
 export default function OutstandingAging() {
   const { data: invoices = [], isLoading } = useQuery({
@@ -52,7 +53,10 @@ export default function OutstandingAging() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="text-2xl font-bold tracking-tight">Outstanding Aging</h1><p className="text-muted-foreground">Dealer-wise aging analysis</p></div>
-          <Button variant="outline" onClick={() => exportToCsv("outstanding-aging.csv", rows, cols)}><Download className="h-4 w-4 mr-2" />CSV</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => exportToCsv("outstanding-aging.csv", rows, cols)}><Download className="h-4 w-4 mr-2" />CSV</Button>
+            <Button variant="outline" onClick={() => exportToXlsx("outstanding-aging.xlsx", rows, cols)}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+          </div>
         </div>
         <div className="grid gap-4 md:grid-cols-4">
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Current</CardTitle></CardHeader><CardContent><p className="text-xl font-bold">{fmt(grandTotal.current)}</p></CardContent></Card>

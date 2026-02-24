@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { exportToCsv } from "@/lib/csv-export";
+import { exportToXlsx } from "@/lib/xlsx-export";
 
 const currentFY = () => {
   const now = new Date();
@@ -124,6 +125,26 @@ export default function TdsTcsReport() {
             </Select>
             <Button variant="outline" size="sm" onClick={handleExport} disabled={withDeductions.length === 0}>
               <Download className="h-4 w-4 mr-1" />CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => {
+              const cols = [
+                { key: "dealer", label: "Dealer" }, { key: "gstin", label: "GSTIN" },
+                { key: "date", label: "Date" }, { key: "gross", label: "Gross Amount" },
+                { key: "tds_rate", label: "TDS Rate %" }, { key: "tds_amt", label: "TDS Amount" },
+                { key: "tcs_rate", label: "TCS Rate %" }, { key: "tcs_amt", label: "TCS Amount" },
+                { key: "net", label: "Net Amount" }, { key: "mode", label: "Mode" },
+                { key: "ref", label: "Reference" },
+              ];
+              const rows = withDeductions.map((p: any) => ({
+                dealer: p.dealers?.name || "", gstin: p.dealers?.gst_number || "",
+                date: p.payment_date, gross: Number(p.amount),
+                tds_rate: Number(p.tds_rate), tds_amt: Number(p.tds_amount),
+                tcs_rate: Number(p.tcs_rate), tcs_amt: Number(p.tcs_amount),
+                net: Number(p.net_amount), mode: p.payment_mode, ref: p.reference_number || "",
+              }));
+              exportToXlsx(`TDS_TCS_${fy}_${quarters[parseInt(quarter)].label}.xlsx`, rows, cols);
+            }} disabled={withDeductions.length === 0}>
+              <FileSpreadsheet className="h-4 w-4 mr-1" />Excel
             </Button>
           </div>
         </div>

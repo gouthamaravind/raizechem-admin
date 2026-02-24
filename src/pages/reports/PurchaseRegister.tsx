@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 import { exportToCsv } from "@/lib/csv-export";
+import { exportToXlsx } from "@/lib/xlsx-export";
 
 export default function PurchaseRegister() {
   const today = new Date().toISOString().split("T")[0];
@@ -52,7 +53,10 @@ export default function PurchaseRegister() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="text-2xl font-bold tracking-tight">Purchase Register</h1><p className="text-muted-foreground">Stock-in entries report</p></div>
-          <Button variant="outline" onClick={() => exportToCsv("purchase-register.csv", exportData, cols)}><Download className="h-4 w-4 mr-2" />CSV</Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => exportToCsv("purchase-register.csv", exportData, cols)}><Download className="h-4 w-4 mr-2" />CSV</Button>
+            <Button variant="outline" onClick={() => exportToXlsx("purchase-register.xlsx", exportData, cols)}><FileSpreadsheet className="h-4 w-4 mr-2" />Excel</Button>
+          </div>
         </div>
         <Card>
           <CardHeader><CardTitle>Filters</CardTitle></CardHeader>
