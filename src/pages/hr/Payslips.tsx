@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,11 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Printer } from "lucide-react";
+import { Printer, FileText } from "lucide-react";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export default function Payslips() {
+  const navigate = useNavigate();
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -87,7 +89,10 @@ export default function Payslips() {
                       <TableCell className="text-right">₹{Number(s.gross).toLocaleString("en-IN")}</TableCell>
                       <TableCell className="text-right font-medium">₹{Number(s.net_pay).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={s.payment_status === "paid" ? "default" : "secondary"}>{s.payment_status}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewSlip(s)}><Printer className="h-3.5 w-3.5" /></Button></TableCell>
+                      <TableCell className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate(`/hr/payslips/${s.id}/print`)}><FileText className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewSlip(s)}><Printer className="h-3.5 w-3.5" /></Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

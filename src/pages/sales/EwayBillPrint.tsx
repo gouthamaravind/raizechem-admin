@@ -9,6 +9,16 @@ const TRANSPORT_MODES: Record<string, string> = {
   road: "1 - Road", rail: "2 - Rail", air: "3 - Air", ship: "4 - Ship",
 };
 
+function DetailRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div className="flex text-xs py-0.5">
+      <span className="w-44 shrink-0 font-semibold">{label}</span>
+      <span className="px-2">:</span>
+      <span className={bold ? "font-semibold" : ""}>{value}</span>
+    </div>
+  );
+}
+
 export default function EwayBillPrint() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -56,6 +66,10 @@ export default function EwayBillPrint() {
   const totalSgst = items.reduce((s: number, i: any) => s + Number(i.sgst_amount), 0);
   const totalIgst = items.reduce((s: number, i: any) => s + Number(i.igst_amount), 0);
 
+  const companyAddress = [company?.address_line1, company?.address_line2].filter(Boolean).join(", ");
+  const dealerAddress = [dealer?.address_line1, dealer?.address_line2].filter(Boolean).join(", ");
+  const shippingAddress = dealer?.shipping_address_line1 || dealerAddress;
+
   const exportJson = () => {
     const data = {
       invoice_number: inv.invoice_number, invoice_date: inv.invoice_date,
@@ -87,66 +101,81 @@ export default function EwayBillPrint() {
       </div>
 
       <div className="max-w-[210mm] mx-auto p-8 print:p-6 print:pt-0 mt-16 print:mt-0 text-sm">
-        {/* Header */}
         <div className="border-2 border-foreground/50">
-          <div className="text-center py-3 border-b border-foreground/50 bg-muted/30">
-            <h1 className="text-lg font-bold tracking-wide">E-WAY BILL</h1>
-            <p className="text-xs text-muted-foreground">Generated under GST provisions — For transport of goods</p>
+          {/* Company Name Header */}
+          <div className="text-center py-2 border-b border-foreground/50 bg-muted/30">
+            <p className="font-bold text-base">{company?.company_name || "Company"}</p>
           </div>
 
-          {/* Part A – Supply Details */}
+          {/* Title Bar */}
+          <div className="text-center py-1.5 border-b border-foreground/50 bg-muted/20">
+            <p className="text-xs font-semibold">Additional Details : {isIntra ? "Local Sales" : "Inter-State Sales"} - Taxable</p>
+          </div>
+
+          {/* E-Way Bill Details */}
           <div className="p-4 border-b border-foreground/50">
-            <p className="font-bold text-xs uppercase text-muted-foreground mb-2">Part A — Supply Details</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">GSTIN of Supplier:</span><span>{company?.gst_number || "—"}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">GSTIN of Recipient:</span><span>{dealer?.gst_number || "Unregistered"}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Place of Dispatch:</span><span>{inv.dispatch_from || `${company?.city}, ${company?.state}`}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Place of Delivery:</span><span>{inv.delivery_to || `${dealer?.shipping_city || dealer?.city}, ${dealer?.shipping_state || dealer?.state}`}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Document No:</span><span>{inv.invoice_number}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Document Date:</span><span>{inv.invoice_date}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Supply Type:</span><span>{isIntra ? "Inward/Outward (Intra-State)" : "Inward/Outward (Inter-State)"}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Sub-Type:</span><span>Supply</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Document Type:</span><span>Tax Invoice</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Transaction Type:</span><span>Regular</span></div>
+            <p className="text-center font-bold text-sm mb-3">e-Way Bill Details</p>
+            <div className="grid grid-cols-2 gap-x-8">
+              <DetailRow label="e-Way Bill No." value="—" />
+              <DetailRow label="Date" value="—" />
+              <DetailRow label="Sub Type" value="Supply" />
+              <DetailRow label="Document Type" value="Tax Invoice" />
             </div>
           </div>
 
-          {/* Seller & Buyer */}
-          <div className="grid grid-cols-2 border-b border-foreground/50">
-            <div className="p-4 border-r border-foreground/50">
-              <p className="font-bold text-xs uppercase text-muted-foreground mb-2">From (Supplier)</p>
-              <div className="text-xs space-y-1">
-                <p className="font-semibold">{company?.company_name}</p>
-                {company?.legal_name && <p>{company.legal_name}</p>}
-                <p>{company?.address_line1}{company?.address_line2 ? `, ${company.address_line2}` : ""}</p>
-                <p>{company?.city}, {company?.state} — {company?.pincode}</p>
-                <p>GSTIN: {company?.gst_number} | State Code: {COMPANY_STATE_CODE}</p>
+          {/* Consignor Details (From) */}
+          <div className="p-4 border-b border-foreground/50">
+            <p className="text-center font-bold text-xs mb-3 uppercase">Consignor Details [From]</p>
+            <div className="grid grid-cols-2 gap-x-4">
+              <div>
+                <DetailRow label="Mailing Name" value={company?.company_name || "—"} bold />
+                <DetailRow label="GSTIN/UIN" value={company?.gst_number || "—"} bold />
+                <DetailRow label="State" value={company?.state || "—"} bold />
+              </div>
+              <div>
+                <DetailRow label="Address Type" value="●Primary" bold />
+                <DetailRow label="Address1" value={companyAddress || "—"} />
+                <DetailRow label="Address2" value="" />
+                <DetailRow label="Pincode" value={company?.pincode || "—"} bold />
+                <DetailRow label="Place" value={company?.city || "—"} />
+                <DetailRow label="Actual State" value={company?.state || "—"} bold />
               </div>
             </div>
-            <div className="p-4">
-              <p className="font-bold text-xs uppercase text-muted-foreground mb-2">To (Recipient)</p>
-              <div className="text-xs space-y-1">
-                <p className="font-semibold">{dealer?.name}</p>
-                <p>{dealer?.address_line1}{dealer?.address_line2 ? `, ${dealer.address_line2}` : ""}</p>
-                <p>{dealer?.city}, {dealer?.state} — {dealer?.pincode}</p>
-                <p>GSTIN: {dealer?.gst_number || "Unregistered"} | State Code: {dealer?.state_code || "—"}</p>
+          </div>
+
+          {/* Consignee Details (To) */}
+          <div className="p-4 border-b border-foreground/50">
+            <p className="text-center font-bold text-xs mb-3 uppercase">Consignee Details [To]</p>
+            <div className="grid grid-cols-2 gap-x-4">
+              <div>
+                <DetailRow label="Mailing Name" value={dealer?.name || "—"} bold />
+                <DetailRow label="GSTIN/UIN" value={dealer?.gst_number || "Unregistered"} bold />
+                <DetailRow label="State" value={dealer?.state || "—"} bold />
+              </div>
+              <div>
+                <DetailRow label="Address Type" value="●Primary" bold />
+                <DetailRow label="Address1" value={shippingAddress || "—"} />
+                <DetailRow label="Address2" value="" />
+                <DetailRow label="Pincode" value={dealer?.pincode || "—"} bold />
+                <DetailRow label="Place" value={dealer?.shipping_city || dealer?.city || "—"} />
+                <DetailRow label="Actual State" value={dealer?.shipping_state || dealer?.state || "—"} bold />
               </div>
             </div>
           </div>
 
           {/* Item Details */}
           <div className="p-4 border-b border-foreground/50">
-            <p className="font-bold text-xs uppercase text-muted-foreground mb-2">Item Details</p>
+            <p className="text-center font-bold text-xs mb-3 uppercase">Item Details</p>
             <table className="w-full border-collapse text-xs">
               <thead>
                 <tr className="bg-muted/50">
                   <th className="border border-foreground/30 p-1.5 text-left">#</th>
-                  <th className="border border-foreground/30 p-1.5 text-left">Product Name</th>
-                  <th className="border border-foreground/30 p-1.5">HSN</th>
+                  <th className="border border-foreground/30 p-1.5 text-left">Name of Item</th>
+                  <th className="border border-foreground/30 p-1.5">HSN/SAC</th>
                   <th className="border border-foreground/30 p-1.5 text-right">Qty</th>
                   <th className="border border-foreground/30 p-1.5">Unit</th>
+                  <th className="border border-foreground/30 p-1.5 text-right">Rate per</th>
                   <th className="border border-foreground/30 p-1.5 text-right">Taxable Value</th>
-                  <th className="border border-foreground/30 p-1.5 text-right">Tax Rate</th>
                   {isIntra ? (
                     <>
                       <th className="border border-foreground/30 p-1.5 text-right">CGST</th>
@@ -155,7 +184,7 @@ export default function EwayBillPrint() {
                   ) : (
                     <th className="border border-foreground/30 p-1.5 text-right">IGST</th>
                   )}
-                  <th className="border border-foreground/30 p-1.5 text-right">Total</th>
+                  <th className="border border-foreground/30 p-1.5 text-right">Amount</th>
                 </tr>
               </thead>
               <tbody>
@@ -164,10 +193,10 @@ export default function EwayBillPrint() {
                     <td className="border border-foreground/30 p-1.5">{idx + 1}</td>
                     <td className="border border-foreground/30 p-1.5">{it.products?.name}</td>
                     <td className="border border-foreground/30 p-1.5 text-center">{it.hsn_code || it.products?.hsn_code || "—"}</td>
-                    <td className="border border-foreground/30 p-1.5 text-right">{it.qty}</td>
+                    <td className="border border-foreground/30 p-1.5 text-right">{it.qty} {it.products?.unit}</td>
                     <td className="border border-foreground/30 p-1.5 text-center">{it.products?.unit}</td>
+                    <td className="border border-foreground/30 p-1.5 text-right">₹{Number(it.rate).toFixed(2)}</td>
                     <td className="border border-foreground/30 p-1.5 text-right">₹{Number(it.amount).toFixed(2)}</td>
-                    <td className="border border-foreground/30 p-1.5 text-right">{it.gst_rate}%</td>
                     {isIntra ? (
                       <>
                         <td className="border border-foreground/30 p-1.5 text-right">₹{Number(it.cgst_amount).toFixed(2)}</td>
@@ -182,9 +211,8 @@ export default function EwayBillPrint() {
               </tbody>
               <tfoot>
                 <tr className="font-semibold bg-muted/30">
-                  <td colSpan={5} className="border border-foreground/30 p-1.5 text-right">Totals:</td>
+                  <td colSpan={6} className="border border-foreground/30 p-1.5 text-right">Totals:</td>
                   <td className="border border-foreground/30 p-1.5 text-right">₹{totalTaxable.toFixed(2)}</td>
-                  <td className="border border-foreground/30 p-1.5"></td>
                   {isIntra ? (
                     <>
                       <td className="border border-foreground/30 p-1.5 text-right">₹{totalCgst.toFixed(2)}</td>
@@ -199,23 +227,32 @@ export default function EwayBillPrint() {
             </table>
           </div>
 
-          {/* Part B – Transport Details */}
-          <div className="p-4">
-            <p className="font-bold text-xs uppercase text-muted-foreground mb-2">Part B — Transport Details</p>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Mode of Transport:</span><span>{TRANSPORT_MODES[inv.transport_mode] || inv.transport_mode || "—"}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Vehicle Number:</span><span className="font-mono">{inv.vehicle_no || "—"}</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Transporter Name:</span><span>—</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Transporter ID:</span><span>—</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Approx Distance (KM):</span><span>—</span></div>
-              <div className="flex gap-2"><span className="font-semibold w-36 shrink-0">Transport Doc No:</span><span>—</span></div>
+          {/* Transport Details — Tally-style */}
+          <div className="p-4 border-b border-foreground/50">
+            <p className="text-center font-bold text-xs mb-3 uppercase">Transport Details</p>
+            <div className="grid grid-cols-2 gap-x-8">
+              <DetailRow label="Transporter Name" value="●None" />
+              <DetailRow label="Transporter ID" value="—" />
+            </div>
+            <p className="font-semibold text-xs mt-3 mb-1">Part B Details</p>
+            <div className="grid grid-cols-2 gap-x-8">
+              <DetailRow label="Mode" value={TRANSPORT_MODES[inv.transport_mode] || "●Not Applicable"} />
+              <DetailRow label="Vehicle Type" value="●Not Applicable" />
+              <DetailRow label="Doc/Lading/RR/AirWay No." value="—" />
+              <DetailRow label="Date" value="—" />
+              <DetailRow label="Vehicle Number" value={inv.vehicle_no || "—"} />
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="border-t border-foreground/50 p-4 text-xs text-muted-foreground text-center">
-            <p>This is a computer-generated E-Way Bill document. Actual E-Way Bill must be generated on the GST portal (ewaybillgst.gov.in)</p>
-            <p className="mt-1">Invoice Total: <strong className="text-foreground">₹{Number(inv.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</strong></p>
+          {/* Invoice Reference */}
+          <div className="p-3 text-xs text-muted-foreground">
+            <div className="grid grid-cols-2 gap-x-8">
+              <DetailRow label="Document No" value={inv.invoice_number} bold />
+              <DetailRow label="Document Date" value={inv.invoice_date} bold />
+              <DetailRow label="Invoice Total" value={`₹${Number(inv.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} bold />
+              <DetailRow label="Place of Supply" value={inv.place_of_supply || dealer?.state || "—"} />
+            </div>
+            <p className="text-center mt-3 text-[10px]">This is a computer-generated E-Way Bill document. Actual E-Way Bill must be generated on the GST portal (ewaybillgst.gov.in)</p>
           </div>
         </div>
       </div>
