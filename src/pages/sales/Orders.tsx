@@ -11,15 +11,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Trash2, Download } from "lucide-react";
+import { Search, Plus, Trash2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
+import { useNavigate } from "react-router-dom";
 
 type LineItem = { product_id: string; qty: number; rate: number };
 
 export default function Orders() {
   const { user } = useAuth();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -46,13 +48,20 @@ export default function Orders() {
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
       const total = validItems.reduce((s, i) => s + i.qty * i.rate, 0);
-      const orderNum = `ORD-${Date.now().toString(36).toUpperCase()}`;
+
+      // Get sequential order number
+      const { data: settings } = await supabase.from("company_settings").select("next_order_number, id").limit(1).single();
+      const nextNum = settings?.next_order_number || 1;
+      const orderNum = `ORD/${new Date().getFullYear()}/${String(nextNum).padStart(3, "0")}`;
 
       const { data: order, error } = await supabase.from("orders").insert({
         order_number: orderNum, dealer_id: dealerId, total_amount: total,
         notes, created_by: user?.id,
       }).select("id").single();
       if (error) throw error;
+
+      // Increment order number
+      await supabase.from("company_settings").update({ next_order_number: nextNum + 1 } as any).eq("id", settings?.id as any);
 
       const orderItems = validItems.map((i) => ({
         order_id: order.id, product_id: i.product_id, qty: i.qty,
@@ -76,6 +85,11 @@ export default function Orders() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["orders"] }),
   });
+
+  const handleConvertToInvoice = (order: any) => {
+    // Navigate to invoices page with order data in state
+    navigate("/sales/invoices", { state: { convertOrder: order } });
+  };
 
   const filtered = orders.filter((o: any) => {
     const s = search.toLowerCase();
@@ -141,7 +155,7 @@ export default function Orders() {
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No orders found.</p> : (
               <Table>
-                <TableHeader><TableRow><TableHead>Order #</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Order #</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {filtered.map((o: any) => (
                     <TableRow key={o.id}>
@@ -151,9 +165,16 @@ export default function Orders() {
                       <TableCell>₹{Number(o.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={statusColors[o.status] as any}>{o.status}</Badge></TableCell>
                       <TableCell>
-                        {o.status === "draft" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "confirmed" })}>Confirm</Button>}
-                        {o.status === "confirmed" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "dispatched" })}>Dispatch</Button>}
-                        {o.status === "dispatched" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "delivered" })}>Delivered</Button>}
+                        <div className="flex gap-1">
+                          {o.status === "draft" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "confirmed" })}>Confirm</Button>}
+                          {o.status === "confirmed" && (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "dispatched" })}>Dispatch</Button>
+                              <Button size="sm" variant="default" onClick={() => handleConvertToInvoice(o)} title="Convert to Invoice"><FileText className="h-3.5 w-3.5 mr-1" />Invoice</Button>
+                            </>
+                          )}
+                          {o.status === "dispatched" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "delivered" })}>Delivered</Button>}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

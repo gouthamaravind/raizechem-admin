@@ -26,10 +26,7 @@ export default function PurchaseInvoices() {
   const [search, setSearch] = useState("");
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
 
-  const voidMutation = useVoidTransaction({
-    table: "purchase_invoices",
-    invalidateKeys: [["purchase-invoices"]],
-  });
+  const voidMutation = useVoidTransaction({ table: "purchase_invoices", invalidateKeys: [["purchase-invoices"]] });
   const canVoid = hasRole("admin") || hasRole("accounts");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [supplierId, setSupplierId] = useState("");
@@ -68,58 +65,32 @@ export default function PurchaseInvoices() {
       const validItems = computedItems.filter((i) => i.product_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
-      // Create purchase invoice
-      const { data: pi, error } = await supabase.from("purchase_invoices").insert({
-        pi_number: piNumber, supplier_id: supplierId, pi_date: piDate,
-        subtotal, cgst_total: cgstTotal, sgst_total: sgstTotal,
-        igst_total: igstTotal, total_amount: grandTotal, created_by: user?.id,
-      }).select("id").single();
-      if (error) throw error;
+      const rpcItems = validItems.map((i) => ({
+        product_id: i.product_id, batch_no: i.batch_no,
+        mfg_date: i.mfg_date || null, exp_date: i.exp_date || null,
+        hsn_code: i.hsn_code, qty: i.qty, rate: i.rate, amount: i.amount,
+        gst_rate: i.gst_rate, cgst_amount: i.cgst, sgst_amount: i.sgst,
+        igst_amount: i.igst, total_amount: i.totalWithGst,
+      }));
 
-      // For each item: create batch, then insert PI item with batch_id, then inventory txn
-      for (const item of validItems) {
-        // Create product batch (auto stock-in)
-        const { data: batch, error: batchErr } = await supabase.from("product_batches").insert({
-          product_id: item.product_id,
-          batch_no: item.batch_no || `B-${Date.now().toString(36).toUpperCase()}`,
-          current_qty: item.qty,
-          purchase_rate: item.rate,
-          mfg_date: item.mfg_date || null,
-          exp_date: item.exp_date || null,
-          created_by: user?.id,
-        }).select("id").single();
-        if (batchErr) throw batchErr;
-
-        // Insert PI item
-        await supabase.from("purchase_invoice_items").insert({
-          purchase_invoice_id: pi.id, product_id: item.product_id, batch_id: batch.id,
-          hsn_code: item.hsn_code, qty: item.qty, rate: item.rate, amount: item.amount,
-          gst_rate: item.gst_rate, cgst_amount: item.cgst, sgst_amount: item.sgst,
-          igst_amount: item.igst, total_amount: item.totalWithGst,
-        });
-
-        // Inventory transaction
-        await supabase.from("inventory_txn").insert({
-          txn_type: "PURCHASE" as any, ref_type: "purchase_invoice", ref_id: pi.id,
-          product_id: item.product_id, batch_id: batch.id,
-          qty_in: item.qty, qty_out: 0, rate: item.rate, created_by: user?.id,
-        });
-      }
-
-      // Supplier ledger entry (credit = we owe supplier)
-      await supabase.from("supplier_ledger_entries" as any).insert({
-        supplier_id: supplierId,
-        entry_date: piDate,
-        entry_type: "purchase",
-        ref_id: pi.id,
-        description: `Purchase Invoice ${piNumber}`,
-        debit: 0,
-        credit: grandTotal,
+      const { error } = await supabase.rpc("create_purchase_invoice_atomic" as any, {
+        p_supplier_id: supplierId,
+        p_pi_number: piNumber,
+        p_pi_date: piDate,
+        p_subtotal: subtotal,
+        p_cgst_total: cgstTotal,
+        p_sgst_total: sgstTotal,
+        p_igst_total: igstTotal,
+        p_total_amount: grandTotal,
+        p_created_by: user?.id,
+        p_items: rpcItems,
       });
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-invoices"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
+      qc.invalidateQueries({ queryKey: ["supplier-ledger"] });
       setDialogOpen(false); setSupplierId(""); setPiNumber("");
       setItems([{ product_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", batch_no: "", mfg_date: "", exp_date: "" }]);
       toast.success("Purchase invoice created — stock added automatically");

@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Search, Plus } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,7 +33,6 @@ export default function SupplierPayments() {
     },
   });
 
-  // Read supplier payments from supplier_ledger_entries with entry_type = 'payment'
   const { data: payments = [], isLoading } = useQuery({
     queryKey: ["supplier-payments"],
     queryFn: async () => {
@@ -52,37 +50,15 @@ export default function SupplierPayments() {
     mutationFn: async () => {
       if (!supplierId || amount <= 0) throw new Error("Select supplier and enter amount");
 
-      // Supplier ledger entry (debit = we paid them, reduces our liability)
-      await supabase.from("supplier_ledger_entries" as any).insert({
-        supplier_id: supplierId,
-        entry_date: paymentDate,
-        entry_type: "payment",
-        description: `Payment made (${mode}) ${refNo ? `Ref: ${refNo}` : ""} ${notes ? `— ${notes}` : ""}`.trim(),
-        debit: amount,
-        credit: 0,
+      const { error } = await supabase.rpc("record_supplier_payment_atomic" as any, {
+        p_supplier_id: supplierId,
+        p_payment_date: paymentDate,
+        p_amount: amount,
+        p_mode: mode,
+        p_reference_no: refNo || null,
+        p_notes: notes || null,
       });
-
-      // Auto-apply to oldest unpaid purchase invoices
-      let remaining = amount;
-      const { data: unpaid } = await supabase
-        .from("purchase_invoices")
-        .select("id, total_amount, amount_paid")
-        .eq("supplier_id", supplierId)
-        .neq("status", "paid")
-        .neq("status", "void")
-        .order("pi_date");
-
-      if (unpaid) {
-        for (const inv of unpaid) {
-          if (remaining <= 0) break;
-          const due = Number(inv.total_amount) - Number(inv.amount_paid);
-          const apply = Math.min(remaining, due);
-          const newPaid = Number(inv.amount_paid) + apply;
-          const newStatus = newPaid >= Number(inv.total_amount) ? "paid" : "partially_paid";
-          await supabase.from("purchase_invoices").update({ amount_paid: newPaid, status: newStatus }).eq("id", inv.id);
-          remaining -= apply;
-        }
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["supplier-payments"] });
@@ -100,8 +76,6 @@ export default function SupplierPayments() {
     const s = search.toLowerCase();
     return p.suppliers?.name?.toLowerCase().includes(s) || p.description?.toLowerCase().includes(s);
   });
-
-  const modeLabels: Record<string, string> = { cash: "Cash", bank_transfer: "Bank Transfer", cheque: "Cheque", upi: "UPI" };
 
   return (
     <DashboardLayout>

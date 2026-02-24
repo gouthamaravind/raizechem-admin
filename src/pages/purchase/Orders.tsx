@@ -46,13 +46,19 @@ export default function PurchaseOrders() {
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
       const total = validItems.reduce((s, i) => s + i.qty * i.rate, 0);
-      const poNum = `PO-${Date.now().toString(36).toUpperCase()}`;
+
+      // Get sequential PO number
+      const { data: settings } = await supabase.from("company_settings").select("next_po_number, id").limit(1).single();
+      const nextNum = settings?.next_po_number || 1;
+      const poNum = `PO/${new Date().getFullYear()}/${String(nextNum).padStart(3, "0")}`;
 
       const { data: po, error } = await supabase.from("purchase_orders").insert({
         po_number: poNum, supplier_id: supplierId, total_amount: total,
         notes, created_by: user?.id,
       }).select("id").single();
       if (error) throw error;
+
+      await supabase.from("company_settings").update({ next_po_number: nextNum + 1 } as any).eq("id", settings?.id as any);
 
       const orderItems = validItems.map((i) => ({
         purchase_order_id: po.id, product_id: i.product_id, qty: i.qty,
