@@ -11,14 +11,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Trash2, Download } from "lucide-react";
+import { Search, Plus, Trash2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
+import { useNavigate } from "react-router-dom";
 
 type LineItem = { product_id: string; qty: number; rate: number };
 
 export default function PurchaseOrders() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -82,6 +84,10 @@ export default function PurchaseOrders() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["purchase-orders"] }),
   });
+
+  const handleConvertToPI = (order: any) => {
+    navigate("/purchase/invoices", { state: { convertPO: order } });
+  };
 
   const filtered = orders.filter((o: any) => {
     const s = search.toLowerCase();
@@ -157,8 +163,15 @@ export default function PurchaseOrders() {
                       <TableCell>₹{Number(o.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={statusColors[o.status] as any}>{o.status}</Badge></TableCell>
                       <TableCell>
-                        {o.status === "draft" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "confirmed" })}>Confirm</Button>}
-                        {o.status === "confirmed" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "received" })}>Received</Button>}
+                        <div className="flex gap-1">
+                          {o.status === "draft" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "confirmed" })}>Confirm</Button>}
+                          {o.status === "confirmed" && (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "received" })}>Received</Button>
+                              <Button size="sm" variant="default" onClick={() => handleConvertToPI(o)} title="Convert to Purchase Invoice"><FileText className="h-3.5 w-3.5 mr-1" />Invoice</Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

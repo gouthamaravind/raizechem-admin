@@ -108,6 +108,7 @@ const navGroups = [
       { title: "Company", url: "/settings/company", icon: Building2 },
       { title: "Users", url: "/settings/users", icon: UserCog },
       { title: "Financial Years", url: "/settings/financial-years", icon: CalendarDays },
+      { title: "Opening Balances", url: "/settings/opening-balances", icon: Landmark },
       { title: "Audit Logs", url: "/settings/audit-logs", icon: ScrollText },
     ],
   },

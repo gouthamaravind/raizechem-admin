@@ -1,7 +1,8 @@
 # Codebase & UI Audit Report
 
 **Date:** 2026-02-24  
-**Project:** Raizechem Admin ERP
+**Project:** Raizechem Admin ERP  
+**Last Updated:** 2026-02-24
 
 ---
 
@@ -13,14 +14,17 @@
 | **Dashboard** | ✅ | KPI cards, quick actions, recent orders/payments, overdue invoices, top products chart |
 | **Dealers (Customers)** | ✅ | Full CRUD, GSTIN validation, state auto-fill, shipping address toggle |
 | **Products** | ✅ | Full CRUD, GST preview, HSN validation, category/unit support |
+| **Suppliers** | ✅ | Full CRUD, GSTIN regex validation, Indian states dropdown, pincode/phone validation (parity with Dealers) |
 | **Sales Invoices** | ✅ | Atomic creation via `create_invoice_atomic` RPC, batch-wise stock deduction, GST (CGST/SGST/IGST), void with stock reversal |
 | **Invoice Printing** | ✅ | 3 templates (standard, thermal, detailed), PDF generation via edge function |
 | **Dealer Payments** | ✅ | FIFO allocation, TDS/TCS support, void with reversal, ledger entries |
 | **Dealer Ledger** | ✅ | Running balance, debit/credit entries, date filtering |
 | **Outstanding** | ✅ | Dealer-wise outstanding with invoice drill-down |
-| **Sales Orders** | ✅ | Full CRUD with line items |
-| **Purchase Orders** | ✅ | Full CRUD with line items |
-| **Purchase Invoices** | ✅ | Creation with batch/stock-in, GST handling |
+| **Sales Orders** | ✅ | Full CRUD with sequential numbering (`ORD/YYYY/NNN`) and Order → Invoice conversion |
+| **Sales Returns (Credit Notes)** | ✅ | Atomic via `create_credit_note_atomic` RPC — stock restoration, ledger entries, sequential CN numbering |
+| **Purchase Orders** | ✅ | Full CRUD with sequential numbering (`PO/YYYY/NNN`) and PO → Purchase Invoice conversion |
+| **Purchase Invoices** | ✅ | Atomic via `create_purchase_invoice_atomic` RPC — batch creation, stock-in, supplier ledger entries |
+| **Purchase Returns (Debit Notes)** | ✅ | Atomic via `create_debit_note_atomic` RPC — stock deduction, supplier ledger entries, sequential DN numbering |
 | **Inventory Batches** | ✅ | Batch tracking, expiry dates, stock quantities |
 | **Stock-In** | ✅ | Manual stock adjustments with inventory transactions |
 | **Inventory Alerts** | ✅ | Low-stock alerts based on `min_stock_alert_qty` |
@@ -28,94 +32,57 @@
 | **Payroll** | ✅ | Run creation, salary component calculation, payslip generation |
 | **Salary Components** | ✅ | Earnings/deductions with percentage or fixed amounts |
 | **Financial Years** | ✅ | Create, activate, close with notes |
-| **Company Settings** | ✅ | Full company profile, bank details, invoice series |
+| **Company Settings** | ✅ | Full company profile, bank details, invoice series, sequential counters |
 | **User Management** | ✅ | Role assignment via edge function, admin-only |
 | **Audit Logs** | ✅ | Action tracking with old/new data |
 | **Mobile Field App** | ✅ | Duty sessions, dealer visits (check-in/out with GPS), field orders, field payments |
 | **Reports** | ✅ | Sales Register, Purchase Register, GST Summary, GSTR-1/3B JSON export, TDS/TCS, Batch Stock, Outstanding Aging |
 | **Export** | ✅ | CSV and Excel (.xlsx) on all report pages |
+| **Void Operations** | ✅ | All voids are atomic RPCs: `void_invoice_atomic`, `void_payment_atomic`, `void_purchase_invoice_atomic`, `void_credit_note_atomic`, `void_debit_note_atomic` |
+| **Supplier Payments** | ✅ | Atomic via `record_supplier_payment_atomic` with FIFO allocation to oldest unpaid purchase invoices |
+| **Opening Balances** | ✅ | UI under Settings for managing dealer/supplier opening balances per financial year |
 
 ---
 
-## 2. Incomplete / Scaffolded
+## 2. Previously Incomplete — Now Fixed ✅
 
-### 2.1 Supplier Forms — Missing Validation Parity
-- **Issue:** Dealer forms have GSTIN regex validation, state dropdown with auto-fill, pincode validation. Supplier forms lack all of these.
-- **Impact:** Inconsistent data quality between dealer and supplier records.
-- **Fix:** Port the validation logic from `Dealers.tsx` to `Suppliers.tsx`.
-
-### 2.2 Purchase Invoice Void — Not Atomic
-- **Issue:** Voiding a purchase invoice only updates the status field. It does NOT reverse:
-  - Inventory transactions (stock-in remains)
-  - Batch quantities (remain inflated)
-  - Supplier ledger entries (if any)
-- **Impact:** Stock and financial data becomes inconsistent after voiding.
-- **Fix:** Create a `void_purchase_invoice_atomic` RPC similar to the existing `void_invoice_atomic`.
-
-### 2.3 Credit Note Void — Not Atomic
-- **Issue:** Credit note void updates status but doesn't reverse stock returns or ledger adjustments.
-- **Impact:** Phantom stock and incorrect dealer balances.
-- **Fix:** Create `void_credit_note_atomic` RPC.
-
-### 2.4 Debit Note Void — Not Atomic
-- **Issue:** Same as credit notes — status-only update without reversing supplier ledger or stock.
-- **Fix:** Create `void_debit_note_atomic` RPC.
-
-### 2.5 Sales Returns (Credit Notes) — Client-Side Logic
-- **Issue:** Credit note creation inserts items and updates stock from the client. Race conditions possible under concurrent use.
-- **Fix:** Wrap in a server-side RPC with transaction guarantees.
-
-### 2.6 Purchase Returns (Debit Notes) — Client-Side Logic
-- **Issue:** Same as sales returns — no atomic server-side transaction.
-- **Fix:** Create `create_debit_note_atomic` RPC.
-
-### 2.7 Order/PO Numbering — Timestamp-Based
-- **Issue:** Orders use `ORD-{timestamp}` and POs use `PO-{timestamp}` instead of sequential numbering like invoices (`RC-00001`).
-- **Impact:** Unprofessional, hard to reference, potential duplicates in high-concurrency.
-- **Fix:** Add `next_order_number` and `next_po_number` to `company_settings` and use atomic increment.
+| Issue | Resolution |
+|-------|-----------|
+| Supplier forms missing validation parity | ✅ Ported GSTIN regex, Indian states dropdown, pincode/phone validation from Dealers |
+| Purchase Invoice void not atomic | ✅ Created `void_purchase_invoice_atomic` RPC — reverses stock, batches, supplier ledger |
+| Credit Note void not atomic | ✅ Created `void_credit_note_atomic` RPC — reverses stock restoration and dealer ledger |
+| Debit Note void not atomic | ✅ Created `void_debit_note_atomic` RPC — reverses stock deduction and supplier ledger |
+| Sales Returns client-side logic | ✅ Moved to `create_credit_note_atomic` RPC with transaction guarantees |
+| Purchase Returns client-side logic | ✅ Moved to `create_debit_note_atomic` RPC with transaction guarantees |
+| Order/PO timestamp-based numbering | ✅ Switched to sequential `ORD/YYYY/NNN` and `PO/YYYY/NNN` via `company_settings` counters |
+| No Order → Invoice conversion | ✅ Added "Convert to Invoice" button on confirmed orders |
+| No PO → Purchase Invoice conversion | ✅ Added "Convert to Invoice" button on confirmed POs |
+| No Opening Balance management UI | ✅ Created `/settings/opening-balances` page with dealer/supplier tabs |
+| Supplier ledger/payments incomplete | ✅ Created `record_supplier_payment_atomic` with FIFO allocation and wired UI |
+| Purchase Invoice creation not atomic | ✅ Created `create_purchase_invoice_atomic` RPC — batch creation, stock-in, ledger in one transaction |
 
 ---
 
-## 3. Missing Features
+## 3. Remaining Items (Lower Priority)
 
-### 3.1 No Pagination on Any Listing Page
-- **Issue:** All tables use unbounded `.select()` queries. With 1000+ records, performance will degrade significantly. Supabase also has a default 1000-row limit.
-- **Impact:** Data loss (rows beyond 1000 silently dropped), slow page loads.
-- **Priority:** HIGH
-- **Fix:** Add server-side pagination with `.range()` to all listing pages.
+### 3.1 No Pagination on Listing Pages
+- **Issue:** All tables use unbounded `.select()` queries. Supabase default 1000-row limit.
+- **Impact:** Data loss beyond 1000 rows, slow page loads.
+- **Priority:** MEDIUM (only matters at scale)
+- **Fix:** Add server-side pagination with `.range()`.
 
-### 3.2 No Order → Invoice Conversion
-- **Issue:** Orders exist but there's no "Convert to Invoice" workflow. Users must manually re-enter all line items.
-- **Impact:** Major UX gap, data re-entry errors.
-- **Fix:** Add conversion button that pre-fills invoice form from order data.
+### 3.2 No Line-Level Discounts
+- **Issue:** No discount field on invoice/order items.
+- **Impact:** Cannot offer item-specific discounts.
+- **Fix:** Add `discount_percent` / `discount_amount` columns.
 
-### 3.3 No PO → Purchase Invoice Conversion
-- **Issue:** Same as above for purchase side.
-- **Fix:** Add conversion workflow.
+### 3.3 No Invoice/Payment Edit
+- **Issue:** Only void is supported. Small corrections require void + recreate.
+- **Note:** By design for audit integrity. Consider draft editing.
 
-### 3.4 No Line-Level Discounts
-- **Issue:** No discount field on invoice items, order items, or purchase items.
-- **Impact:** Cannot offer item-specific discounts — common in B2B.
-- **Fix:** Add `discount_percent` and `discount_amount` columns to item tables.
-
-### 3.5 No Invoice/Payment Edit
-- **Issue:** Only void is supported. If a user makes a small mistake, they must void and recreate.
-- **Impact:** Poor UX for corrections.
-- **Note:** This is by design for audit integrity but should at least support draft editing before finalization.
-
-### 3.6 No Opening Balance Management UI
-- **Issue:** `opening_balances` table exists with RLS policies, but there's no UI to manage it.
-- **Impact:** Cannot initialize dealer/supplier balances at FY start.
-- **Fix:** Create an Opening Balances page under Settings or Finance.
-
-### 3.7 Supplier Ledger & Outstanding — Incomplete
-- **Issue:** `SupplierLedger.tsx` and `SupplierOutstanding.tsx` exist but supplier payment allocation (FIFO) and ledger entry creation may not be wired the same way as dealer payments.
-- **Needs verification:** Check if supplier payments create ledger entries and allocations.
-
-### 3.8 No Search/Filter on Most Tables
-- **Issue:** Most listing pages lack search bars or column filters.
-- **Impact:** Unusable with moderate data volumes.
-- **Fix:** Add search inputs and status/date filters to all listing pages.
+### 3.4 No Search/Filter on Some Tables
+- **Issue:** Some pages lack search/status filters (most now have them).
+- **Fix:** Incremental addition.
 
 ---
 
@@ -143,15 +110,24 @@
 
 ---
 
-## 6. Recommended Priority Actions
+## 6. Atomic RPCs Summary
 
-| # | Action | Impact | Effort |
-|---|--------|--------|--------|
-| 1 | Add pagination to all listing pages | Prevents data loss & perf issues | Medium |
-| 2 | Create atomic void RPCs (purchase invoice, credit/debit notes) | Data integrity | Medium |
-| 3 | Add search/filter to all tables | Usability | Medium |
-| 4 | Order → Invoice conversion workflow | Major UX improvement | Medium |
-| 5 | Supplier form validation parity | Data quality | Low |
-| 6 | Opening balance management UI | FY initialization | Low |
-| 7 | Sequential order/PO numbering | Professionalism | Low |
-| 8 | Error boundaries | Crash resilience | Low |
+| RPC | Purpose |
+|-----|---------|
+| `create_invoice_atomic` | Sales invoice + items + stock deduction + ledger |
+| `record_payment_atomic` | Dealer payment + FIFO allocation + ledger |
+| `void_invoice_atomic` | Void sales invoice + reverse stock + reverse ledger |
+| `void_payment_atomic` | Void payment + reverse allocations + reverse ledger |
+| `create_credit_note_atomic` | Credit note + stock restoration + dealer ledger |
+| `create_debit_note_atomic` | Debit note + stock deduction + supplier ledger |
+| `create_purchase_invoice_atomic` | Purchase invoice + batch creation + stock-in + supplier ledger |
+| `void_purchase_invoice_atomic` | Void PI + reverse stock + reverse supplier ledger |
+| `void_credit_note_atomic` | Void CN + reverse stock + reverse dealer ledger |
+| `void_debit_note_atomic` | Void DN + restore stock + reverse supplier ledger |
+| `record_supplier_payment_atomic` | Supplier payment + FIFO allocation to purchase invoices + supplier ledger |
+| `approve_field_order` | Field order → main pipeline order |
+| `finalize_duty_session` | KM calculation + incentive via Haversine |
+
+---
+
+*Last updated: February 2026*
