@@ -3,7 +3,7 @@ import {
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
-  ScrollText,
+  ScrollText, Radio, MapPinned, Eye, ClipboardCheck, BadgeCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -89,6 +89,16 @@ const navGroups = [
       { title: "Salary Structure", url: "/hr/salary-components", icon: Calculator },
       { title: "Payroll", url: "/hr/payroll", icon: Wallet },
       { title: "Payslips", url: "/hr/payslips", icon: FileBarChart },
+    ],
+  },
+  {
+    label: "Field Ops",
+    module: "fieldops",
+    items: [
+      { title: "Duty Sessions", url: "/fieldops/sessions", icon: Radio },
+      { title: "Visits", url: "/fieldops/visits", icon: MapPinned },
+      { title: "Field Orders", url: "/fieldops/field-orders", icon: ClipboardCheck },
+      { title: "Field Payments", url: "/fieldops/payments", icon: BadgeCheck },
     ],
   },
   {

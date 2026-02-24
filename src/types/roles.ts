@@ -11,4 +11,5 @@ export const MODULE_ACCESS: Record<string, AppRole[]> = {
   settings: ["admin"],
   reports: ["admin", "accounts", "sales", "inventory"],
   hr: ["admin"],
+  fieldops: ["admin", "accounts", "sales"],
 };
