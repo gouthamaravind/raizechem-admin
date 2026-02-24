@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.gstin-lookup]
 verify_jwt = false
+
+[functions.verify-gst]
+verify_jwt = false
