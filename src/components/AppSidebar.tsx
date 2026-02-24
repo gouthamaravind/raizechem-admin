@@ -3,7 +3,7 @@ import {
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
-  ScrollText, Radio, MapPinned, Eye, ClipboardCheck, BadgeCheck,
+  ScrollText, Radio, MapPinned, Eye, ClipboardCheck, BadgeCheck, Grid3X3,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -80,6 +80,7 @@ const navGroups = [
       { title: "Batch Stock", url: "/reports/batch-stock", icon: PackageSearch },
       { title: "GST Summary", url: "/reports/gst-summary", icon: Receipt },
       { title: "TDS / TCS", url: "/reports/tds-tcs", icon: Landmark },
+      { title: "Price Matrix", url: "/reports/price-matrix", icon: Grid3X3 },
     ],
   },
   {
@@ -128,12 +129,10 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r-0">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-sm">R</span>
-          </div>
+        <div className="flex items-center gap-2.5">
+          <img src="/favicon.svg" alt="Raizechem" className="w-8 h-8 rounded-lg" />
           <div>
-            <h2 className="text-sm font-semibold">Raizechem</h2>
+            <h2 className="text-sm font-semibold tracking-tight">Raizechem</h2>
             <p className="text-[10px] text-muted-foreground">Admin Panel</p>
           </div>
         </div>

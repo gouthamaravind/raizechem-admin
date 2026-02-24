@@ -52,9 +52,10 @@ export default function Invoices() {
     },
   });
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, state_code, payment_terms_days").eq("status", "active").order("name"); return data || []; } });
+  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, state_code, payment_terms_days, price_level_id").eq("status", "active").order("name"); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); return data || []; } });
   const { data: batches = [] } = useQuery({ queryKey: ["batches-available"], queryFn: async () => { const { data } = await supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); return data || []; } });
+  const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
   
 
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
@@ -159,7 +160,13 @@ export default function Invoices() {
                           <Select value={item.product_id} onValueChange={(v) => {
                             const p = products.find((p: any) => p.id === v) as any;
                             updateItem(i, "product_id", v);
-                            if (p) { updateItem(i, "rate", Number(p.sale_price) || 0); updateItem(i, "gst_rate", Number(p.gst_rate)); updateItem(i, "hsn_code", p.hsn_code || ""); }
+                            if (p) {
+                              // Use price level price if dealer has one, otherwise fall back to sale_price
+                              const plId = selectedDealer?.price_level_id;
+                              const plPrice = plId ? priceLevelPrices.find((pp: any) => pp.product_id === v && pp.price_level_id === plId) : null;
+                              updateItem(i, "rate", plPrice ? Number(plPrice.price) : (Number(p.sale_price) || 0));
+                              updateItem(i, "gst_rate", Number(p.gst_rate)); updateItem(i, "hsn_code", p.hsn_code || "");
+                            }
                           }}>
                             <SelectTrigger className="w-40"><SelectValue placeholder="Product" /></SelectTrigger>
                             <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>

@@ -38,8 +38,10 @@ export default function Orders() {
     },
   });
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name").eq("status", "active").order("name"); return data || []; } });
+  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, price_level_id").eq("status", "active").order("name"); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, unit").eq("is_active", true).order("name"); return data || []; } });
+  const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
+  const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
 
   const createOrder = useMutation({
     mutationFn: async () => {
@@ -126,7 +128,7 @@ export default function Orders() {
                     <Label>Line Items</Label>
                     {items.map((item, i) => (
                       <div key={i} className="flex gap-2 items-end">
-                        <Select value={item.product_id} onValueChange={(v) => { updateItem(i, "product_id", v); const p = products.find((p: any) => p.id === v); if (p) updateItem(i, "rate", Number((p as any).sale_price) || 0); }}>
+                        <Select value={item.product_id} onValueChange={(v) => { updateItem(i, "product_id", v); const p = products.find((p: any) => p.id === v); if (p) { const plId = selectedDealer?.price_level_id; const plPrice = plId ? priceLevelPrices.find((pp: any) => pp.product_id === v && pp.price_level_id === plId) : null; updateItem(i, "rate", plPrice ? Number(plPrice.price) : (Number((p as any).sale_price) || 0)); } }}>
                           <SelectTrigger className="flex-1"><SelectValue placeholder="Product" /></SelectTrigger>
                           <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                         </Select>
