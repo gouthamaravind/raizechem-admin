@@ -565,6 +565,7 @@ export type Database = {
           status: string
           total_duration_mins: number
           total_km: number
+          tracking_mode: string
           user_id: string
         }
         Insert: {
@@ -578,6 +579,7 @@ export type Database = {
           status?: string
           total_duration_mins?: number
           total_km?: number
+          tracking_mode?: string
           user_id: string
         }
         Update: {
@@ -591,6 +593,7 @@ export type Database = {
           status?: string
           total_duration_mins?: number
           total_km?: number
+          tracking_mode?: string
           user_id?: string
         }
         Relationships: []

@@ -60,8 +60,8 @@ export function useFieldOps() {
     }
   }, []);
 
-  const startDuty = (lat?: number, lng?: number) =>
-    callFieldOps("start-duty", "POST", { lat, lng });
+  const startDuty = (lat?: number, lng?: number, tracking_mode?: string) =>
+    callFieldOps("start-duty", "POST", { lat, lng, tracking_mode: tracking_mode || "normal" });
 
   const stopDuty = (sessionId: string, lat?: number, lng?: number) =>
     callFieldOps("stop-duty", "POST", { session_id: sessionId, lat, lng });

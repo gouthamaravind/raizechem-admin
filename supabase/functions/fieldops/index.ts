@@ -6,6 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const MAX_POINTS_PER_DAY = 600;
+const MAX_ACCURACY_METERS = 100;
+
 async function authenticate(req: Request) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) throw new Error("Unauthorized");
@@ -36,6 +39,17 @@ function err(message: string, status = 400) {
   });
 }
 
+async function getTodayPointCount(supabase: any, userId: string): Promise<number> {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const { count } = await supabase
+    .from("location_points")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("recorded_at", todayStart.toISOString());
+  return count || 0;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -48,7 +62,11 @@ Deno.serve(async (req) => {
 
     // ========== START DUTY ==========
     if (action === "start-duty" && req.method === "POST") {
-      const { lat, lng } = await req.json();
+      const { lat, lng, tracking_mode } = await req.json();
+
+      // Validate tracking_mode
+      const validModes = ["low", "normal", "high"];
+      const mode = validModes.includes(tracking_mode) ? tracking_mode : "normal";
 
       // Check no active session exists
       const { data: existing } = await supabase
@@ -67,8 +85,9 @@ Deno.serve(async (req) => {
         .insert({
           user_id: userId,
           start_location: lat && lng ? { lat, lng } : null,
+          tracking_mode: mode,
         })
-        .select("id, start_time, status")
+        .select("id, start_time, status, tracking_mode")
         .single();
 
       if (sessErr) throw sessErr;
@@ -119,27 +138,61 @@ Deno.serve(async (req) => {
 
     // ========== ADD LOCATION POINTS (BATCH) ==========
     if (action === "add-locations" && req.method === "POST") {
-      const { session_id, points } = await req.json();
+      const { session_id, points, force_low_accuracy } = await req.json();
       if (!session_id || !Array.isArray(points) || points.length === 0) {
         return err("session_id and points[] required");
       }
 
-      const rows = points.map((p: any) => ({
-        duty_session_id: session_id,
-        user_id: userId,
-        lat: p.lat,
-        lng: p.lng,
-        accuracy: p.accuracy || null,
-        source: p.source || "gps",
-        recorded_at: p.recorded_at || new Date().toISOString(),
-      }));
+      // Daily cap check
+      const todayCount = await getTodayPointCount(supabase, userId);
+      const remaining = MAX_POINTS_PER_DAY - todayCount;
+      if (remaining <= 0) {
+        return err(`Daily location cap reached (${MAX_POINTS_PER_DAY} points). No more points accepted today.`);
+      }
 
-      const { error: insErr } = await supabase
-        .from("location_points")
-        .insert(rows);
+      // Filter and validate points
+      const accepted: any[] = [];
+      const rejected: any[] = [];
 
-      if (insErr) throw insErr;
-      return ok({ inserted: rows.length });
+      for (const p of points.slice(0, remaining)) {
+        // Validate coordinates
+        if (typeof p.lat !== "number" || typeof p.lng !== "number" ||
+            p.lat < -90 || p.lat > 90 || p.lng < -180 || p.lng > 180) {
+          rejected.push({ ...p, reason: "invalid_coordinates" });
+          continue;
+        }
+
+        // Accuracy check
+        const accuracy = typeof p.accuracy === "number" ? p.accuracy : null;
+        if (accuracy !== null && accuracy > MAX_ACCURACY_METERS && !force_low_accuracy) {
+          rejected.push({ ...p, reason: "low_accuracy", accuracy });
+          continue;
+        }
+
+        accepted.push({
+          duty_session_id: session_id,
+          user_id: userId,
+          lat: p.lat,
+          lng: p.lng,
+          accuracy: accuracy,
+          source: p.source || "gps",
+          recorded_at: p.recorded_at || new Date().toISOString(),
+        });
+      }
+
+      if (accepted.length > 0) {
+        const { error: insErr } = await supabase
+          .from("location_points")
+          .insert(accepted);
+        if (insErr) throw insErr;
+      }
+
+      return ok({
+        inserted: accepted.length,
+        rejected: rejected.length,
+        rejected_details: rejected.length > 0 ? rejected : undefined,
+        daily_remaining: remaining - accepted.length,
+      });
     }
 
     // ========== CHECK-IN VISIT ==========
@@ -258,7 +311,7 @@ Deno.serve(async (req) => {
       // Active session
       const { data: activeSessions } = await supabase
         .from("duty_sessions")
-        .select("id, start_time, status, total_km, total_duration_mins, incentive_amount")
+        .select("id, start_time, status, total_km, total_duration_mins, incentive_amount, tracking_mode")
         .eq("user_id", userId)
         .gte("start_time", todayISO)
         .order("start_time", { ascending: false })
@@ -295,6 +348,9 @@ Deno.serve(async (req) => {
         liveKm = kmResult || 0;
       }
 
+      // Daily point count
+      const pointCount = await getTodayPointCount(supabase, userId);
+
       return ok({
         sessions: activeSessions || [],
         active_session: activeSession || null,
@@ -309,6 +365,8 @@ Deno.serve(async (req) => {
           0
         ),
         payments: payments || [],
+        daily_points_used: pointCount,
+        daily_points_remaining: MAX_POINTS_PER_DAY - pointCount,
       });
     }
 
