@@ -163,8 +163,8 @@ export default function Dealers() {
     setGstFetching(true);
     setGstWarning(null);
     try {
-      const { data: fnData, error: fnError } = await supabase.functions.invoke("gstin-lookup", {
-        body: { gstin: form.gst_number },
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("verify-gst", {
+        body: { gstNo: form.gst_number },
       });
 
       if (fnError) throw new Error(fnError.message || "Lookup failed");
@@ -176,20 +176,21 @@ export default function Dealers() {
 
       setForm((f) => ({
         ...f,
-        name: d.legal_name || f.name,
-        contact_person: d.trade_name || f.contact_person,
+        name: d.trade_name || d.legal_name || f.name,
+        contact_person: d.legal_name || f.contact_person,
         state_code: stateCode,
         state: stateName,
-        address_line1: typeof d.address === "string" ? d.address : f.address_line1,
+        address_line1: d.address || f.address_line1,
+        pincode: d.pincode || f.pincode,
       }));
 
       setGstVerifiedAt(new Date().toISOString());
 
-      if (d.status && d.status !== "Active") {
-        setGstWarning(`GST Status: ${d.status} — This GSTIN is not active. Proceed with caution.`);
-        toast.warning(`GST status is "${d.status}" — not Active`);
+      if (d.gst_status && d.gst_status !== "Active") {
+        setGstWarning(`GST Status: ${d.gst_status} — This GSTIN is not active. Proceed with caution.`);
+        toast.warning(`GST status is "${d.gst_status}" — not Active`);
       } else {
-        toast.success("GST details fetched successfully");
+        toast.success("✓ GST Verified Successfully");
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to fetch GST details");
