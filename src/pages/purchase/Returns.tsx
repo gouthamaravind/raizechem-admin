@@ -27,10 +27,7 @@ export default function PurchaseReturns() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
 
-  const voidMutation = useVoidTransaction({
-    table: "debit_notes",
-    invalidateKeys: [["debit-notes"]],
-  });
+  const voidMutation = useVoidTransaction({ table: "debit_notes", invalidateKeys: [["debit-notes"]] });
   const canVoid = hasRole("admin") || hasRole("accounts");
   const [piId, setPiId] = useState("");
   const [reason, setReason] = useState("");
@@ -48,7 +45,7 @@ export default function PurchaseReturns() {
   const { data: purchaseInvoices = [] } = useQuery({
     queryKey: ["pi-for-return"],
     queryFn: async () => {
-      const { data } = await supabase.from("purchase_invoices").select("id, pi_number, supplier_id, suppliers(name, state_code)").eq("status", "received");
+      const { data } = await supabase.from("purchase_invoices").select("id, pi_number, supplier_id, suppliers(name, state_code)").neq("status", "void");
       return data || [];
     },
   });
@@ -62,7 +59,6 @@ export default function PurchaseReturns() {
     },
   });
 
-  // Populate return items when PI items load
   if (piId && piItems.length > 0 && items.length === 0) {
     setItems(piItems.map((ii: any) => ({
       product_id: ii.product_id, batch_id: ii.batch_id, qty: 0,
@@ -81,59 +77,28 @@ export default function PurchaseReturns() {
       const computedItems = validItems.map((item) => {
         const amount = item.qty * item.rate;
         const gst = calculateGST(amount, item.gst_rate, supplierStateCode);
-        return { ...item, amount, ...gst };
-      });
-
-      const subtotal = computedItems.reduce((s, i) => s + i.amount, 0);
-      const cgstTotal = computedItems.reduce((s, i) => s + i.cgst, 0);
-      const sgstTotal = computedItems.reduce((s, i) => s + i.sgst, 0);
-      const igstTotal = computedItems.reduce((s, i) => s + i.igst, 0);
-      const total = subtotal + cgstTotal + sgstTotal + igstTotal;
-
-      const dnNum = `DN/${Date.now().toString(36).toUpperCase()}`;
-      const { data: dn, error } = await supabase.from("debit_notes").insert({
-        debit_note_number: dnNum, purchase_invoice_id: piId, supplier_id: selectedPI.supplier_id,
-        subtotal, cgst_total: cgstTotal, sgst_total: sgstTotal, igst_total: igstTotal,
-        total_amount: total, reason, created_by: user?.id,
-      }).select("id").single();
-      if (error) throw error;
-
-      const dnItems = computedItems.map((i) => ({
-        debit_note_id: dn.id, product_id: i.product_id, batch_id: i.batch_id,
-        hsn_code: i.hsn_code, qty: i.qty, rate: i.rate, amount: i.amount,
-        gst_rate: i.gst_rate, cgst_amount: i.cgst, sgst_amount: i.sgst,
-        igst_amount: i.igst, total_amount: i.totalWithGst,
-      }));
-      await supabase.from("debit_note_items").insert(dnItems);
-
-      // Reverse stock (reduce batch qty) + inventory txn
-      for (const item of computedItems) {
-        const { data: batch } = await supabase.from("product_batches").select("current_qty").eq("id", item.batch_id).single();
-        if (batch) {
-          await supabase.from("product_batches").update({ current_qty: Math.max(0, Number(batch.current_qty) - item.qty) }).eq("id", item.batch_id);
-        }
-        await supabase.from("inventory_txn").insert({
-          txn_type: "ADJUSTMENT" as any, ref_type: "debit_note", ref_id: dn.id,
+        return {
           product_id: item.product_id, batch_id: item.batch_id,
-          qty_in: 0, qty_out: item.qty, rate: item.rate, created_by: user?.id,
-          notes: `Purchase return - ${dnNum}`,
-        });
-      }
-
-      // Supplier ledger entry (debit = supplier owes us for return)
-      await supabase.from("supplier_ledger_entries" as any).insert({
-        supplier_id: selectedPI.supplier_id,
-        entry_date: new Date().toISOString().split("T")[0],
-        entry_type: "debit_note",
-        ref_id: dn.id,
-        description: `Debit Note ${dnNum} (Purchase Return)`,
-        debit: total,
-        credit: 0,
+          hsn_code: item.hsn_code, qty: item.qty, rate: item.rate,
+          amount, gst_rate: item.gst_rate,
+          cgst_amount: gst.cgst, sgst_amount: gst.sgst,
+          igst_amount: gst.igst, total_amount: gst.totalWithGst,
+        };
       });
+
+      const { data, error } = await supabase.rpc("create_debit_note_atomic" as any, {
+        p_purchase_invoice_id: piId,
+        p_reason: reason,
+        p_created_by: user?.id,
+        p_items: computedItems,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["debit-notes"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
+      qc.invalidateQueries({ queryKey: ["supplier-ledger"] });
       setDialogOpen(false); setPiId(""); setReason(""); setItems([]);
       toast.success("Debit note created, stock reversed");
     },

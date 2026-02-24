@@ -27,10 +27,7 @@ export default function Returns() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
 
-  const voidMutation = useVoidTransaction({
-    table: "credit_notes",
-    invalidateKeys: [["credit-notes"]],
-  });
+  const voidMutation = useVoidTransaction({ table: "credit_notes", invalidateKeys: [["credit-notes"]] });
   const canVoid = hasRole("admin") || hasRole("accounts");
   const [invoiceId, setInvoiceId] = useState("");
   const [reason, setReason] = useState("");
@@ -48,7 +45,7 @@ export default function Returns() {
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices-for-return"],
     queryFn: async () => {
-      const { data } = await supabase.from("invoices").select("id, invoice_number, dealer_id, dealers(name, state_code)").eq("status", "issued");
+      const { data } = await supabase.from("invoices").select("id, invoice_number, dealer_id, dealers(name, state_code)").neq("status", "void");
       return data || [];
     },
   });
@@ -62,21 +59,13 @@ export default function Returns() {
     },
   });
 
-  const loadInvoiceItems = (invId: string) => {
-    setInvoiceId(invId);
-    // Items will be loaded via query, user picks qty to return
-  };
-
-  // When invoiceItems load, populate return items
-  const populateItems = () => {
-    if (invoiceItems.length > 0 && items.length === 0) {
-      setItems(invoiceItems.map((ii: any) => ({
-        product_id: ii.product_id, batch_id: ii.batch_id, qty: 0,
-        rate: Number(ii.rate), gst_rate: Number(ii.gst_rate), hsn_code: ii.hsn_code || "",
-      })));
-    }
-  };
-  if (invoiceId && invoiceItems.length > 0 && items.length === 0) populateItems();
+  // Populate return items when invoice items load
+  if (invoiceId && invoiceItems.length > 0 && items.length === 0) {
+    setItems(invoiceItems.map((ii: any) => ({
+      product_id: ii.product_id, batch_id: ii.batch_id, qty: 0,
+      rate: Number(ii.rate), gst_rate: Number(ii.gst_rate), hsn_code: ii.hsn_code || "",
+    })));
+  }
 
   const selectedInvoice = invoices.find((i: any) => i.id === invoiceId) as any;
   const dealerStateCode = selectedInvoice?.dealers?.state_code;
@@ -86,57 +75,31 @@ export default function Returns() {
       const validItems = items.filter((i) => i.qty > 0);
       if (!invoiceId || validItems.length === 0) throw new Error("Select invoice and return qty");
 
-      const inv = selectedInvoice;
       const computedItems = validItems.map((item) => {
         const amount = item.qty * item.rate;
         const gst = calculateGST(amount, item.gst_rate, dealerStateCode);
-        return { ...item, amount, ...gst };
-      });
-
-      const subtotal = computedItems.reduce((s, i) => s + i.amount, 0);
-      const cgstTotal = computedItems.reduce((s, i) => s + i.cgst, 0);
-      const sgstTotal = computedItems.reduce((s, i) => s + i.sgst, 0);
-      const igstTotal = computedItems.reduce((s, i) => s + i.igst, 0);
-      const total = subtotal + cgstTotal + sgstTotal + igstTotal;
-
-      const cnNum = `CN/${Date.now().toString(36).toUpperCase()}`;
-      const { data: cn, error } = await supabase.from("credit_notes").insert({
-        credit_note_number: cnNum, invoice_id: invoiceId, dealer_id: inv.dealer_id,
-        subtotal, cgst_total: cgstTotal, sgst_total: sgstTotal, igst_total: igstTotal,
-        total_amount: total, reason, created_by: user?.id,
-      }).select("id").single();
-      if (error) throw error;
-
-      const cnItems = computedItems.map((i) => ({
-        credit_note_id: cn.id, product_id: i.product_id, batch_id: i.batch_id,
-        hsn_code: i.hsn_code, qty: i.qty, rate: i.rate, amount: i.amount,
-        gst_rate: i.gst_rate, cgst_amount: i.cgst, sgst_amount: i.sgst,
-        igst_amount: i.igst, total_amount: i.totalWithGst,
-      }));
-      await supabase.from("credit_note_items").insert(cnItems);
-
-      // Add stock back + inventory txn
-      for (const item of computedItems) {
-        const { data: batch } = await supabase.from("product_batches").select("current_qty").eq("id", item.batch_id).single();
-        if (batch) {
-          await supabase.from("product_batches").update({ current_qty: Number(batch.current_qty) + item.qty }).eq("id", item.batch_id);
-        }
-        await supabase.from("inventory_txn").insert({
-          txn_type: "SALE_RETURN" as any, ref_type: "credit_note", ref_id: cn.id,
+        return {
           product_id: item.product_id, batch_id: item.batch_id,
-          qty_in: item.qty, qty_out: 0, rate: item.rate, created_by: user?.id,
-        });
-      }
-
-      // Ledger entry (credit)
-      await supabase.from("ledger_entries").insert({
-        dealer_id: inv.dealer_id, entry_type: "credit_note", ref_id: cn.id,
-        description: `Credit Note ${cnNum}`, debit: 0, credit: total,
+          hsn_code: item.hsn_code, qty: item.qty, rate: item.rate,
+          amount, gst_rate: item.gst_rate,
+          cgst_amount: gst.cgst, sgst_amount: gst.sgst,
+          igst_amount: gst.igst, total_amount: gst.totalWithGst,
+        };
       });
+
+      const { data, error } = await supabase.rpc("create_credit_note_atomic" as any, {
+        p_invoice_id: invoiceId,
+        p_reason: reason,
+        p_created_by: user?.id,
+        p_items: computedItems,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["credit-notes"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
+      qc.invalidateQueries({ queryKey: ["ledger"] });
       setDialogOpen(false); setInvoiceId(""); setReason(""); setItems([]);
       toast.success("Credit note created, stock restored");
     },

@@ -67,7 +67,11 @@ export type Database = {
           invoice_template: string
           legal_name: string | null
           logo_url: string | null
+          next_cn_number: number
+          next_dn_number: number
           next_invoice_number: number
+          next_order_number: number
+          next_po_number: number
           pan_number: string | null
           phone: string | null
           pincode: string | null
@@ -90,7 +94,11 @@ export type Database = {
           invoice_template?: string
           legal_name?: string | null
           logo_url?: string | null
+          next_cn_number?: number
+          next_dn_number?: number
           next_invoice_number?: number
+          next_order_number?: number
+          next_po_number?: number
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
@@ -113,7 +121,11 @@ export type Database = {
           invoice_template?: string
           legal_name?: string | null
           logo_url?: string | null
+          next_cn_number?: number
+          next_dn_number?: number
           next_invoice_number?: number
+          next_order_number?: number
+          next_po_number?: number
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
@@ -2103,6 +2115,24 @@ export type Database = {
         Returns: number
       }
       compute_session_km: { Args: { _session_id: string }; Returns: number }
+      create_credit_note_atomic: {
+        Args: {
+          p_created_by: string
+          p_invoice_id: string
+          p_items?: Json
+          p_reason: string
+        }
+        Returns: Json
+      }
+      create_debit_note_atomic: {
+        Args: {
+          p_created_by: string
+          p_items?: Json
+          p_purchase_invoice_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       create_invoice_atomic: {
         Args: {
           p_cgst_total: number
@@ -2120,6 +2150,21 @@ export type Database = {
           p_total_amount: number
           p_transport_mode?: string
           p_vehicle_no?: string
+        }
+        Returns: Json
+      }
+      create_purchase_invoice_atomic: {
+        Args: {
+          p_cgst_total: number
+          p_created_by: string
+          p_igst_total: number
+          p_items?: Json
+          p_pi_date: string
+          p_pi_number: string
+          p_sgst_total: number
+          p_subtotal: number
+          p_supplier_id: string
+          p_total_amount: number
         }
         Returns: Json
       }
@@ -2149,6 +2194,25 @@ export type Database = {
         }
         Returns: Json
       }
+      record_supplier_payment_atomic: {
+        Args: {
+          p_amount: number
+          p_mode: string
+          p_notes?: string
+          p_payment_date: string
+          p_reference_no?: string
+          p_supplier_id: string
+        }
+        Returns: Json
+      }
+      void_credit_note_atomic: {
+        Args: { p_cn_id: string; p_reason: string; p_voided_by: string }
+        Returns: undefined
+      }
+      void_debit_note_atomic: {
+        Args: { p_dn_id: string; p_reason: string; p_voided_by: string }
+        Returns: undefined
+      }
       void_invoice_atomic: {
         Args: { p_invoice_id: string; p_reason: string; p_voided_by: string }
         Returns: undefined
@@ -2157,10 +2221,19 @@ export type Database = {
         Args: { p_payment_id: string; p_reason: string; p_voided_by: string }
         Returns: undefined
       }
+      void_purchase_invoice_atomic: {
+        Args: { p_pi_id: string; p_reason: string; p_voided_by: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "sales" | "warehouse" | "accounts" | "inventory"
-      inventory_txn_type: "PURCHASE" | "SALE" | "SALE_RETURN" | "ADJUSTMENT"
+      inventory_txn_type:
+        | "PURCHASE"
+        | "SALE"
+        | "SALE_RETURN"
+        | "ADJUSTMENT"
+        | "PURCHASE_RETURN"
       order_status:
         | "draft"
         | "confirmed"
@@ -2295,7 +2368,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "sales", "warehouse", "accounts", "inventory"],
-      inventory_txn_type: ["PURCHASE", "SALE", "SALE_RETURN", "ADJUSTMENT"],
+      inventory_txn_type: [
+        "PURCHASE",
+        "SALE",
+        "SALE_RETURN",
+        "ADJUSTMENT",
+        "PURCHASE_RETURN",
+      ],
       order_status: [
         "draft",
         "confirmed",
