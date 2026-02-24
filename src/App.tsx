@@ -19,6 +19,7 @@ import Alerts from "./pages/inventory/Alerts";
 import Orders from "./pages/sales/Orders";
 import Invoices from "./pages/sales/Invoices";
 import InvoicePrint from "./pages/sales/InvoicePrint";
+import EwayBillPrint from "./pages/sales/EwayBillPrint";
 import Returns from "./pages/sales/Returns";
 import PurchaseOrders from "./pages/purchase/Orders";
 import PurchaseInvoices from "./pages/purchase/Invoices";
@@ -85,6 +86,7 @@ const App = () => (
             <Route path="/sales/orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Orders /></RoleGuard></P>} />
             <Route path="/sales/invoices" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Invoices /></RoleGuard></P>} />
             <Route path="/sales/invoices/:id/print" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><InvoicePrint /></RoleGuard></P>} />
+            <Route path="/sales/invoices/:id/eway-bill" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><EwayBillPrint /></RoleGuard></P>} />
             <Route path="/sales/returns" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Returns /></RoleGuard></P>} />
             <Route path="/purchase/orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseOrders /></RoleGuard></P>} />
             <Route path="/purchase/invoices" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseInvoices /></RoleGuard></P>} />

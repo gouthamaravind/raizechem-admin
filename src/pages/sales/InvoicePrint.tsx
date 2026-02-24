@@ -356,6 +356,7 @@ export default function InvoicePrint() {
         <Button size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
         <Button variant="outline" size="sm" onClick={downloadPDF}><FileText className="h-4 w-4 mr-1" />PDF</Button>
         <Button variant="outline" size="sm" onClick={exportEwayBill}><Download className="h-4 w-4 mr-1" />E-Way Bill JSON</Button>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/sales/invoices/${id}/eway-bill`)}><FileText className="h-4 w-4 mr-1" />E-Way Bill</Button>
         <span className="ml-auto text-xs text-muted-foreground">Template: {template}</span>
       </div>
       {template === "retail" ? <RetailTemplate {...templateProps} /> :

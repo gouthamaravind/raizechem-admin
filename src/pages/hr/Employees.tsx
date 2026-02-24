@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Search, Plus, Pencil, Download } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
@@ -29,6 +30,15 @@ export default function Employees() {
     queryKey: ["employees"],
     queryFn: async () => {
       const { data, error } = await supabase.from("employees").select("*").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: components = [] } = useQuery({
+    queryKey: ["salary-components-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("salary_components").select("*").eq("is_active", true);
       if (error) throw error;
       return data;
     },
@@ -77,6 +87,24 @@ export default function Employees() {
 
   const set = (key: string, val: any) => setForm((f) => ({ ...f, [key]: val }));
 
+  // Compute salary breakdown preview
+  const basic = Number(form.basic_salary) || 0;
+  const earnings = components.filter((c: any) => c.type === "earning");
+  const deductions = components.filter((c: any) => c.type === "deduction");
+
+  const earningItems = earnings.map((e: any) => ({
+    name: e.name,
+    amount: Math.round(e.is_percentage ? (basic * Number(e.value)) / 100 : Number(e.value)),
+  }));
+  const deductionItems = deductions.map((d: any) => ({
+    name: d.name,
+    amount: Math.round(d.is_percentage ? (basic * Number(d.value)) / 100 : Number(d.value)),
+  }));
+
+  const totalEarnings = basic + earningItems.reduce((s, i) => s + i.amount, 0);
+  const totalDeductions = deductionItems.reduce((s, i) => s + i.amount, 0);
+  const netPay = totalEarnings - totalDeductions;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -108,6 +136,52 @@ export default function Employees() {
                     <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} /></div>
                     <div className="col-span-2 space-y-2"><Label>Bank Account</Label><Input value={form.bank_account} onChange={(e) => set("bank_account", e.target.value)} className="font-mono" /></div>
                   </div>
+
+                  {/* Salary Breakdown Preview */}
+                  {basic > 0 && components.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="space-y-3">
+                        <Label className="text-base font-semibold">Salary Breakdown (Monthly)</Label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground">Earnings</p>
+                            <div className="text-sm space-y-0.5">
+                              <div className="flex justify-between"><span>Basic</span><span>₹{basic.toLocaleString("en-IN")}</span></div>
+                              {earningItems.map((e) => (
+                                <div key={e.name} className="flex justify-between"><span>{e.name}</span><span>₹{e.amount.toLocaleString("en-IN")}</span></div>
+                              ))}
+                              <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                                <span>Gross</span><span>₹{totalEarnings.toLocaleString("en-IN")}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground">Deductions</p>
+                            <div className="text-sm space-y-0.5">
+                              {deductionItems.length === 0 && <p className="text-xs text-muted-foreground">None configured</p>}
+                              {deductionItems.map((d) => (
+                                <div key={d.name} className="flex justify-between"><span>{d.name}</span><span>₹{d.amount.toLocaleString("en-IN")}</span></div>
+                              ))}
+                              {deductionItems.length > 0 && (
+                                <div className="flex justify-between font-semibold border-t pt-1 mt-1">
+                                  <span>Total</span><span>₹{totalDeductions.toLocaleString("en-IN")}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center bg-muted/50 rounded-md px-3 py-2">
+                          <span className="font-semibold">Net Pay (Take-home)</span>
+                          <span className="text-lg font-bold">₹{netPay.toLocaleString("en-IN")}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Based on configured salary components. Annual CTC: ₹{(totalEarnings * 12).toLocaleString("en-IN")}
+                        </p>
+                      </div>
+                    </>
+                  )}
+
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
                     {mutation.isPending ? "Saving..." : editId ? "Update Employee" : "Add Employee"}
                   </Button>
