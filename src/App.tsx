@@ -43,6 +43,7 @@ import HrEmployees from "./pages/hr/Employees";
 import SalaryComponents from "./pages/hr/SalaryComponents";
 import HrPayroll from "./pages/hr/Payroll";
 import HrPayslips from "./pages/hr/Payslips";
+import PayslipPrint from "./pages/hr/PayslipPrint";
 import AuditLogs from "./pages/settings/AuditLogs";
 import OpeningBalances from "./pages/settings/OpeningBalances";
 import FieldOpsSessions from "./pages/fieldops/Sessions";
@@ -112,6 +113,7 @@ const App = () => (
             <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
             <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
             <Route path="/hr/payslips" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayslips /></RoleGuard></P>} />
+            <Route path="/hr/payslips/:id/print" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><PayslipPrint /></RoleGuard></P>} />
             {/* Field Ops Routes */}
             <Route path="/fieldops/sessions" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsSessions /></RoleGuard></P>} />
             <Route path="/fieldops/locations/:sessionId" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsLocations /></RoleGuard></P>} />
