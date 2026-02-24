@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { format, startOfMonth, startOfDay, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Link } from "react-router-dom";
@@ -109,9 +109,9 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back to Raizechem Admin Panel</p>
+            <p className="text-sm text-muted-foreground">Welcome back to Raizechem Admin Panel</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border rounded-lg px-3 py-1.5">
             <CalendarDays className="h-4 w-4" />
             {format(new Date(), "dd MMM yyyy")}
           </div>
@@ -130,13 +130,19 @@ export default function Dashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Link key={stat.title} to={stat.link}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <Card className="hover:shadow-md transition-all hover:border-primary/20 cursor-pointer group">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                  <div className={`p-2 rounded-lg bg-muted/50 group-hover:bg-primary/10 transition-colors`}>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{stat.value}</div>}
+                  {isLoading ? (
+                    <div className="h-8 w-24 animate-pulse rounded bg-muted" />
+                  ) : (
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                  )}
                 </CardContent>
               </Card>
             </Link>
@@ -147,13 +153,19 @@ export default function Dashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {secondaryStats.map((stat) => (
             <Link key={stat.title} to={stat.link}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+              <Card className="hover:shadow-md transition-all hover:border-primary/20 cursor-pointer group">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                  <stat.icon className="h-5 w-5 text-muted-foreground" />
+                  <div className="p-2 rounded-lg bg-muted/50 group-hover:bg-primary/10 transition-colors">
+                    <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  {isLoading ? <Skeleton className="h-8 w-16" /> : <div className="text-2xl font-bold">{stat.value}</div>}
+                  {isLoading ? (
+                    <div className="h-8 w-16 animate-pulse rounded bg-muted" />
+                  ) : (
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                  )}
                 </CardContent>
               </Card>
             </Link>
@@ -172,9 +184,13 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-10 w-full animate-pulse rounded bg-muted" />)}</div>
               ) : !data?.recentOrders?.length ? (
-                <p className="text-muted-foreground text-sm text-center py-6">No orders yet</p>
+                <div className="text-center py-8">
+                  <ShoppingCart className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">No orders yet</p>
+                  <Link to="/sales/orders"><Button variant="link" size="sm" className="mt-1 text-xs">Create your first order →</Button></Link>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {data.recentOrders.map((order: any) => (
@@ -204,9 +220,13 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-10 w-full animate-pulse rounded bg-muted" />)}</div>
               ) : !data?.recentPayments?.length ? (
-                <p className="text-muted-foreground text-sm text-center py-6">No payments yet</p>
+                <div className="text-center py-8">
+                  <CreditCard className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">No payments yet</p>
+                  <Link to="/finance/payments"><Button variant="link" size="sm" className="mt-1 text-xs">Record a payment →</Button></Link>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {data.recentPayments.map((p: any) => (
@@ -236,9 +256,12 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               {isLoading ? (
-                <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                <div className="space-y-3">{[1, 2, 3].map((i) => <div key={i} className="h-10 w-full animate-pulse rounded bg-muted" />)}</div>
               ) : !data?.overdueInvoices?.length ? (
-                <p className="text-muted-foreground text-sm text-center py-6">No overdue invoices 🎉</p>
+                <div className="text-center py-8">
+                  <Clock className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-sm">No overdue invoices 🎉</p>
+                </div>
               ) : (
                 <div className="space-y-3">
                   {data.overdueInvoices.map((inv: any) => {
@@ -273,9 +296,13 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-              <Skeleton className="h-48 w-full" />
+              <div className="h-48 w-full animate-pulse rounded bg-muted" />
             ) : !data?.topProducts?.length ? (
-              <p className="text-muted-foreground text-sm text-center py-8">No product data yet.</p>
+              <div className="text-center py-12">
+                <Package className="h-10 w-10 text-muted-foreground/30 mx-auto mb-2" />
+                <p className="text-muted-foreground text-sm">No product data yet</p>
+                <Link to="/sales/invoices"><Button variant="link" size="sm" className="mt-1 text-xs">Create an invoice to see data →</Button></Link>
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={data.topProducts} layout="vertical" margin={{ left: 0, right: 16, top: 0, bottom: 0 }}>

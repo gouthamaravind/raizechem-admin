@@ -39,6 +39,7 @@ import PurchaseRegister from "./pages/reports/PurchaseRegister";
 import OutstandingAging from "./pages/reports/OutstandingAging";
 import BatchStockReport from "./pages/reports/BatchStockReport";
 import GSTSummary from "./pages/reports/GSTSummary";
+import PriceMatrix from "./pages/reports/PriceMatrix";
 import TdsTcsReport from "./pages/reports/TdsTcsReport";
 import HrEmployees from "./pages/hr/Employees";
 import SalaryComponents from "./pages/hr/SalaryComponents";
@@ -111,6 +112,7 @@ const App = () => (
             <Route path="/reports/batch-stock" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><BatchStockReport /></RoleGuard></P>} />
             <Route path="/reports/gst-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GSTSummary /></RoleGuard></P>} />
             <Route path="/reports/tds-tcs" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><TdsTcsReport /></RoleGuard></P>} />
+            <Route path="/reports/price-matrix" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><PriceMatrix /></RoleGuard></P>} />
             <Route path="/hr/employees" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrEmployees /></RoleGuard></P>} />
             <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
             <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
