@@ -105,6 +105,17 @@ export default function PurchaseInvoices() {
           qty_in: item.qty, qty_out: 0, rate: item.rate, created_by: user?.id,
         });
       }
+
+      // Supplier ledger entry (credit = we owe supplier)
+      await supabase.from("supplier_ledger_entries" as any).insert({
+        supplier_id: supplierId,
+        entry_date: piDate,
+        entry_type: "purchase",
+        ref_id: pi.id,
+        description: `Purchase Invoice ${piNumber}`,
+        debit: 0,
+        credit: grandTotal,
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-invoices"] });

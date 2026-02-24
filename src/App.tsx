@@ -26,6 +26,9 @@ import PurchaseReturns from "./pages/purchase/Returns";
 import Ledger from "./pages/finance/Ledger";
 import Outstanding from "./pages/finance/Outstanding";
 import Payments from "./pages/finance/Payments";
+import SupplierLedger from "./pages/finance/SupplierLedger";
+import SupplierOutstanding from "./pages/finance/SupplierOutstanding";
+import SupplierPayments from "./pages/finance/SupplierPayments";
 import CompanySettings from "./pages/settings/CompanySettings";
 import UserManagement from "./pages/settings/UserManagement";
 import FinancialYears from "./pages/settings/FinancialYears";
@@ -72,6 +75,9 @@ const App = () => (
             <Route path="/finance/ledger" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Ledger /></RoleGuard></P>} />
             <Route path="/finance/outstanding" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Outstanding /></RoleGuard></P>} />
             <Route path="/finance/payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Payments /></RoleGuard></P>} />
+            <Route path="/finance/supplier-ledger" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierLedger /></RoleGuard></P>} />
+            <Route path="/finance/supplier-outstanding" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierOutstanding /></RoleGuard></P>} />
+            <Route path="/finance/supplier-payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierPayments /></RoleGuard></P>} />
             <Route path="/settings/company" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><CompanySettings /></RoleGuard></P>} />
             <Route path="/settings/users" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><UserManagement /></RoleGuard></P>} />
             <Route path="/settings/financial-years" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><FinancialYears /></RoleGuard></P>} />

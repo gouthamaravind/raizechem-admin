@@ -1563,6 +1563,50 @@ export type Database = {
         }
         Relationships: []
       }
+      supplier_ledger_entries: {
+        Row: {
+          created_at: string
+          credit: number
+          debit: number
+          description: string | null
+          entry_date: string
+          entry_type: string
+          id: string
+          ref_id: string | null
+          supplier_id: string
+        }
+        Insert: {
+          created_at?: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          entry_date?: string
+          entry_type: string
+          id?: string
+          ref_id?: string | null
+          supplier_id: string
+        }
+        Update: {
+          created_at?: string
+          credit?: number
+          debit?: number
+          description?: string | null
+          entry_date?: string
+          entry_type?: string
+          id?: string
+          ref_id?: string | null
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_ledger_entries_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address_line1: string | null
