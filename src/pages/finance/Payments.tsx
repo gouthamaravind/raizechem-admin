@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Ban } from "lucide-react";
+import { Search, Plus, Ban, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
@@ -21,6 +21,7 @@ export default function Payments() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+  const [allocViewId, setAllocViewId] = useState<string | null>(null);
 
   const voidMutation = useVoidTransaction({
     table: "payments",
@@ -52,41 +53,39 @@ export default function Payments() {
 
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name").eq("status", "active").order("name"); return data || []; } });
 
+  const { data: allocations = [] } = useQuery({
+    queryKey: ["payment-allocations", allocViewId],
+    enabled: !!allocViewId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_allocations" as any)
+        .select("id, allocated_amount, invoice_id, invoices(invoice_number, total_amount, invoice_date)")
+        .eq("payment_id", allocViewId!)
+        .order("created_at");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   const createPayment = useMutation({
     mutationFn: async () => {
       if (!dealerId || amount <= 0) throw new Error("Select dealer and enter amount");
 
-      const { data: payment, error } = await supabase.from("payments").insert({
-        dealer_id: dealerId, payment_date: paymentDate, amount,
-        payment_mode: mode, reference_number: refNo || null, notes: notes || null,
-        created_by: user?.id,
-        tds_rate: tdsRate, tds_amount: tdsAmount,
-        tcs_rate: tcsRate, tcs_amount: tcsAmount,
-        net_amount: netAmount,
-      }).select("id").single();
-      if (error) throw error;
-
-      // Ledger entry (credit) - use net_amount for actual cash received
-      await supabase.from("ledger_entries").insert({
-        dealer_id: dealerId, entry_date: paymentDate, entry_type: "payment",
-        ref_id: payment.id, description: `Payment received (${mode}) ${refNo ? `Ref: ${refNo}` : ""}${tdsAmount > 0 ? ` TDS: ₹${tdsAmount}` : ""}${tcsAmount > 0 ? ` TCS: ₹${tcsAmount}` : ""}`,
-        debit: 0, credit: amount,
+      const { error } = await supabase.rpc("record_payment_atomic" as any, {
+        p_dealer_id: dealerId,
+        p_payment_date: paymentDate,
+        p_amount: amount,
+        p_payment_mode: mode,
+        p_reference_number: refNo || null,
+        p_notes: notes || null,
+        p_created_by: user?.id,
+        p_tds_rate: tdsRate,
+        p_tds_amount: tdsAmount,
+        p_tcs_rate: tcsRate,
+        p_tcs_amount: tcsAmount,
+        p_net_amount: netAmount,
       });
-
-      // Auto-apply to oldest unpaid invoices (apply gross amount against invoice)
-      let remaining = amount;
-      const { data: unpaid } = await supabase.from("invoices").select("id, total_amount, amount_paid").eq("dealer_id", dealerId).neq("status", "paid").order("invoice_date");
-      if (unpaid) {
-        for (const inv of unpaid) {
-          if (remaining <= 0) break;
-          const due = Number(inv.total_amount) - Number(inv.amount_paid);
-          const apply = Math.min(remaining, due);
-          const newPaid = Number(inv.amount_paid) + apply;
-          const newStatus = newPaid >= Number(inv.total_amount) ? "paid" : "partially_paid";
-          await supabase.from("invoices").update({ amount_paid: newPaid, status: newStatus }).eq("id", inv.id);
-          remaining -= apply;
-        }
-      }
+      if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["payments"] });
@@ -164,7 +163,8 @@ export default function Payments() {
                         <TableCell><Badge variant="outline">{modeLabels[p.payment_mode] || p.payment_mode}</Badge></TableCell>
                         <TableCell className="text-sm">{p.reference_number || "—"}</TableCell>
                         <TableCell><Badge variant={p.status === "void" ? "destructive" : "default"}>{p.status || "active"}</Badge></TableCell>
-                        <TableCell>
+                        <TableCell className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => setAllocViewId(p.id)} title="View allocations"><Eye className="h-4 w-4" /></Button>
                           {canVoid && p.status !== "void" && (
                             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: p.id, label: `₹${Number(p.amount).toLocaleString("en-IN")}` })}><Ban className="h-4 w-4" /></Button>
                           )}
@@ -178,6 +178,37 @@ export default function Payments() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Allocations Viewer */}
+      <Dialog open={!!allocViewId} onOpenChange={(v) => { if (!v) setAllocViewId(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>Payment Allocations</DialogTitle></DialogHeader>
+          {allocations.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">No allocations found for this payment.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Invoice #</TableHead>
+                  <TableHead>Invoice Date</TableHead>
+                  <TableHead>Invoice Total</TableHead>
+                  <TableHead>Allocated</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allocations.map((a: any) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.invoices?.invoice_number || "—"}</TableCell>
+                    <TableCell>{a.invoices?.invoice_date || "—"}</TableCell>
+                    <TableCell>₹{Number(a.invoices?.total_amount || 0).toLocaleString("en-IN")}</TableCell>
+                    <TableCell className="font-semibold text-primary">₹{Number(a.allocated_amount).toLocaleString("en-IN")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <VoidDialog
         open={!!voidTarget}
