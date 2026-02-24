@@ -11,13 +11,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Ban } from "lucide-react";
 import { toast } from "sonner";
+import { useVoidTransaction } from "@/hooks/useVoidTransaction";
+import { VoidDialog } from "@/components/VoidDialog";
 
 export default function Payments() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+
+  const voidMutation = useVoidTransaction({
+    table: "payments",
+    invalidateKeys: [["payments"]],
+  });
+  const canVoid = hasRole("admin") || hasRole("accounts");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dealerId, setDealerId] = useState("");
   const [amount, setAmount] = useState(0);
@@ -142,7 +151,7 @@ export default function Payments() {
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No payments recorded.</p> : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Gross Amt</TableHead><TableHead>TDS</TableHead><TableHead>TCS</TableHead><TableHead>Net Amt</TableHead><TableHead>Mode</TableHead><TableHead>Reference</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Gross Amt</TableHead><TableHead>TDS</TableHead><TableHead>TCS</TableHead><TableHead>Net Amt</TableHead><TableHead>Mode</TableHead><TableHead>Reference</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
                   <TableBody>
                     {filtered.map((p: any) => (
                       <TableRow key={p.id}>
@@ -154,6 +163,12 @@ export default function Payments() {
                         <TableCell className="font-semibold">₹{Number(p.net_amount).toLocaleString("en-IN")}</TableCell>
                         <TableCell><Badge variant="outline">{modeLabels[p.payment_mode] || p.payment_mode}</Badge></TableCell>
                         <TableCell className="text-sm">{p.reference_number || "—"}</TableCell>
+                        <TableCell><Badge variant={p.status === "void" ? "destructive" : "default"}>{p.status || "active"}</Badge></TableCell>
+                        <TableCell>
+                          {canVoid && p.status !== "void" && (
+                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: p.id, label: `₹${Number(p.amount).toLocaleString("en-IN")}` })}><Ban className="h-4 w-4" /></Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -163,6 +178,14 @@ export default function Payments() {
           </CardContent>
         </Card>
       </div>
+
+      <VoidDialog
+        open={!!voidTarget}
+        onOpenChange={(v) => { if (!v) setVoidTarget(null); }}
+        onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
+        isPending={voidMutation.isPending}
+        title={`Payment ${voidTarget?.label || ""}`}
+      />
     </DashboardLayout>
   );
 }

@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_logs: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+        }
+        Relationships: []
+      }
       company_settings: {
         Row: {
           address_line1: string | null
@@ -172,8 +208,12 @@ export type Database = {
           invoice_id: string
           reason: string | null
           sgst_total: number
+          status: string
           subtotal: number
           total_amount: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           cgst_total?: number
@@ -187,8 +227,12 @@ export type Database = {
           invoice_id: string
           reason?: string | null
           sgst_total?: number
+          status?: string
           subtotal?: number
           total_amount?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           cgst_total?: number
@@ -202,8 +246,12 @@ export type Database = {
           invoice_id?: string
           reason?: string | null
           sgst_total?: number
+          status?: string
           subtotal?: number
           total_amount?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -385,9 +433,13 @@ export type Database = {
           purchase_invoice_id: string
           reason: string | null
           sgst_total: number
+          status: string
           subtotal: number
           supplier_id: string
           total_amount: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           cgst_total?: number
@@ -400,9 +452,13 @@ export type Database = {
           purchase_invoice_id: string
           reason?: string | null
           sgst_total?: number
+          status?: string
           subtotal?: number
           supplier_id: string
           total_amount?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           cgst_total?: number
@@ -415,9 +471,13 @@ export type Database = {
           purchase_invoice_id?: string
           reason?: string | null
           sgst_total?: number
+          status?: string
           subtotal?: number
           supplier_id?: string
           total_amount?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -683,6 +743,9 @@ export type Database = {
           transport_mode: string | null
           updated_at: string
           vehicle_no: string | null
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount_paid?: number
@@ -707,6 +770,9 @@ export type Database = {
           transport_mode?: string | null
           updated_at?: string
           vehicle_no?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount_paid?: number
@@ -731,6 +797,9 @@ export type Database = {
           transport_mode?: string | null
           updated_at?: string
           vehicle_no?: string | null
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -935,10 +1004,14 @@ export type Database = {
           payment_date: string
           payment_mode: string
           reference_number: string | null
+          status: string
           tcs_amount: number
           tcs_rate: number
           tds_amount: number
           tds_rate: number
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount: number
@@ -951,10 +1024,14 @@ export type Database = {
           payment_date?: string
           payment_mode?: string
           reference_number?: string | null
+          status?: string
           tcs_amount?: number
           tcs_rate?: number
           tds_amount?: number
           tds_rate?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount?: number
@@ -967,10 +1044,14 @@ export type Database = {
           payment_date?: string
           payment_mode?: string
           reference_number?: string | null
+          status?: string
           tcs_amount?: number
           tcs_rate?: number
           tds_amount?: number
           tds_rate?: number
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
@@ -1294,6 +1375,9 @@ export type Database = {
           supplier_id: string
           total_amount: number
           updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           amount_paid?: number
@@ -1312,6 +1396,9 @@ export type Database = {
           supplier_id: string
           total_amount?: number
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           amount_paid?: number
@@ -1330,6 +1417,9 @@ export type Database = {
           supplier_id?: string
           total_amount?: number
           updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: [
           {
