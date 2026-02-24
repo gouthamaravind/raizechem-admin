@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      api_rate_limits: {
+        Row: {
+          called_at: string
+          endpoint: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          called_at?: string
+          endpoint: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          called_at?: string
+          endpoint?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -349,7 +370,15 @@ export type Database = {
           created_by: string | null
           credit_limit: number | null
           email: string | null
+          gst_address: Json | null
+          gst_last_verified_at: string | null
+          gst_legal_name: string | null
           gst_number: string | null
+          gst_registration_date: string | null
+          gst_status: string | null
+          gst_trade_name: string | null
+          gst_verification_ref: string | null
+          gst_verification_source: string | null
           id: string
           name: string
           payment_terms_days: number | null
@@ -375,7 +404,15 @@ export type Database = {
           created_by?: string | null
           credit_limit?: number | null
           email?: string | null
+          gst_address?: Json | null
+          gst_last_verified_at?: string | null
+          gst_legal_name?: string | null
           gst_number?: string | null
+          gst_registration_date?: string | null
+          gst_status?: string | null
+          gst_trade_name?: string | null
+          gst_verification_ref?: string | null
+          gst_verification_source?: string | null
           id?: string
           name: string
           payment_terms_days?: number | null
@@ -401,7 +438,15 @@ export type Database = {
           created_by?: string | null
           credit_limit?: number | null
           email?: string | null
+          gst_address?: Json | null
+          gst_last_verified_at?: string | null
+          gst_legal_name?: string | null
           gst_number?: string | null
+          gst_registration_date?: string | null
+          gst_status?: string | null
+          gst_trade_name?: string | null
+          gst_verification_ref?: string | null
+          gst_verification_source?: string | null
           id?: string
           name?: string
           payment_terms_days?: number | null
