@@ -270,6 +270,63 @@ export type Database = {
           },
         ]
       }
+      dealer_visits: {
+        Row: {
+          checkin_latlng: Json | null
+          checkin_time: string
+          checkout_latlng: Json | null
+          checkout_time: string | null
+          created_at: string
+          dealer_id: string
+          duty_session_id: string | null
+          id: string
+          notes: string | null
+          photo_url: string | null
+          user_id: string
+        }
+        Insert: {
+          checkin_latlng?: Json | null
+          checkin_time?: string
+          checkout_latlng?: Json | null
+          checkout_time?: string | null
+          created_at?: string
+          dealer_id: string
+          duty_session_id?: string | null
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          user_id: string
+        }
+        Update: {
+          checkin_latlng?: Json | null
+          checkin_time?: string
+          checkout_latlng?: Json | null
+          checkout_time?: string | null
+          created_at?: string
+          dealer_id?: string
+          duty_session_id?: string | null
+          id?: string
+          notes?: string | null
+          photo_url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dealer_visits_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dealer_visits_duty_session_id_fkey"
+            columns: ["duty_session_id"]
+            isOneToOne: false
+            referencedRelation: "duty_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dealers: {
         Row: {
           address_line1: string | null
@@ -496,6 +553,84 @@ export type Database = {
           },
         ]
       }
+      duty_sessions: {
+        Row: {
+          created_at: string
+          end_location: Json | null
+          end_time: string | null
+          id: string
+          incentive_amount: number
+          start_location: Json | null
+          start_time: string
+          status: string
+          total_duration_mins: number
+          total_km: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_location?: Json | null
+          end_time?: string | null
+          id?: string
+          incentive_amount?: number
+          start_location?: Json | null
+          start_time?: string
+          status?: string
+          total_duration_mins?: number
+          total_km?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_location?: Json | null
+          end_time?: string | null
+          id?: string
+          incentive_amount?: number
+          start_location?: Json | null
+          start_time?: string
+          status?: string
+          total_duration_mins?: number
+          total_km?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      employee_profiles: {
+        Row: {
+          created_at: string
+          employee_code: string
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          employee_code: string
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          employee_code?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
           bank_account: string | null
@@ -550,6 +685,159 @@ export type Database = {
         }
         Relationships: []
       }
+      field_order_items: {
+        Row: {
+          created_at: string
+          expected_rate: number
+          field_order_id: string
+          id: string
+          product_id: string
+          qty: number
+        }
+        Insert: {
+          created_at?: string
+          expected_rate?: number
+          field_order_id: string
+          id?: string
+          product_id: string
+          qty: number
+        }
+        Update: {
+          created_at?: string
+          expected_rate?: number
+          field_order_id?: string
+          id?: string
+          product_id?: string
+          qty?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_order_items_field_order_id_fkey"
+            columns: ["field_order_id"]
+            isOneToOne: false
+            referencedRelation: "field_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      field_orders: {
+        Row: {
+          approved_order_id: string | null
+          created_at: string
+          created_by_user_id: string
+          dealer_id: string
+          duty_session_id: string | null
+          id: string
+          notes: string | null
+          requested_delivery_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approved_order_id?: string | null
+          created_at?: string
+          created_by_user_id: string
+          dealer_id: string
+          duty_session_id?: string | null
+          id?: string
+          notes?: string | null
+          requested_delivery_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_order_id?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          dealer_id?: string
+          duty_session_id?: string | null
+          id?: string
+          notes?: string | null
+          requested_delivery_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_orders_approved_order_id_fkey"
+            columns: ["approved_order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_orders_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_orders_duty_session_id_fkey"
+            columns: ["duty_session_id"]
+            isOneToOne: false
+            referencedRelation: "duty_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      field_payments: {
+        Row: {
+          amount: number
+          attachment_url: string | null
+          created_at: string
+          created_by_user_id: string
+          dealer_id: string
+          id: string
+          mode: string
+          notes: string | null
+          payment_date: string
+          reference_no: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          attachment_url?: string | null
+          created_at?: string
+          created_by_user_id: string
+          dealer_id: string
+          id?: string
+          mode?: string
+          notes?: string | null
+          payment_date?: string
+          reference_no?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          attachment_url?: string | null
+          created_at?: string
+          created_by_user_id?: string
+          dealer_id?: string
+          id?: string
+          mode?: string
+          notes?: string | null
+          payment_date?: string
+          reference_no?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_payments_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_years: {
         Row: {
           closing_notes: string | null
@@ -583,6 +871,33 @@ export type Database = {
           is_closed?: boolean
           start_date?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      incentive_rules: {
+        Row: {
+          created_at: string
+          effective_from: string
+          id: string
+          min_km_threshold: number
+          per_km_rate: number
+          per_order_bonus: number
+        }
+        Insert: {
+          created_at?: string
+          effective_from?: string
+          id?: string
+          min_km_threshold?: number
+          per_km_rate?: number
+          per_order_bonus?: number
+        }
+        Update: {
+          created_at?: string
+          effective_from?: string
+          id?: string
+          min_km_threshold?: number
+          per_km_rate?: number
+          per_order_bonus?: number
         }
         Relationships: []
       }
@@ -858,6 +1173,47 @@ export type Database = {
             columns: ["dealer_id"]
             isOneToOne: false
             referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      location_points: {
+        Row: {
+          accuracy: number | null
+          duty_session_id: string
+          id: string
+          lat: number
+          lng: number
+          recorded_at: string
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          duty_session_id: string
+          id?: string
+          lat: number
+          lng: number
+          recorded_at?: string
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          duty_session_id?: string
+          id?: string
+          lat?: number
+          lng?: number
+          recorded_at?: string
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_points_duty_session_id_fkey"
+            columns: ["duty_session_id"]
+            isOneToOne: false
+            referencedRelation: "duty_sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -1696,6 +2052,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_field_order: {
+        Args: { _field_order_id: string; _order_number: string }
+        Returns: string
+      }
+      compute_incentive: {
+        Args: { _session_id: string; _total_km: number }
+        Returns: number
+      }
+      compute_session_km: { Args: { _session_id: string }; Returns: number }
+      finalize_duty_session: { Args: { _session_id: string }; Returns: Json }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
