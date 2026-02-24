@@ -1351,6 +1351,45 @@ export type Database = {
           },
         ]
       }
+      payment_allocations: {
+        Row: {
+          allocated_amount: number
+          created_at: string
+          id: string
+          invoice_id: string
+          payment_id: string
+        }
+        Insert: {
+          allocated_amount: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          payment_id: string
+        }
+        Update: {
+          allocated_amount?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          payment_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payment_allocations_payment_id_fkey"
+            columns: ["payment_id"]
+            isOneToOne: false
+            referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -2092,6 +2131,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      record_payment_atomic: {
+        Args: {
+          p_amount: number
+          p_created_by?: string
+          p_dealer_id: string
+          p_net_amount?: number
+          p_notes?: string
+          p_payment_date: string
+          p_payment_mode: string
+          p_reference_number?: string
+          p_tcs_amount?: number
+          p_tcs_rate?: number
+          p_tds_amount?: number
+          p_tds_rate?: number
+        }
+        Returns: Json
       }
       void_invoice_atomic: {
         Args: { p_invoice_id: string; p_reason: string; p_voided_by: string }
