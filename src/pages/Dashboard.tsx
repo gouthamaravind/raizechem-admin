@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format, startOfMonth, startOfDay } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
-import { useDemoMode } from "@/hooks/useDemoMode";
-import { MOCK_DASHBOARD } from "@/lib/mock-data";
 
 function useDashboardStats() {
   return useQuery({
@@ -91,11 +89,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const { isDemoMode } = useDemoMode();
-  const { data: realData, isLoading: realLoading } = useDashboardStats();
-
-  const data = isDemoMode ? MOCK_DASHBOARD : realData;
-  const isLoading = isDemoMode ? false : realLoading;
+  const { data, isLoading } = useDashboardStats();
 
   const stats = [
     { title: "Today's Orders", value: data ? String(data.todayOrders) : "—", icon: ShoppingCart, color: "text-primary" },
