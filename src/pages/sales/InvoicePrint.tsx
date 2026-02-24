@@ -2,8 +2,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Download } from "lucide-react";
+import { Printer, ArrowLeft, Download, FileText } from "lucide-react";
 import { COMPANY_STATE_CODE } from "@/lib/gst";
+import { toast } from "sonner";
 
 function numberToWords(num: number): string {
   if (num === 0) return "Zero";
@@ -326,6 +327,26 @@ export default function InvoicePrint() {
     URL.revokeObjectURL(url);
   };
 
+  const downloadPDF = async () => {
+    try {
+      toast.info("Generating PDF...");
+      const { data, error } = await supabase.functions.invoke("generate-pdf", {
+        body: { type: "invoice", id },
+      });
+      if (error) throw error;
+      // data is HTML string, open in new window for print-to-PDF
+      const w = window.open("", "_blank");
+      if (w) {
+        w.document.write(typeof data === "string" ? data : JSON.stringify(data));
+        w.document.close();
+        setTimeout(() => w.print(), 500);
+      }
+      toast.success("PDF ready — use Print > Save as PDF");
+    } catch (e: any) {
+      toast.error("PDF generation failed: " + e.message);
+    }
+  };
+
   const templateProps = { inv, dealer, items, company, isIntra, placeOfSupply };
 
   return (
@@ -333,6 +354,7 @@ export default function InvoicePrint() {
       <div className="print:hidden fixed top-0 left-0 right-0 bg-background border-b z-50 p-3 flex gap-2 items-center">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-1" />Back</Button>
         <Button size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print</Button>
+        <Button variant="outline" size="sm" onClick={downloadPDF}><FileText className="h-4 w-4 mr-1" />PDF</Button>
         <Button variant="outline" size="sm" onClick={exportEwayBill}><Download className="h-4 w-4 mr-1" />E-Way Bill JSON</Button>
         <span className="ml-auto text-xs text-muted-foreground">Template: {template}</span>
       </div>
