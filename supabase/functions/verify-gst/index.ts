@@ -37,11 +37,17 @@ Deno.serve(async (req) => {
     });
 
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
-    if (claimsErr || !claimsData?.claims) {
-      return json({ success: false, error: "Unauthorized" }, 401);
+    let userId: string;
+    try {
+      const { data: claimsData, error: claimsErr } = await userClient.auth.getClaims(token);
+      if (claimsErr || !claimsData?.claims) {
+        return json({ success: false, error: "Unauthorized" }, 401);
+      }
+      userId = claimsData.claims.sub as string;
+    } catch (authErr) {
+      console.error("Auth error:", authErr);
+      return json({ success: false, error: "Unauthorized – session expired, please re-login" }, 401);
     }
-    const userId = claimsData.claims.sub as string;
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
