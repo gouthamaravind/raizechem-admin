@@ -173,7 +173,7 @@ export default function Dashboard() {
             <CardContent>
               {isLoading ? (
                 <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-              ) : !data?.recentOrders.length ? (
+              ) : !data?.recentOrders?.length ? (
                 <p className="text-muted-foreground text-sm text-center py-6">No orders yet</p>
               ) : (
                 <div className="space-y-3">
@@ -205,7 +205,7 @@ export default function Dashboard() {
             <CardContent>
               {isLoading ? (
                 <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-              ) : !data?.recentPayments.length ? (
+              ) : !data?.recentPayments?.length ? (
                 <p className="text-muted-foreground text-sm text-center py-6">No payments yet</p>
               ) : (
                 <div className="space-y-3">
@@ -237,7 +237,7 @@ export default function Dashboard() {
             <CardContent>
               {isLoading ? (
                 <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
-              ) : !data?.overdueInvoices.length ? (
+              ) : !data?.overdueInvoices?.length ? (
                 <p className="text-muted-foreground text-sm text-center py-6">No overdue invoices 🎉</p>
               ) : (
                 <div className="space-y-3">
@@ -274,7 +274,7 @@ export default function Dashboard() {
           <CardContent>
             {isLoading ? (
               <Skeleton className="h-48 w-full" />
-            ) : !data?.topProducts.length ? (
+            ) : !data?.topProducts?.length ? (
               <p className="text-muted-foreground text-sm text-center py-8">No product data yet.</p>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
