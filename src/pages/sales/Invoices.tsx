@@ -12,10 +12,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Trash2, Download, Printer } from "lucide-react";
+import { Search, Plus, Trash2, Download, Printer, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { calculateGST } from "@/lib/gst";
+import { useVoidTransaction } from "@/hooks/useVoidTransaction";
+import { VoidDialog } from "@/components/VoidDialog";
 
 type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string };
 
@@ -26,11 +28,18 @@ function getFinancialYear(): string {
 }
 
 export default function Invoices() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+
+  const voidMutation = useVoidTransaction({
+    table: "invoices",
+    invalidateKeys: [["invoices"], ["outstanding-invoices"]],
+  });
+  const canVoid = hasRole("admin") || hasRole("accounts");
   const [dealerId, setDealerId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [items, setItems] = useState<InvItem[]>([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
@@ -238,8 +247,13 @@ export default function Invoices() {
                       <TableCell>₹{Number(inv.sgst_total).toFixed(2)}</TableCell>
                       <TableCell>₹{Number(inv.igst_total).toFixed(2)}</TableCell>
                       <TableCell className="font-semibold">₹{Number(inv.total_amount).toLocaleString("en-IN")}</TableCell>
-                      <TableCell><Badge variant={inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon" onClick={() => navigate(`/sales/invoices/${inv.id}/print`)}><Printer className="h-4 w-4" /></Button></TableCell>
+                      <TableCell><Badge variant={inv.status === "void" ? "destructive" : inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge></TableCell>
+                      <TableCell className="flex gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => navigate(`/sales/invoices/${inv.id}/print`)}><Printer className="h-4 w-4" /></Button>
+                        {canVoid && inv.status !== "void" && (
+                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: inv.id, label: inv.invoice_number })}><Ban className="h-4 w-4" /></Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -248,6 +262,14 @@ export default function Invoices() {
           </CardContent>
         </Card>
       </div>
+
+      <VoidDialog
+        open={!!voidTarget}
+        onOpenChange={(v) => { if (!v) setVoidTarget(null); }}
+        onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
+        isPending={voidMutation.isPending}
+        title={`Invoice ${voidTarget?.label || ""}`}
+      />
     </DashboardLayout>
   );
 }

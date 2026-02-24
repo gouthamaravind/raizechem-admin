@@ -11,17 +11,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, Plus, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { calculateGST } from "@/lib/gst";
+import { useVoidTransaction } from "@/hooks/useVoidTransaction";
+import { VoidDialog } from "@/components/VoidDialog";
 
 type ReturnItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string };
 
 export default function PurchaseReturns() {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+
+  const voidMutation = useVoidTransaction({
+    table: "debit_notes",
+    invalidateKeys: [["debit-notes"]],
+  });
+  const canVoid = hasRole("admin") || hasRole("accounts");
   const [piId, setPiId] = useState("");
   const [reason, setReason] = useState("");
   const [items, setItems] = useState<ReturnItem[]>([]);
@@ -166,7 +176,7 @@ export default function PurchaseReturns() {
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No debit notes yet.</p> : (
               <Table>
-                <TableHeader><TableRow><TableHead>DN #</TableHead><TableHead>Invoice</TableHead><TableHead>Supplier</TableHead><TableHead>Date</TableHead><TableHead>Total</TableHead><TableHead>Reason</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>DN #</TableHead><TableHead>Invoice</TableHead><TableHead>Supplier</TableHead><TableHead>Date</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead>Reason</TableHead><TableHead></TableHead></TableRow></TableHeader>
                 <TableBody>
                   {filtered.map((dn: any) => (
                     <TableRow key={dn.id}>
@@ -175,7 +185,13 @@ export default function PurchaseReturns() {
                       <TableCell>{dn.suppliers?.name}</TableCell>
                       <TableCell>{dn.debit_date}</TableCell>
                       <TableCell>₹{Number(dn.total_amount).toLocaleString("en-IN")}</TableCell>
+                      <TableCell><Badge variant={dn.status === "void" ? "destructive" : "default"}>{dn.status || "active"}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{dn.reason || "—"}</TableCell>
+                      <TableCell>
+                        {canVoid && dn.status !== "void" && (
+                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: dn.id, label: dn.debit_note_number })}><Ban className="h-4 w-4" /></Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -184,6 +200,14 @@ export default function PurchaseReturns() {
           </CardContent>
         </Card>
       </div>
+
+      <VoidDialog
+        open={!!voidTarget}
+        onOpenChange={(v) => { if (!v) setVoidTarget(null); }}
+        onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
+        isPending={voidMutation.isPending}
+        title={`Debit Note ${voidTarget?.label || ""}`}
+      />
     </DashboardLayout>
   );
 }
