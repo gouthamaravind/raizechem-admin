@@ -43,6 +43,11 @@ import SalaryComponents from "./pages/hr/SalaryComponents";
 import HrPayroll from "./pages/hr/Payroll";
 import HrPayslips from "./pages/hr/Payslips";
 import AuditLogs from "./pages/settings/AuditLogs";
+import FieldOpsSessions from "./pages/fieldops/Sessions";
+import FieldOpsLocations from "./pages/fieldops/Locations";
+import FieldOpsVisits from "./pages/fieldops/Visits";
+import FieldOpsFieldOrders from "./pages/fieldops/FieldOrders";
+import FieldOpsPayments from "./pages/fieldops/FieldPayments";
 import MobileLogin from "./pages/mobile/MobileLogin";
 import MobileHome from "./pages/mobile/MobileHome";
 import MobileDuty from "./pages/mobile/MobileDuty";
@@ -104,6 +109,12 @@ const App = () => (
             <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
             <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
             <Route path="/hr/payslips" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayslips /></RoleGuard></P>} />
+            {/* Field Ops Routes */}
+            <Route path="/fieldops/sessions" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsSessions /></RoleGuard></P>} />
+            <Route path="/fieldops/locations/:sessionId" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsLocations /></RoleGuard></P>} />
+            <Route path="/fieldops/visits" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsVisits /></RoleGuard></P>} />
+            <Route path="/fieldops/field-orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsFieldOrders /></RoleGuard></P>} />
+            <Route path="/fieldops/payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsPayments /></RoleGuard></P>} />
             {/* Mobile Routes */}
             <Route path="/m/login" element={<MobileLogin />} />
             <Route path="/m/home" element={<M><MobileHome /></M>} />
