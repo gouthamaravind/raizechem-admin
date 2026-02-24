@@ -24,7 +24,10 @@ export default function Outstanding() {
     const dueDate = inv.due_date ? new Date(inv.due_date) : new Date(inv.invoice_date);
     const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
     let bucket = "Current";
-    if (daysOverdue > 90) bucket = "90+ days";
+    if (daysOverdue > 360) bucket = "360+ days";
+    else if (daysOverdue > 180) bucket = "181-360 days";
+    else if (daysOverdue > 120) bucket = "121-180 days";
+    else if (daysOverdue > 90) bucket = "91-120 days";
     else if (daysOverdue > 60) bucket = "60-90 days";
     else if (daysOverdue > 30) bucket = "30-60 days";
     else if (daysOverdue > 0) bucket = "0-30 days";
@@ -42,7 +45,7 @@ export default function Outstanding() {
   });
 
   const totalOutstanding = agingData.reduce((s: number, i: any) => s + i.outstanding, 0);
-  const bucketColors: Record<string, string> = { "Current": "default", "0-30 days": "secondary", "30-60 days": "outline", "60-90 days": "destructive", "90+ days": "destructive" };
+  const bucketColors: Record<string, string> = { "Current": "default", "0-30 days": "secondary", "30-60 days": "outline", "60-90 days": "destructive", "91-120 days": "destructive", "121-180 days": "destructive", "181-360 days": "destructive", "360+ days": "destructive" };
 
   const exportData = agingData.map((i: any) => ({
     invoice: i.invoice_number, dealer: i.dealers?.name, date: i.invoice_date,

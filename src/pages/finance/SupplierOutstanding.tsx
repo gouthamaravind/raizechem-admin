@@ -29,7 +29,10 @@ export default function SupplierOutstanding() {
     const piDate = new Date(inv.pi_date);
     const daysOld = Math.floor((now.getTime() - piDate.getTime()) / (1000 * 60 * 60 * 24));
     let bucket = "Current";
-    if (daysOld > 90) bucket = "90+ days";
+    if (daysOld > 360) bucket = "360+ days";
+    else if (daysOld > 180) bucket = "181-360 days";
+    else if (daysOld > 120) bucket = "121-180 days";
+    else if (daysOld > 90) bucket = "91-120 days";
     else if (daysOld > 60) bucket = "60-90 days";
     else if (daysOld > 30) bucket = "30-60 days";
     else if (daysOld > 0) bucket = "0-30 days";
@@ -46,7 +49,7 @@ export default function SupplierOutstanding() {
   });
 
   const totalOutstanding = agingData.reduce((s: number, i: any) => s + i.outstanding, 0);
-  const bucketColors: Record<string, string> = { Current: "default", "0-30 days": "secondary", "30-60 days": "outline", "60-90 days": "destructive", "90+ days": "destructive" };
+  const bucketColors: Record<string, string> = { Current: "default", "0-30 days": "secondary", "30-60 days": "outline", "60-90 days": "destructive", "91-120 days": "destructive", "121-180 days": "destructive", "181-360 days": "destructive", "360+ days": "destructive" };
 
   const exportData = agingData.map((i: any) => ({
     pi_number: i.pi_number, supplier: i.suppliers?.name, date: i.pi_date,
