@@ -945,6 +945,33 @@ export type Database = {
         }
         Relationships: []
       }
+      gst_verification_logs: {
+        Row: {
+          created_at: string
+          gst_no: string
+          id: string
+          response_json: Json | null
+          status: string
+          verified_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          gst_no: string
+          id?: string
+          response_json?: Json | null
+          status: string
+          verified_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          gst_no?: string
+          id?: string
+          response_json?: Json | null
+          status?: string
+          verified_by?: string | null
+        }
+        Relationships: []
+      }
       incentive_rules: {
         Row: {
           created_at: string
