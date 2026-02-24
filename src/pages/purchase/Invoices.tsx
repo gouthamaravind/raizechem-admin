@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ type PIItem = { product_id: string; qty: number; rate: number; gst_rate: number;
 export default function PurchaseInvoices() {
   const { user, hasRole } = useAuth();
   const qc = useQueryClient();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
 
@@ -33,6 +35,28 @@ export default function PurchaseInvoices() {
   const [piNumber, setPiNumber] = useState("");
   const [piDate, setPiDate] = useState(new Date().toISOString().split("T")[0]);
   const [items, setItems] = useState<PIItem[]>([{ product_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", batch_no: "", mfg_date: "", exp_date: "" }]);
+
+  // Handle PO → PI conversion
+  useEffect(() => {
+    const convertPO = (location.state as any)?.convertPO;
+    if (convertPO) {
+      setSupplierId(convertPO.supplier_id);
+      setDialogOpen(true);
+      // Load PO items
+      supabase.from("purchase_order_items").select("*, products(name, purchase_price_default, gst_rate, hsn_code)")
+        .eq("purchase_order_id", convertPO.id).then(({ data }) => {
+          if (data && data.length > 0) {
+            setItems(data.map((item: any) => ({
+              product_id: item.product_id, qty: item.qty,
+              rate: Number(item.rate), gst_rate: Number(item.products?.gst_rate || 18),
+              hsn_code: item.products?.hsn_code || "", batch_no: "", mfg_date: "", exp_date: "",
+            })));
+          }
+        });
+      // Clear navigation state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["purchase-invoices"],

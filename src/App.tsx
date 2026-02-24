@@ -43,6 +43,7 @@ import SalaryComponents from "./pages/hr/SalaryComponents";
 import HrPayroll from "./pages/hr/Payroll";
 import HrPayslips from "./pages/hr/Payslips";
 import AuditLogs from "./pages/settings/AuditLogs";
+import OpeningBalances from "./pages/settings/OpeningBalances";
 import FieldOpsSessions from "./pages/fieldops/Sessions";
 import FieldOpsLocations from "./pages/fieldops/Locations";
 import FieldOpsVisits from "./pages/fieldops/Visits";
@@ -98,6 +99,7 @@ const App = () => (
             <Route path="/settings/users" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><UserManagement /></RoleGuard></P>} />
             <Route path="/settings/financial-years" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><FinancialYears /></RoleGuard></P>} />
             <Route path="/settings/audit-logs" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><AuditLogs /></RoleGuard></P>} />
+            <Route path="/settings/opening-balances" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><OpeningBalances /></RoleGuard></P>} />
             <Route path="/reports/sales-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><SalesRegister /></RoleGuard></P>} />
             <Route path="/reports/purchase-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><PurchaseRegister /></RoleGuard></P>} />
             <Route path="/reports/outstanding-aging" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><OutstandingAging /></RoleGuard></P>} />

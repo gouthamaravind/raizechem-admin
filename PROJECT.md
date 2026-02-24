@@ -126,17 +126,17 @@ supabase/
 
 | Page | Route | Purpose |
 |------|-------|---------|
-| Orders | `/sales/orders` | Sales order creation and management |
+| Orders | `/sales/orders` | Sales order creation with sequential numbering (`ORD/YYYY/NNN`), Convert to Invoice workflow |
 | Invoices | `/sales/invoices` | GST invoice creation via `create_invoice_atomic` RPC — auto-numbers, stock deduction, ledger entries |
-| Returns | `/sales/returns` | Credit notes against invoices |
+| Returns | `/sales/returns` | Credit notes via `create_credit_note_atomic` RPC — atomic stock restoration + ledger |
 
 ### 3. Purchase
 
 | Page | Route | Purpose |
 |------|-------|---------|
-| Orders | `/purchase/orders` | Purchase order management |
-| Invoices | `/purchase/invoices` | Purchase invoice recording |
-| Returns | `/purchase/returns` | Debit notes against purchase invoices |
+| Orders | `/purchase/orders` | Purchase order management with sequential numbering (`PO/YYYY/NNN`), Convert to Purchase Invoice workflow |
+| Invoices | `/purchase/invoices` | Purchase invoice via `create_purchase_invoice_atomic` RPC — batch creation, stock-in, supplier ledger |
+| Returns | `/purchase/returns` | Debit notes via `create_debit_note_atomic` RPC — atomic stock deduction + supplier ledger |
 
 ### 4. Inventory
 
@@ -155,7 +155,7 @@ supabase/
 | Dealer Payments | `/finance/payments` | Payment recording via `record_payment_atomic` (FIFO allocation), TDS/TCS, void support |
 | Supplier Ledger | `/finance/supplier-ledger` | Supplier transaction history |
 | Supplier Outstanding | `/finance/supplier-outstanding` | Unpaid purchase invoices |
-| Supplier Payments | `/finance/supplier-payments` | Supplier payment tracking |
+| Supplier Payments | `/finance/supplier-payments` | Supplier payment via `record_supplier_payment_atomic` (FIFO allocation to oldest unpaid purchase invoices) |
 
 ### 6. Reports
 
@@ -201,9 +201,10 @@ supabase/
 
 | Page | Route | Purpose |
 |------|-------|---------|
-| Company | `/settings/company` | Company profile, GSTIN, bank details, invoice series |
+| Company | `/settings/company` | Company profile, GSTIN, bank details, invoice series, sequential counters |
 | Users | `/settings/users` | User management with role assignment |
 | Financial Years | `/settings/financial-years` | FY management and closing |
+| Opening Balances | `/settings/opening-balances` | Manage dealer/supplier opening balances per FY |
 | Audit Logs | `/settings/audit-logs` | Full audit trail of all data changes |
 
 ---
@@ -266,38 +267,30 @@ supabase/
 
 All critical financial operations use PostgreSQL functions with row-level locking for concurrency safety:
 
-### `create_invoice_atomic`
-- Locks `company_settings` for sequential invoice numbering
-- Validates and locks all batch rows (`SELECT FOR UPDATE`)
-- Creates invoice + items + inventory transactions + ledger entry
-- Deducts batch stock (CHECK constraint prevents negative)
-- Single transaction — all or nothing
+### Sales Side
+| RPC | Purpose |
+|-----|---------|
+| `create_invoice_atomic` | Sequential numbering, batch stock deduction, invoice + items + inventory txn + ledger entry |
+| `record_payment_atomic` | FIFO allocation to oldest unpaid invoices, payment_allocations, ledger entry |
+| `void_invoice_atomic` | Marks void, reverses batch stock, creates reversal inventory txn + ledger |
+| `void_payment_atomic` | Marks void, reverses allocations using `payment_allocations`, reverses ledger |
+| `create_credit_note_atomic` | Sequential CN numbering, stock restoration, dealer ledger credit entry |
+| `void_credit_note_atomic` | Reverses stock restoration, reverses dealer ledger entry |
 
-### `record_payment_atomic`
-- Inserts payment and ledger entry
-- FIFO allocates to oldest unpaid invoices (`FOR UPDATE`)
-- Creates `payment_allocations` records
-- Updates invoice `amount_paid` and status
-- Returns allocation breakdown
+### Purchase Side
+| RPC | Purpose |
+|-----|---------|
+| `create_purchase_invoice_atomic` | Batch creation/upsert, stock-in via inventory txn, supplier ledger debit entry |
+| `record_supplier_payment_atomic` | FIFO allocation to oldest unpaid purchase invoices, supplier ledger credit entry |
+| `void_purchase_invoice_atomic` | Reverses batch stock, inventory txn, supplier ledger entry |
+| `create_debit_note_atomic` | Sequential DN numbering, stock deduction, supplier ledger credit entry |
+| `void_debit_note_atomic` | Restores stock, reverses supplier ledger entry |
 
-### `void_invoice_atomic`
-- Marks invoice void, reverses ledger entry
-- Restores batch stock for each line item
-- Creates reversal inventory transactions
-
-### `void_payment_atomic`
-- Marks payment void, reverses ledger entry
-- Uses `payment_allocations` for exact invoice rollback
-- Deletes allocation records
-
-### `approve_field_order`
-- Converts field order → main pipeline order
-- Copies items and updates field order status
-
-### `finalize_duty_session`
-- Computes total KM via Haversine formula
-- Calculates incentive based on rules
-- Updates session with final stats
+### Field Operations
+| RPC | Purpose |
+|-----|---------|
+| `approve_field_order` | Converts field order → main pipeline order, copies items |
+| `finalize_duty_session` | Computes total KM via Haversine, calculates incentive |
 
 ---
 
@@ -417,31 +410,37 @@ All mobile routes are prefixed with `/m/` and protected by `MobileGuard`.
 ### Supabase RPC Functions
 
 ```typescript
-// Create Invoice
+// === Sales ===
 supabase.rpc("create_invoice_atomic", {
   p_dealer_id, p_invoice_date, p_subtotal,
   p_cgst_total, p_sgst_total, p_igst_total, p_total_amount,
   p_created_by, p_items: [{product_id, batch_id, qty, rate, ...}],
-  // Optional: p_transport_mode, p_vehicle_no, p_dispatch_from, p_delivery_to
 })
-
-// Record Payment (FIFO)
 supabase.rpc("record_payment_atomic", {
   p_dealer_id, p_payment_date, p_amount, p_payment_mode,
   p_reference_number, p_notes, p_created_by,
   p_tds_rate, p_tds_amount, p_tcs_rate, p_tcs_amount, p_net_amount
 })
-
-// Void Invoice
 supabase.rpc("void_invoice_atomic", { p_invoice_id, p_reason, p_voided_by })
-
-// Void Payment
 supabase.rpc("void_payment_atomic", { p_payment_id, p_reason, p_voided_by })
+supabase.rpc("create_credit_note_atomic", { p_invoice_id, p_reason, p_created_by, p_items })
+supabase.rpc("void_credit_note_atomic", { p_cn_id, p_reason, p_voided_by })
 
-// Approve Field Order
+// === Purchase ===
+supabase.rpc("create_purchase_invoice_atomic", {
+  p_supplier_id, p_pi_number, p_pi_date, p_subtotal,
+  p_cgst_total, p_sgst_total, p_igst_total, p_total_amount,
+  p_created_by, p_items: [{product_id, batch_no, qty, rate, ...}],
+})
+supabase.rpc("record_supplier_payment_atomic", {
+  p_supplier_id, p_payment_date, p_amount, p_mode, p_reference_no, p_notes
+})
+supabase.rpc("void_purchase_invoice_atomic", { p_pi_id, p_reason, p_voided_by })
+supabase.rpc("create_debit_note_atomic", { p_purchase_invoice_id, p_reason, p_created_by, p_items })
+supabase.rpc("void_debit_note_atomic", { p_dn_id, p_reason, p_voided_by })
+
+// === Field Ops ===
 supabase.rpc("approve_field_order", { _field_order_id, _order_number })
-
-// Finalize Duty Session
 supabase.rpc("finalize_duty_session", { _session_id })
 ```
 
