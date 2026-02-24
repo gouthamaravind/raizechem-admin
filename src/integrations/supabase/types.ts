@@ -2064,6 +2064,26 @@ export type Database = {
         Returns: number
       }
       compute_session_km: { Args: { _session_id: string }; Returns: number }
+      create_invoice_atomic: {
+        Args: {
+          p_cgst_total: number
+          p_created_by: string
+          p_dealer_id: string
+          p_delivery_to?: string
+          p_dispatch_from?: string
+          p_due_date?: string
+          p_igst_total: number
+          p_invoice_date: string
+          p_items?: Json
+          p_place_of_supply?: string
+          p_sgst_total: number
+          p_subtotal: number
+          p_total_amount: number
+          p_transport_mode?: string
+          p_vehicle_no?: string
+        }
+        Returns: Json
+      }
       finalize_duty_session: { Args: { _session_id: string }; Returns: Json }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
@@ -2072,6 +2092,14 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      void_invoice_atomic: {
+        Args: { p_invoice_id: string; p_reason: string; p_voided_by: string }
+        Returns: undefined
+      }
+      void_payment_atomic: {
+        Args: { p_payment_id: string; p_reason: string; p_voided_by: string }
+        Returns: undefined
       }
     }
     Enums: {
