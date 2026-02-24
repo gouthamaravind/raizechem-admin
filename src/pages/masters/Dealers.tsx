@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Pencil, Download, Copy } from "lucide-react";
+import { Search, Plus, Pencil, Download, Copy, RefreshCw, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
@@ -60,6 +60,10 @@ function validatePhone(phone: string): boolean {
   return /^[+]?[\d\s-]{10,15}$/.test(phone);
 }
 
+function isGstinValid(gstin: string): boolean {
+  return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin);
+}
+
 export default function Dealers() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -68,6 +72,9 @@ export default function Dealers() {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const [sameAsBilling, setSameAsBilling] = useState(false);
+  const [gstFetching, setGstFetching] = useState(false);
+  const [gstWarning, setGstWarning] = useState<string | null>(null);
+  const [gstVerifiedAt, setGstVerifiedAt] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const { data: dealers = [], isLoading } = useQuery({
@@ -118,7 +125,7 @@ export default function Dealers() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["dealers"] });
-      setDialogOpen(false); setEditId(null); setForm(emptyForm); setErrors({});
+      setDialogOpen(false); setEditId(null); setForm(emptyForm); setErrors({}); setGstWarning(null); setGstVerifiedAt(null);
       toast.success(editId ? "Dealer updated" : "Dealer added");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -143,7 +150,52 @@ export default function Dealers() {
       shipping_pincode: d.shipping_pincode || "", price_level_id: d.price_level_id || "",
     });
     setErrors({});
+    setGstWarning(d.gst_status && d.gst_status !== "Active" ? `GST Status: ${d.gst_status}` : null);
+    setGstVerifiedAt(d.gst_last_verified_at || null);
     setDialogOpen(true);
+  };
+
+  const handleGstFetch = async () => {
+    if (!isGstinValid(form.gst_number)) {
+      toast.error("Enter a valid 15-character GSTIN first");
+      return;
+    }
+    setGstFetching(true);
+    setGstWarning(null);
+    try {
+      const { data: fnData, error: fnError } = await supabase.functions.invoke("gstin-lookup", {
+        body: { gstin: form.gst_number },
+      });
+
+      if (fnError) throw new Error(fnError.message || "Lookup failed");
+      if (!fnData?.success) throw new Error(fnData?.error || "Lookup failed");
+
+      const d = fnData.data;
+      const stateCode = d.state_code || form.gst_number.substring(0, 2);
+      const stateName = INDIAN_STATES.find((s) => s.code === stateCode)?.name || "";
+
+      setForm((f) => ({
+        ...f,
+        name: d.legal_name || f.name,
+        contact_person: d.trade_name || f.contact_person,
+        state_code: stateCode,
+        state: stateName,
+        address_line1: typeof d.address === "string" ? d.address : f.address_line1,
+      }));
+
+      setGstVerifiedAt(new Date().toISOString());
+
+      if (d.status && d.status !== "Active") {
+        setGstWarning(`GST Status: ${d.status} — This GSTIN is not active. Proceed with caution.`);
+        toast.warning(`GST status is "${d.status}" — not Active`);
+      } else {
+        toast.success("GST details fetched successfully");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to fetch GST details");
+    } finally {
+      setGstFetching(false);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -157,6 +209,9 @@ export default function Dealers() {
       submitData.shipping_city = form.city;
       submitData.shipping_state = form.state;
       submitData.shipping_pincode = form.pincode;
+    }
+    if (gstVerifiedAt) {
+      submitData.gst_last_verified_at = gstVerifiedAt;
     }
     mutation.mutate(editId ? { ...submitData, id: editId } : submitData);
   };
@@ -175,7 +230,6 @@ export default function Dealers() {
   const handleStateChange = (stateCode: string) => {
     const state = INDIAN_STATES.find((s) => s.code === stateCode);
     setForm((f) => ({ ...f, state_code: stateCode, state: state?.name || "" }));
-    // Auto-fill GSTIN state prefix
     if (form.gst_number && form.gst_number.length >= 2) {
       setForm((f) => ({ ...f, gst_number: stateCode + f.gst_number.slice(2) }));
     }
@@ -186,7 +240,7 @@ export default function Dealers() {
     if (errors[key as keyof FormErrors]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
-  const FieldError = ({ field }: { field: keyof FormErrors }) => 
+  const FieldError = ({ field }: { field: keyof FormErrors }) =>
     errors[field] ? <p className="text-xs text-destructive mt-1">{errors[field]}</p> : null;
 
   return (
@@ -199,10 +253,19 @@ export default function Dealers() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setSameAsBilling(false); } }}>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setSameAsBilling(false); setGstWarning(null); setGstVerifiedAt(null); } }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Dealer</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>{editId ? "Edit Dealer" : "Add Dealer"}</DialogTitle></DialogHeader>
+
+                {/* GST Warning Banner */}
+                {gstWarning && (
+                  <div className="flex items-center gap-2 rounded-md border border-orange-300 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800 px-4 py-3 text-sm text-orange-800 dark:text-orange-300">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>{gstWarning}</span>
+                  </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Basic Info */}
                   <fieldset className="space-y-3">
@@ -213,10 +276,41 @@ export default function Dealers() {
                         <Input required value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Mehta Chemicals Ltd" className={errors.name ? "border-destructive" : ""} />
                         <FieldError field="name" />
                       </div>
-                      <div className="space-y-1">
+                      <div className="col-span-2 space-y-1">
                         <Label>GSTIN</Label>
-                        <Input value={form.gst_number} onChange={(e) => set("gst_number", e.target.value.toUpperCase())} placeholder="e.g. 36AABCT1332E1ZT" maxLength={15} className={`font-mono ${errors.gst_number ? "border-destructive" : ""}`} />
+                        <div className="flex gap-2">
+                          <Input
+                            value={form.gst_number}
+                            onChange={(e) => set("gst_number", e.target.value.toUpperCase())}
+                            placeholder="e.g. 36AABCT1332E1ZT"
+                            maxLength={15}
+                            className={`font-mono flex-1 ${errors.gst_number ? "border-destructive" : ""}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={!isGstinValid(form.gst_number) || gstFetching}
+                            onClick={handleGstFetch}
+                            className="shrink-0"
+                          >
+                            {gstFetching ? (
+                              <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                            ) : gstVerifiedAt ? (
+                              <RefreshCw className="h-4 w-4 mr-1" />
+                            ) : (
+                              <ShieldCheck className="h-4 w-4 mr-1" />
+                            )}
+                            {gstFetching ? "Fetching..." : gstVerifiedAt ? "Re-Verify" : "Fetch GST"}
+                          </Button>
+                        </div>
                         <FieldError field="gst_number" />
+                        {gstVerifiedAt && (
+                          <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-1">
+                            <ShieldCheck className="h-3 w-3" />
+                            Verified {new Date(gstVerifiedAt).toLocaleDateString("en-IN")}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <Label>Contact Person</Label>
@@ -340,7 +434,12 @@ export default function Dealers() {
                     {filtered.map((d: any) => (
                       <TableRow key={d.id}>
                         <TableCell className="font-medium">{d.name}</TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{d.gst_number || "—"}</TableCell>
+                        <TableCell className="text-xs font-mono text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            {d.gst_number || "—"}
+                            {d.gst_last_verified_at && <ShieldCheck className="h-3 w-3 text-green-500" />}
+                          </span>
+                        </TableCell>
                         <TableCell className="text-sm">{d.contact_person || "—"}</TableCell>
                          <TableCell className="text-sm">{[d.city, d.state].filter(Boolean).join(", ") || "—"}</TableCell>
                          <TableCell>{d.price_level_id ? <Badge variant="outline">{priceLevelMap[d.price_level_id] || "—"}</Badge> : <span className="text-muted-foreground text-xs">Default</span>}</TableCell>
