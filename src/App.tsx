@@ -43,10 +43,22 @@ import SalaryComponents from "./pages/hr/SalaryComponents";
 import HrPayroll from "./pages/hr/Payroll";
 import HrPayslips from "./pages/hr/Payslips";
 import AuditLogs from "./pages/settings/AuditLogs";
+import MobileLogin from "./pages/mobile/MobileLogin";
+import MobileHome from "./pages/mobile/MobileHome";
+import MobileDuty from "./pages/mobile/MobileDuty";
+import MobileDealers from "./pages/mobile/MobileDealers";
+import MobileCheckin from "./pages/mobile/MobileCheckin";
+import MobileCheckout from "./pages/mobile/MobileCheckout";
+import MobileOrders from "./pages/mobile/MobileOrders";
+import MobileNewOrder from "./pages/mobile/MobileNewOrder";
+import MobilePayments from "./pages/mobile/MobilePayments";
+import MobileNewPayment from "./pages/mobile/MobileNewPayment";
+import { MobileGuard } from "./components/mobile/MobileGuard";
 
 const queryClient = new QueryClient();
 
 const P = ({ children }: { children: React.ReactNode }) => <ProtectedRoute>{children}</ProtectedRoute>;
+const M = ({ children }: { children: React.ReactNode }) => <MobileGuard>{children}</MobileGuard>;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -92,6 +104,17 @@ const App = () => (
             <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
             <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
             <Route path="/hr/payslips" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayslips /></RoleGuard></P>} />
+            {/* Mobile Routes */}
+            <Route path="/m/login" element={<MobileLogin />} />
+            <Route path="/m/home" element={<M><MobileHome /></M>} />
+            <Route path="/m/duty" element={<M><MobileDuty /></M>} />
+            <Route path="/m/dealers" element={<M><MobileDealers /></M>} />
+            <Route path="/m/visits/checkin" element={<M><MobileCheckin /></M>} />
+            <Route path="/m/visits/checkout" element={<M><MobileCheckout /></M>} />
+            <Route path="/m/orders" element={<M><MobileOrders /></M>} />
+            <Route path="/m/orders/new" element={<M><MobileNewOrder /></M>} />
+            <Route path="/m/payments" element={<M><MobilePayments /></M>} />
+            <Route path="/m/payments/new" element={<M><MobileNewPayment /></M>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
