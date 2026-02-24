@@ -12,9 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, Plus, Pencil, Download } from "lucide-react";
+import { Search, Plus, Pencil, Download, Tags } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const emptyForm = {
   name: "", slug: "", hsn_code: "", unit: "KG", gst_rate: 18,
@@ -33,7 +34,29 @@ export default function Products() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [pricingProductId, setPricingProductId] = useState<string | null>(null);
+  const [levelPrices, setLevelPrices] = useState<Record<string, string>>({});
   const qc = useQueryClient();
+
+  // Fetch price levels
+  const { data: priceLevels = [] } = useQuery({
+    queryKey: ["price_levels"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("price_levels").select("*").order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Fetch all product price levels for display
+  const { data: allProductPrices = [] } = useQuery({
+    queryKey: ["product_price_levels"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("product_price_levels").select("*");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["products"],
@@ -85,6 +108,43 @@ export default function Products() {
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
   });
+
+  const savePricesMutation = useMutation({
+    mutationFn: async ({ productId, prices }: { productId: string; prices: Record<string, string> }) => {
+      // Upsert all price levels for this product
+      const upserts = Object.entries(prices)
+        .filter(([, val]) => val !== "" && Number(val) >= 0)
+        .map(([levelId, price]) => ({
+          product_id: productId,
+          price_level_id: levelId,
+          price: Number(price),
+        }));
+      
+      // Delete existing prices for this product first
+      await supabase.from("product_price_levels").delete().eq("product_id", productId);
+      
+      if (upserts.length > 0) {
+        const { error } = await supabase.from("product_price_levels").insert(upserts);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["product_price_levels"] });
+      setPricingProductId(null);
+      setLevelPrices({});
+      toast.success("Price levels saved");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const openPricing = (productId: string) => {
+    setPricingProductId(productId);
+    const existing: Record<string, string> = {};
+    allProductPrices.filter((pp: any) => pp.product_id === productId).forEach((pp: any) => {
+      existing[pp.price_level_id] = String(pp.price);
+    });
+    setLevelPrices(existing);
+  };
 
   const filtered = products.filter((p: any) => {
     const s = search.toLowerCase();
@@ -232,34 +292,74 @@ export default function Products() {
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No products found.</p> : (
               <div className="overflow-x-auto">
                 <Table>
-                  <TableHeader><TableRow>
-                    <TableHead>Name</TableHead><TableHead>HSN</TableHead><TableHead>Unit</TableHead>
-                    <TableHead>GST</TableHead><TableHead>Sale Price</TableHead><TableHead>Purchase Price</TableHead>
-                    <TableHead>Category</TableHead><TableHead>Alert Qty</TableHead><TableHead>Active</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow></TableHeader>
-                  <TableBody>
-                    {filtered.map((p: any) => (
-                      <TableRow key={p.id} className={!p.is_active ? "opacity-50" : ""}>
-                        <TableCell className="font-medium">{p.name}</TableCell>
-                        <TableCell className="text-xs font-mono text-muted-foreground">{p.hsn_code || "—"}</TableCell>
-                        <TableCell>{p.unit}</TableCell>
-                        <TableCell>{p.gst_rate}%</TableCell>
-                        <TableCell>₹{(p.sale_price || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell className="text-muted-foreground">₹{(p.purchase_price_default || 0).toLocaleString("en-IN")}</TableCell>
-                        <TableCell>{p.category ? <Badge variant="secondary">{p.category}</Badge> : "—"}</TableCell>
-                        <TableCell>{p.min_stock_alert_qty > 0 ? `${p.min_stock_alert_qty} ${p.unit}` : "—"}</TableCell>
-                        <TableCell><Switch checked={p.is_active} onCheckedChange={(v) => toggleActive.mutate({ id: p.id, is_active: v })} /></TableCell>
-                        <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    </DashboardLayout>
-  );
-}
+                   <TableHeader><TableRow>
+                     <TableHead>Name</TableHead><TableHead>HSN</TableHead><TableHead>Unit</TableHead>
+                     <TableHead>GST</TableHead><TableHead>Sale Price</TableHead><TableHead>Price Levels</TableHead>
+                     <TableHead>Category</TableHead><TableHead>Active</TableHead>
+                     <TableHead className="w-20"></TableHead>
+                   </TableRow></TableHeader>
+                   <TableBody>
+                     {filtered.map((p: any) => {
+                       const productPriceCount = allProductPrices.filter((pp: any) => pp.product_id === p.id).length;
+                       return (
+                       <TableRow key={p.id} className={!p.is_active ? "opacity-50" : ""}>
+                         <TableCell className="font-medium">{p.name}</TableCell>
+                         <TableCell className="text-xs font-mono text-muted-foreground">{p.hsn_code || "—"}</TableCell>
+                         <TableCell>{p.unit}</TableCell>
+                         <TableCell>{p.gst_rate}%</TableCell>
+                         <TableCell>₹{(p.sale_price || 0).toLocaleString("en-IN")}</TableCell>
+                         <TableCell>
+                           <Popover open={pricingProductId === p.id} onOpenChange={(open) => { if (open) openPricing(p.id); else { setPricingProductId(null); setLevelPrices({}); } }}>
+                             <PopoverTrigger asChild>
+                               <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                 <Tags className="h-3 w-3" />
+                                 {productPriceCount > 0 ? `${productPriceCount} set` : "Set"}
+                               </Button>
+                             </PopoverTrigger>
+                             <PopoverContent className="w-72" align="start">
+                               <div className="space-y-3">
+                                 <p className="text-sm font-semibold">Price Levels — {p.name}</p>
+                                 <p className="text-xs text-muted-foreground">Base sale price: ₹{(p.sale_price || 0).toLocaleString("en-IN")}</p>
+                                 {priceLevels.length === 0 ? (
+                                   <p className="text-xs text-muted-foreground">No price levels configured. Go to Masters → Price Levels to add them.</p>
+                                 ) : (
+                                   <div className="space-y-2">
+                                     {priceLevels.map((pl: any) => (
+                                       <div key={pl.id} className="flex items-center gap-2">
+                                         <Label className="text-xs w-24 shrink-0">{pl.name}</Label>
+                                         <Input
+                                           type="number" min={0} step="0.01"
+                                           className="h-8 text-xs"
+                                           placeholder={`₹ ${p.sale_price || 0}`}
+                                           value={levelPrices[pl.id] || ""}
+                                           onChange={(e) => setLevelPrices(prev => ({ ...prev, [pl.id]: e.target.value }))}
+                                         />
+                                       </div>
+                                     ))}
+                                     <Button size="sm" className="w-full mt-2" disabled={savePricesMutation.isPending}
+                                       onClick={() => savePricesMutation.mutate({ productId: p.id, prices: levelPrices })}>
+                                       {savePricesMutation.isPending ? "Saving..." : "Save Prices"}
+                                     </Button>
+                                   </div>
+                                 )}
+                               </div>
+                             </PopoverContent>
+                           </Popover>
+                         </TableCell>
+                         <TableCell>{p.category ? <Badge variant="secondary">{p.category}</Badge> : "—"}</TableCell>
+                         <TableCell><Switch checked={p.is_active} onCheckedChange={(v) => toggleActive.mutate({ id: p.id, is_active: v })} /></TableCell>
+                         <TableCell>
+                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                         </TableCell>
+                       </TableRow>
+                     );})}
+                   </TableBody>
+                 </Table>
+               </div>
+             )}
+           </CardContent>
+         </Card>
+       </div>
+     </DashboardLayout>
+   );
+ }

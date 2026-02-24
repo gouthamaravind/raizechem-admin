@@ -40,7 +40,7 @@ const emptyForm = {
   address_line1: "", address_line2: "", city: "", state: "", state_code: "",
   pincode: "", credit_limit: 0, payment_terms_days: 30,
   shipping_address_line1: "", shipping_address_line2: "", shipping_city: "",
-  shipping_state: "", shipping_pincode: "",
+  shipping_state: "", shipping_pincode: "", price_level_id: "",
 };
 
 type FormErrors = Partial<Record<keyof typeof emptyForm, string>>;
@@ -78,6 +78,17 @@ export default function Dealers() {
       return data;
     },
   });
+
+  const { data: priceLevels = [] } = useQuery({
+    queryKey: ["price_levels"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("price_levels").select("*").order("sort_order");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const priceLevelMap = Object.fromEntries(priceLevels.map((pl: any) => [pl.id, pl.name]));
 
   const validate = (): boolean => {
     const e: FormErrors = {};
@@ -129,7 +140,7 @@ export default function Dealers() {
       credit_limit: d.credit_limit || 0, payment_terms_days: d.payment_terms_days || 30,
       shipping_address_line1: d.shipping_address_line1 || "", shipping_address_line2: d.shipping_address_line2 || "",
       shipping_city: d.shipping_city || "", shipping_state: d.shipping_state || "",
-      shipping_pincode: d.shipping_pincode || "",
+      shipping_pincode: d.shipping_pincode || "", price_level_id: d.price_level_id || "",
     });
     setErrors({});
     setDialogOpen(true);
@@ -138,7 +149,8 @@ export default function Dealers() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    const submitData = { ...form };
+    const submitData: any = { ...form };
+    if (!submitData.price_level_id) submitData.price_level_id = null;
     if (sameAsBilling) {
       submitData.shipping_address_line1 = form.address_line1;
       submitData.shipping_address_line2 = form.address_line2;
@@ -272,22 +284,33 @@ export default function Dealers() {
                     )}
                   </fieldset>
 
-                  {/* Commercial Terms */}
-                  <fieldset className="space-y-3 border-t pt-4">
-                    <legend className="text-sm font-semibold text-foreground">Commercial Terms</legend>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label>Credit Limit (₹)</Label>
-                        <Input type="number" value={form.credit_limit} onChange={(e) => set("credit_limit", Number(e.target.value))} min={0} className={errors.credit_limit ? "border-destructive" : ""} />
-                        <FieldError field="credit_limit" />
-                      </div>
-                      <div className="space-y-1">
-                        <Label>Payment Terms (days)</Label>
-                        <Input type="number" value={form.payment_terms_days} onChange={(e) => set("payment_terms_days", Number(e.target.value))} min={0} max={365} className={errors.payment_terms_days ? "border-destructive" : ""} />
-                        <FieldError field="payment_terms_days" />
-                      </div>
-                    </div>
-                  </fieldset>
+                   {/* Commercial Terms */}
+                   <fieldset className="space-y-3 border-t pt-4">
+                     <legend className="text-sm font-semibold text-foreground">Commercial Terms</legend>
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                         <Label>Price Level</Label>
+                         <Select value={form.price_level_id || "none"} onValueChange={(v) => set("price_level_id", v === "none" ? "" : v)}>
+                           <SelectTrigger><SelectValue placeholder="Select Price Level" /></SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="none">— Default (Sale Price) —</SelectItem>
+                             {priceLevels.map((pl: any) => <SelectItem key={pl.id} value={pl.id}>{pl.name}</SelectItem>)}
+                           </SelectContent>
+                         </Select>
+                         <p className="text-xs text-muted-foreground">Determines product pricing for this dealer</p>
+                       </div>
+                       <div className="space-y-1">
+                         <Label>Credit Limit (₹)</Label>
+                         <Input type="number" value={form.credit_limit} onChange={(e) => set("credit_limit", Number(e.target.value))} min={0} className={errors.credit_limit ? "border-destructive" : ""} />
+                         <FieldError field="credit_limit" />
+                       </div>
+                       <div className="space-y-1">
+                         <Label>Payment Terms (days)</Label>
+                         <Input type="number" value={form.payment_terms_days} onChange={(e) => set("payment_terms_days", Number(e.target.value))} min={0} max={365} className={errors.payment_terms_days ? "border-destructive" : ""} />
+                         <FieldError field="payment_terms_days" />
+                       </div>
+                     </div>
+                   </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
                     {mutation.isPending ? "Saving..." : editId ? "Update Dealer" : "Add Dealer"}
@@ -309,9 +332,9 @@ export default function Dealers() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow>
-                    <TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Contact</TableHead>
-                    <TableHead>City / State</TableHead><TableHead>Phone</TableHead><TableHead>Credit Limit</TableHead>
-                    <TableHead>Terms</TableHead><TableHead>Status</TableHead><TableHead className="w-10"></TableHead>
+                     <TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Contact</TableHead>
+                     <TableHead>City / State</TableHead><TableHead>Price Level</TableHead><TableHead>Credit Limit</TableHead>
+                     <TableHead>Terms</TableHead><TableHead>Status</TableHead><TableHead className="w-10"></TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {filtered.map((d: any) => (
@@ -319,8 +342,8 @@ export default function Dealers() {
                         <TableCell className="font-medium">{d.name}</TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">{d.gst_number || "—"}</TableCell>
                         <TableCell className="text-sm">{d.contact_person || "—"}</TableCell>
-                        <TableCell className="text-sm">{[d.city, d.state].filter(Boolean).join(", ") || "—"}</TableCell>
-                        <TableCell className="text-sm">{d.phone || "—"}</TableCell>
+                         <TableCell className="text-sm">{[d.city, d.state].filter(Boolean).join(", ") || "—"}</TableCell>
+                         <TableCell>{d.price_level_id ? <Badge variant="outline">{priceLevelMap[d.price_level_id] || "—"}</Badge> : <span className="text-muted-foreground text-xs">Default</span>}</TableCell>
                         <TableCell>₹{(d.credit_limit || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell className="text-sm">{d.payment_terms_days || 30}d</TableCell>
                         <TableCell><Badge variant={d.status === "active" ? "default" : "secondary"}>{d.status}</Badge></TableCell>
