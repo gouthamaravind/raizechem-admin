@@ -108,32 +108,36 @@ Deno.serve(async (req) => {
     const raw = await apiResponse.json();
 
     // Check for error responses
-    if (raw.error || raw.flag === false) {
+    if (raw.error === true || raw.flag === false) {
       const errMsg = raw.message || raw.error || "Invalid GST or API error";
       await logVerification(adminClient, gstNo, userId, "api_error", raw);
       return json({ success: false, error: errMsg }, 400);
     }
 
+    // Appyflow wraps data inside taxpayerInfo
+    const info = raw.taxpayerInfo || raw;
+
     // Normalize Appyflow response
+    const pradr = info.pradr?.addr || info.pradr || {};
     const addressParts = [
-      raw.pradr?.bnm, raw.pradr?.st, raw.pradr?.loc,
-      raw.pradr?.bno, raw.pradr?.dst, raw.pradr?.flno,
+      pradr.bnm, pradr.st, pradr.loc,
+      pradr.bno, pradr.dst, pradr.flno,
     ].filter(Boolean);
-    const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : (raw.pradr?.adr || "");
+    const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : (pradr.adr || "");
 
     const normalized = {
-      legal_name: raw.lgnm || "",
-      trade_name: raw.tradeNam || "",
-      gst_status: raw.sts || "",
-      registration_date: raw.rgdt || null,
-      state: raw.pradr?.stcd ? undefined : undefined, // will derive from state_code
-      state_code: raw.stj?.split(" - ")?.[0] || gstNo.substring(0, 2),
+      legal_name: info.lgnm || "",
+      trade_name: info.tradeNam || "",
+      gst_status: info.sts || "",
+      registration_date: info.rgdt || null,
+      state_code: info.pradr?.addr?.stcd ? undefined : (info.stj?.split(" - ")?.[0] || gstNo.substring(0, 2)),
+      state: pradr.stcd || "",
       address: fullAddress,
-      pincode: raw.pradr?.pncd || "",
-      constitution: raw.ctb || "",
+      pincode: pradr.pncd || "",
+      constitution: info.ctb || "",
     };
 
-    await logVerification(adminClient, gstNo, userId, "success", { normalized, raw_status: raw.sts });
+    await logVerification(adminClient, gstNo, userId, "success", { normalized, raw_status: info.sts });
 
     // Also log to audit_logs
     await adminClient.from("audit_logs").insert({
