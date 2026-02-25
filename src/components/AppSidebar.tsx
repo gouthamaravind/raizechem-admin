@@ -118,13 +118,9 @@ const navGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
-  const { userRoles } = useAuth();
 
-  const hasModuleAccess = (module: string) => {
-    const allowed = MODULE_ACCESS[module];
-    if (!allowed) return true;
-    return userRoles.some((r: AppRole) => allowed.includes(r));
-  };
+  // Auth bypass — show all modules temporarily
+  const hasModuleAccess = (_module: string) => true;
 
   return (
     <Sidebar className="border-r-0">
