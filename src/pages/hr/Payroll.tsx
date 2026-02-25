@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Play, CheckCircle, Download } from "lucide-react";
+import { Play, CheckCircle, Download, FileText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { exportToCsv } from "@/lib/csv-export";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -18,6 +19,7 @@ export default function Payroll() {
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const qc = useQueryClient();
+  const navigate = useNavigate();
 
   const { data: employees = [] } = useQuery({
     queryKey: ["employees-active"],
@@ -209,6 +211,7 @@ export default function Payroll() {
                   <TableHead className="text-right">Basic</TableHead><TableHead className="text-right">Gross</TableHead>
                   <TableHead className="text-right">Deductions</TableHead><TableHead className="text-right">Net Pay</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-center">Payslip</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {payslips.map((s: any) => {
@@ -222,6 +225,11 @@ export default function Payroll() {
                         <TableCell className="text-right">₹{dedTotal.toLocaleString("en-IN")}</TableCell>
                         <TableCell className="text-right font-medium">₹{Number(s.net_pay).toLocaleString("en-IN")}</TableCell>
                         <TableCell><Badge variant={s.payment_status === "paid" ? "default" : "secondary"}>{s.payment_status}</Badge></TableCell>
+                        <TableCell className="text-center">
+                          <Button variant="ghost" size="sm" onClick={() => navigate(`/hr/payslips/${s.id}/print`)}>
+                            <FileText className="h-4 w-4 mr-1" />View
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
