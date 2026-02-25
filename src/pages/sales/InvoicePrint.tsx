@@ -3,7 +3,6 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft, Download, FileText } from "lucide-react";
-import { COMPANY_STATE_CODE } from "@/lib/gst";
 import { toast } from "sonner";
 
 function numberToWords(num: number): string {
@@ -51,7 +50,7 @@ function StandardTemplate({ inv, dealer, items, company, isIntra, placeOfSupply 
           <p>{company?.address_line1}{company?.address_line2 ? `, ${company.address_line2}` : ""}</p>
           <p>{company?.city}, {company?.state} - {company?.pincode}</p>
           <p><strong>GSTIN:</strong> {company?.gst_number || "—"}</p>
-          <p><strong>State:</strong> {company?.state} (Code: {COMPANY_STATE_CODE})</p>
+          <p><strong>State:</strong> {company?.state} (Code: {(company as any)?.state_code || "36"})</p>
         </div>
         <div className="p-3">
           <p className="font-bold">Bill To: {dealer?.name}</p>
@@ -302,7 +301,7 @@ export default function InvoicePrint() {
 
   const inv = invoice as any;
   const dealer = inv.dealers;
-  const isIntra = dealer?.state_code === COMPANY_STATE_CODE;
+  const isIntra = dealer?.state_code === ((company as any)?.state_code || "36");
   const placeOfSupply = inv.place_of_supply || dealer?.state || "Telangana";
   const template = (company as any)?.invoice_template || "standard";
 

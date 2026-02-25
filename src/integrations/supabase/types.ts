@@ -97,6 +97,7 @@ export type Database = {
           phone: string | null
           pincode: string | null
           state: string | null
+          state_code: string | null
           updated_at: string
         }
         Insert: {
@@ -124,6 +125,7 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           state?: string | null
+          state_code?: string | null
           updated_at?: string
         }
         Update: {
@@ -151,6 +153,7 @@ export type Database = {
           phone?: string | null
           pincode?: string | null
           state?: string | null
+          state_code?: string | null
           updated_at?: string
         }
         Relationships: []

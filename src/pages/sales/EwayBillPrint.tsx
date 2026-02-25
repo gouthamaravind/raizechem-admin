@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Printer, ArrowLeft, Download } from "lucide-react";
-import { COMPANY_STATE_CODE } from "@/lib/gst";
+
 
 const TRANSPORT_MODES: Record<string, string> = {
   road: "1 - Road", rail: "2 - Rail", air: "3 - Air", ship: "4 - Ship",
@@ -60,7 +60,7 @@ export default function EwayBillPrint() {
 
   const inv = invoice as any;
   const dealer = inv.dealers;
-  const isIntra = dealer?.state_code === COMPANY_STATE_CODE;
+  const isIntra = dealer?.state_code === ((company as any)?.state_code || "36");
   const totalTaxable = items.reduce((s: number, i: any) => s + Number(i.amount), 0);
   const totalCgst = items.reduce((s: number, i: any) => s + Number(i.cgst_amount), 0);
   const totalSgst = items.reduce((s: number, i: any) => s + Number(i.sgst_amount), 0);
