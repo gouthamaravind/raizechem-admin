@@ -20,33 +20,43 @@ function useDashboardStats() {
       const today = format(startOfDay(new Date()), "yyyy-MM-dd");
       const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
 
+      const safe = async <T,>(promise: PromiseLike<{ data: T | null; error: any; count?: number | null }>): Promise<{ data: T | null; error: any; count?: number | null }> => {
+        try {
+          const res = await promise;
+          if (res.error) return { data: null, error: res.error, count: 0 };
+          return res;
+        } catch {
+          return { data: null, error: true, count: 0 };
+        }
+      };
+
       const [ordersToday, pendingInvoices, lowStock, monthlyRevenue, recentOrders, topProducts, totalDealers, totalProducts, recentPayments, overdueInvoices] = await Promise.all([
-        supabase.from("orders").select("id", { count: "exact", head: true }).gte("order_date", today),
-        supabase.from("invoices").select("total_amount, amount_paid").neq("status", "cancelled").neq("status", "void"),
-        supabase.from("product_batches").select("current_qty, product_id, products(name, min_stock_alert_qty)").gt("current_qty", 0),
-        supabase.from("invoices").select("total_amount").gte("invoice_date", monthStart).neq("status", "cancelled").neq("status", "void"),
-        supabase.from("orders").select("id, order_number, order_date, total_amount, status, dealers(name)").order("created_at", { ascending: false }).limit(5),
-        supabase.from("invoice_items").select("qty, amount, products(name), invoices!inner(invoice_date)").gte("invoices.invoice_date", monthStart),
-        supabase.from("dealers").select("id", { count: "exact", head: true }).eq("status", "active"),
-        supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true),
-        supabase.from("payments").select("id, amount, payment_date, payment_mode, dealers(name)").neq("status", "void").order("created_at", { ascending: false }).limit(5),
-        supabase.from("invoices").select("id, invoice_number, total_amount, amount_paid, due_date, dealers(name)").neq("status", "void").neq("status", "paid").not("due_date", "is", null).lt("due_date", today).order("due_date").limit(5),
+        safe(supabase.from("orders").select("id", { count: "exact", head: true }).gte("order_date", today)),
+        safe(supabase.from("invoices").select("total_amount, amount_paid").neq("status", "cancelled").neq("status", "void")),
+        safe(supabase.from("product_batches").select("current_qty, product_id, products(name, min_stock_alert_qty)").gt("current_qty", 0)),
+        safe(supabase.from("invoices").select("total_amount").gte("invoice_date", monthStart).neq("status", "cancelled").neq("status", "void")),
+        safe(supabase.from("orders").select("id, order_number, order_date, total_amount, status, dealers(name)").order("created_at", { ascending: false }).limit(5)),
+        safe(supabase.from("invoice_items").select("qty, amount, products(name), invoices!inner(invoice_date)").gte("invoices.invoice_date", monthStart)),
+        safe(supabase.from("dealers").select("id", { count: "exact", head: true }).eq("status", "active")),
+        safe(supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true)),
+        safe(supabase.from("payments").select("id, amount, payment_date, payment_mode, dealers(name)").neq("status", "void").order("created_at", { ascending: false }).limit(5)),
+        safe(supabase.from("invoices").select("id, invoice_number, total_amount, amount_paid, due_date, dealers(name)").neq("status", "void").neq("status", "paid").not("due_date", "is", null).lt("due_date", today).order("due_date").limit(5)),
       ]);
 
-      const pendingAmount = (pendingInvoices.data || []).reduce((sum, inv) => {
+      const pendingAmount = ((pendingInvoices.data as any[]) || []).reduce((sum, inv) => {
         const pending = Number(inv.total_amount) - Number(inv.amount_paid);
         return pending > 0 ? sum + pending : sum;
       }, 0);
 
-      const lowStockCount = (lowStock.data || []).filter((b: any) => {
+      const lowStockCount = ((lowStock.data as any[]) || []).filter((b: any) => {
         const minQty = b.products?.min_stock_alert_qty ?? 0;
         return minQty > 0 && Number(b.current_qty) <= Number(minQty);
       }).length;
 
-      const revenue = (monthlyRevenue.data || []).reduce((sum, inv) => sum + Number(inv.total_amount), 0);
+      const revenue = ((monthlyRevenue.data as any[]) || []).reduce((sum, inv) => sum + Number(inv.total_amount), 0);
 
       const productMap = new Map<string, { name: string; qty: number; amount: number }>();
-      (topProducts.data || []).forEach((item: any) => {
+      ((topProducts.data as any[]) || []).forEach((item: any) => {
         const name = item.products?.name || "Unknown";
         const existing = productMap.get(name) || { name, qty: 0, amount: 0 };
         existing.qty += Number(item.qty);
@@ -60,15 +70,16 @@ function useDashboardStats() {
         pendingAmount,
         lowStockCount,
         monthlyRevenue: revenue,
-        recentOrders: recentOrders.data || [],
+        recentOrders: (recentOrders.data as any[]) || [],
         topProducts: topProductsList,
         totalDealers: totalDealers.count || 0,
         totalProducts: totalProducts.count || 0,
-        recentPayments: recentPayments.data || [],
-        overdueInvoices: overdueInvoices.data || [],
+        recentPayments: (recentPayments.data as any[]) || [],
+        overdueInvoices: (overdueInvoices.data as any[]) || [],
       };
     },
     refetchInterval: 30000,
+    retry: false,
   });
 }
 
