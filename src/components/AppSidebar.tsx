@@ -1,19 +1,24 @@
+import { useState } from "react";
 import {
   LayoutDashboard, Users, Package, Boxes, ArrowDownToLine, AlertTriangle,
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
   ScrollText, Radio, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3,
+  ChevronDown,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { MODULE_ACCESS } from "@/types/roles";
-import type { AppRole } from "@/types/roles";
+import { cn } from "@/lib/utils";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const navGroups = [
   {
@@ -126,11 +131,18 @@ export function AppSidebar() {
     return userRoles.some((r) => allowed.includes(r));
   };
 
+  const isGroupActive = (group: typeof navGroups[0]) =>
+    group.items.some(
+      (item) => location.pathname === item.url || location.pathname.startsWith(item.url + "/")
+    );
+
   return (
-    <Sidebar className="border-r-0">
-      <SidebarHeader className="px-4 py-5 border-b border-sidebar-border">
+    <Sidebar className="border-r-0 glass">
+      <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/50">
         <div className="flex items-center gap-2.5">
-          <img src="/favicon.svg" alt="Raizechem" className="w-8 h-8 rounded-lg" />
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+            <img src="/favicon.svg" alt="Raizechem" className="w-6 h-6" />
+          </div>
           <div>
             <h2 className="text-sm font-semibold tracking-tight">Raizechem</h2>
             <p className="text-[10px] text-muted-foreground">Admin Panel</p>
@@ -139,29 +151,66 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        {navGroups.filter((g) => hasModuleAccess(g.module)).map((group) => (
-          <SidebarGroup key={group.label || "main"}>
-            {group.label && (
-              <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold">
-                {group.label}
-              </SidebarGroupLabel>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}>
-                      <NavLink to={item.url}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.title}</span>
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {navGroups.filter((g) => hasModuleAccess(g.module)).map((group) => {
+          // Dashboard group — no collapsible wrapper
+          if (!group.label) {
+            return (
+              <SidebarGroup key="main">
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}
+                        >
+                          <NavLink to={item.url}>
+                            <item.icon className="h-4 w-4" />
+                            <span>{item.title}</span>
+                          </NavLink>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            );
+          }
+
+          const active = isGroupActive(group);
+
+          return (
+            <Collapsible key={group.label} defaultOpen={active}>
+              <SidebarGroup>
+                <CollapsibleTrigger className="w-full">
+                  <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/50 font-semibold flex items-center justify-between cursor-pointer hover:text-sidebar-foreground/80 transition-colors pr-2">
+                    {group.label}
+                    <ChevronDown className="h-3 w-3 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  </SidebarGroupLabel>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.items.map((item) => (
+                        <SidebarMenuItem key={item.url}>
+                          <SidebarMenuButton
+                            asChild
+                            isActive={location.pathname === item.url || location.pathname.startsWith(item.url + "/")}
+                          >
+                            <NavLink to={item.url}>
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.title}</span>
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </CollapsibleContent>
+              </SidebarGroup>
+            </Collapsible>
+          );
+        })}
       </SidebarContent>
     </Sidebar>
   );

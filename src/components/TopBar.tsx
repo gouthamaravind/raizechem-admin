@@ -9,17 +9,17 @@ export function TopBar() {
   const { profile, userRoles, signOut } = useAuth();
 
   return (
-    <header className="h-14 border-b bg-card flex items-center justify-between px-4 shrink-0">
+    <header className="h-14 border-b glass flex items-center justify-between px-4 shrink-0 sticky top-0 z-30">
       <div className="flex items-center gap-3">
         <SidebarTrigger />
         <div className="relative hidden md:block">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search..." className="pl-8 w-64 h-9 bg-muted/50 border-0" />
+          <Input placeholder="Search..." className="pl-8 w-64 h-9 bg-background/50 border-border/50 rounded-lg" />
         </div>
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" className="relative h-9 w-9">
+        <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-lg">
           <Bell className="h-4 w-4" />
         </Button>
 
@@ -32,7 +32,7 @@ export function TopBar() {
               ))}
             </div>
           </div>
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={signOut}>
+          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={signOut}>
             <LogOut className="h-4 w-4" />
           </Button>
         </div>
