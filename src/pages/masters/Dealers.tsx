@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Plus, Pencil, Download, Copy, RefreshCw, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { useDealerOverdue } from "@/hooks/useDealerOverdue";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
@@ -76,6 +78,7 @@ export default function Dealers() {
   const [gstWarning, setGstWarning] = useState<string | null>(null);
   const [gstVerifiedAt, setGstVerifiedAt] = useState<string | null>(null);
   const qc = useQueryClient();
+  const { isOverdue, getOverdue } = useDealerOverdue();
 
   const { data: dealers = [], isLoading } = useQuery({
     queryKey: ["dealers"],
@@ -434,7 +437,21 @@ export default function Dealers() {
                   <TableBody>
                     {filtered.map((d: any) => (
                       <TableRow key={d.id}>
-                        <TableCell className="font-medium">{d.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <span className="flex items-center gap-1.5">
+                            {d.name}
+                            {isOverdue(d.id) && (
+                              <Tooltip>
+                                <TooltipTrigger>
+                                  <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  Payment overdue by {getOverdue(d.id)?.maxDaysOverdue} days (₹{getOverdue(d.id)?.totalOverdue.toLocaleString("en-IN")}) — Orders blocked
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </span>
+                        </TableCell>
                         <TableCell className="text-xs font-mono text-muted-foreground">
                           <span className="flex items-center gap-1">
                             {d.gst_number || "—"}

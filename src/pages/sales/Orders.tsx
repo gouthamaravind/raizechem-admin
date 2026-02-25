@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useDealerOverdue } from "@/hooks/useDealerOverdue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Trash2, Download, FileText } from "lucide-react";
+import { Search, Plus, Trash2, Download, FileText, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +32,8 @@ export default function Orders() {
   const [dealerId, setDealerId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0 }]);
+
+  const { isOverdue, getOverdue } = useDealerOverdue();
 
   const pg = usePagination();
 
@@ -51,6 +55,10 @@ export default function Orders() {
   const createOrder = useMutation({
     mutationFn: async () => {
       if (!dealerId || items.length === 0) throw new Error("Select dealer and add items");
+      if (isOverdue(dealerId)) {
+        const info = getOverdue(dealerId);
+        throw new Error(`Order blocked: This dealer has ₹${info?.totalOverdue.toLocaleString("en-IN")} overdue by ${info?.maxDaysOverdue} days (>120 days). Collect payment first.`);
+      }
       const validItems = items.filter((i) => i.product_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
@@ -121,6 +129,14 @@ export default function Orders() {
                     </div>
                     <div className="space-y-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                   </div>
+                  {dealerId && isOverdue(dealerId) && (
+                    <Alert variant="destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        This dealer has payments overdue by {getOverdue(dealerId)?.maxDaysOverdue} days (₹{getOverdue(dealerId)?.totalOverdue.toLocaleString("en-IN")} outstanding). New orders are blocked until payments are collected.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   <div className="space-y-2">
                     <Label>Line Items</Label>
                     {items.map((item, i) => (
@@ -138,7 +154,7 @@ export default function Orders() {
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
                   <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + i.qty * i.rate, 0).toLocaleString("en-IN")}</div>
-                  <Button type="submit" className="w-full" disabled={createOrder.isPending}>{createOrder.isPending ? "Creating..." : "Create Order"}</Button>
+                  <Button type="submit" className="w-full" disabled={createOrder.isPending || isOverdue(dealerId)}>{createOrder.isPending ? "Creating..." : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
                 </form>
               </DialogContent>
             </Dialog>
