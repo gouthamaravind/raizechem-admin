@@ -78,7 +78,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<P><Dashboard /></P>} />
             <Route path="/masters/dealers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealers /></RoleGuard></P>} />
             <Route path="/masters/suppliers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Suppliers /></RoleGuard></P>} />
