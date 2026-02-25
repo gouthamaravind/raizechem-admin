@@ -32,7 +32,7 @@ export default function Outstanding() {
     else if (daysOverdue > 30) bucket = "30-60 days";
     else if (daysOverdue > 0) bucket = "0-30 days";
     return { ...inv, outstanding, daysOverdue, bucket };
-  });
+  }).filter((inv: any) => inv.outstanding > 0.01);
 
   // Group by dealer
   const dealerMap = new Map<string, { name: string; total: number; items: any[] }>();
