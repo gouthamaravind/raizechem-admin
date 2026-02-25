@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,14 +31,17 @@ export default function Orders() {
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0 }]);
 
-  const { data: orders = [], isLoading } = useQuery({
-    queryKey: ["orders"],
+  const pg = usePagination();
+
+  const { data: ordersRaw = [], isLoading } = useQuery({
+    queryKey: ["orders", pg.page],
     queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("*, dealers(name)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("orders").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
       if (error) throw error;
       return data;
     },
   });
+  const orders = ordersRaw.slice(0, pg.pageSize);
 
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, price_level_id").eq("status", "active").order("name"); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, unit").eq("is_active", true).order("name"); return data || []; } });
@@ -148,6 +153,7 @@ export default function Orders() {
           </CardHeader>
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No orders found.</p> : (
+              <>
               <Table>
                 <TableHeader><TableRow><TableHead>Order #</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -174,6 +180,8 @@ export default function Orders() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination page={pg.page} pageSize={pg.pageSize} totalFetched={ordersRaw.length} onPrev={pg.prevPage} onNext={pg.nextPage} />
+              </>
             )}
           </CardContent>
         </Card>

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, useLocation } from "react-router-dom";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,14 +47,17 @@ export default function Invoices() {
   const [dispatchFrom, setDispatchFrom] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
 
-  const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ["invoices"],
+  const pg = usePagination();
+
+  const { data: invoicesRaw = [], isLoading } = useQuery({
+    queryKey: ["invoices", pg.page],
     queryFn: async () => {
-      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
       if (error) throw error;
       return data;
     },
   });
+  const invoices = invoicesRaw.slice(0, pg.pageSize);
 
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, state_code, payment_terms_days, price_level_id").eq("status", "active").order("name"); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); return data || []; } });
@@ -251,6 +256,7 @@ export default function Invoices() {
           <CardHeader className="pb-3"><div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search invoices..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div></CardHeader>
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No invoices yet.</p> : (
+              <>
               <Table>
                 <TableHeader><TableRow><TableHead>Invoice #</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Subtotal</TableHead><TableHead>CGST</TableHead><TableHead>SGST</TableHead><TableHead>IGST</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -275,6 +281,8 @@ export default function Invoices() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination page={pg.page} pageSize={pg.pageSize} totalFetched={invoicesRaw.length} onPrev={pg.prevPage} onNext={pg.nextPage} />
+              </>
             )}
           </CardContent>
         </Card>
