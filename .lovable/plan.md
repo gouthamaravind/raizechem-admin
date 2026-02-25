@@ -36,5 +36,7 @@
 ### Unbounded Queries (No Pagination)
 - All listing pages fetch without `LIMIT`; will hit the 1000-row default
 
-### Hardcoded State Code
-- `COMPANY_STATE_CODE = "36"` in `gst.ts` should pull from `company_settings`
+### 6. ✅ Hardcoded State Code
+- Added `state_code` column to `company_settings` (default `'36'`)
+- `calculateGST()` now accepts optional `companyStateCode` param
+- `InvoicePrint` and `EwayBillPrint` read state code from company settings dynamically

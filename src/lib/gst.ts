@@ -1,11 +1,12 @@
-export const COMPANY_STATE_CODE = "36"; // Telangana
+export const COMPANY_STATE_CODE = "36"; // Telangana — legacy default, prefer dynamic
 
 export function calculateGST(
   taxableAmount: number,
   gstRate: number,
-  dealerStateCode: string | null
+  dealerStateCode: string | null,
+  companyStateCode: string = COMPANY_STATE_CODE
 ) {
-  const isIntraState = dealerStateCode === COMPANY_STATE_CODE;
+  const isIntraState = dealerStateCode === companyStateCode;
   const gstAmount = Math.round((taxableAmount * gstRate) / 100 * 100) / 100;
 
   let cgst = 0, sgst = 0, igst = 0;
