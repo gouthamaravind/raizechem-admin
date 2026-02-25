@@ -25,12 +25,8 @@ export function TopBar() {
 
         <div className="flex items-center gap-2">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium leading-none">{profile?.full_name || "User"}</p>
-            <div className="flex gap-1 mt-1 justify-end">
-              {userRoles.map((role) => (
-                <Badge key={role} variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">{role}</Badge>
-              ))}
-            </div>
+            <p className="text-sm font-medium leading-none">Yashwanth Reddy</p>
+            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mt-1">Director</Badge>
           </div>
           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={signOut}>
             <LogOut className="h-4 w-4" />
