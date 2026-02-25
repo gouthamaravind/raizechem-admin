@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,14 +44,17 @@ export default function Payments() {
   const tcsAmount = amount > 0 ? +(amount * tcsRate / 100).toFixed(2) : 0;
   const netAmount = amount > 0 ? +(amount - tdsAmount + tcsAmount).toFixed(2) : 0;
 
-  const { data: payments = [], isLoading } = useQuery({
-    queryKey: ["payments"],
+  const pg = usePagination();
+
+  const { data: paymentsRaw = [], isLoading } = useQuery({
+    queryKey: ["payments", pg.page],
     queryFn: async () => {
-      const { data, error } = await supabase.from("payments").select("*, dealers(name)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("payments").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
       if (error) throw error;
       return data;
     },
   });
+  const payments = paymentsRaw.slice(0, pg.pageSize);
 
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name").eq("status", "active").order("name"); return data || []; } });
 
@@ -148,6 +153,7 @@ export default function Payments() {
           <CardHeader className="pb-3"><div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search payments..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div></CardHeader>
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No payments recorded.</p> : (
+              <>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader><TableRow><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Gross Amt</TableHead><TableHead>TDS</TableHead><TableHead>TCS</TableHead><TableHead>Net Amt</TableHead><TableHead>Mode</TableHead><TableHead>Reference</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
@@ -174,6 +180,8 @@ export default function Payments() {
                   </TableBody>
                 </Table>
               </div>
+              <TablePagination page={pg.page} pageSize={pg.pageSize} totalFetched={paymentsRaw.length} onPrev={pg.prevPage} onNext={pg.nextPage} />
+              </>
             )}
           </CardContent>
         </Card>

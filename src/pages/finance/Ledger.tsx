@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -42,8 +44,10 @@ export default function Ledger() {
     },
   });
 
-  const { data: entries = [], isLoading } = useQuery({
-    queryKey: ["ledger", dealerId, fyId, dateFrom, dateTo],
+  const pg = usePagination();
+
+  const { data: entriesRaw = [], isLoading } = useQuery({
+    queryKey: ["ledger", dealerId, fyId, dateFrom, dateTo, pg.page],
     queryFn: async () => {
       let q = supabase.from("ledger_entries").select("*, dealers(name)").order("entry_date", { ascending: false }).order("created_at", { ascending: false });
       if (dealerId !== "all") q = q.eq("dealer_id", dealerId);
@@ -56,11 +60,14 @@ export default function Ledger() {
         if (dateTo) q = q.lte("entry_date", dateTo);
       }
 
+      q = q.range(pg.range.from, pg.range.to + 1);
+
       const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
+  const entries = entriesRaw.slice(0, pg.pageSize);
 
   // Running balance with opening balance
   const obDebit = openingBalance ? Number(openingBalance.opening_debit) : 0;
@@ -76,7 +83,7 @@ export default function Ledger() {
 
   // When FY is selected, auto-set date fields for display
   const handleFyChange = (v: string) => {
-    setFyId(v);
+    setFyId(v); pg.resetPage();
     if (v !== "all") {
       const fy = fys.find((f: any) => f.id === v) as any;
       if (fy) { setDateFrom(fy.start_date); setDateTo(fy.end_date); }
@@ -110,6 +117,7 @@ export default function Ledger() {
           </CardHeader>
           <CardContent>
             {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : withBalance.length === 0 && !hasOpeningBalance ? <p className="text-muted-foreground text-center py-8">No ledger entries.</p> : (
+              <>
               <Table>
                 <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Dealer</TableHead><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Debit</TableHead><TableHead className="text-right">Credit</TableHead><TableHead className="text-right">Balance</TableHead></TableRow></TableHeader>
                 <TableBody>
@@ -137,6 +145,8 @@ export default function Ledger() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination page={pg.page} pageSize={pg.pageSize} totalFetched={entriesRaw.length} onPrev={pg.prevPage} onNext={pg.nextPage} />
+              </>
             )}
           </CardContent>
         </Card>
