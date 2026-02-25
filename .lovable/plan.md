@@ -1,65 +1,40 @@
 
+## Audit Fixes — Completed
 
-## Fix: Login Page Stuck on "Signing in..."
+### 1. ✅ MobileGuard Auth Bypass (CRITICAL SECURITY)
+- **File:** `src/components/mobile/MobileGuard.tsx`
+- Restored `session` and `loading` checks; unauthenticated users now redirect to `/m/login`
 
-### Root Cause
+### 2. ✅ Render-Phase setState in Returns (React Anti-Pattern)
+- **Files:** `src/pages/sales/Returns.tsx`, `src/pages/purchase/Returns.tsx`
+- Moved `setItems()` from render body into `useEffect` to prevent infinite re-render loops
 
-Two issues in `src/pages/Login.tsx`:
+### 3. ✅ GST Rounding Precision
+- **File:** `src/lib/gst.ts`
+- Fixed split rounding: CGST uses `Math.floor`, SGST gets remainder, guaranteeing `cgst + sgst === totalGst`
 
-1. **No try/catch/finally** in `handleSubmit` -- if anything throws after the auth call, `setLoading(false)` never runs, leaving the button permanently stuck on "Signing in..."
-2. **Side effect during render** -- `navigate()` is called directly in the render body (`if (session) { navigate(...); return null; }`), which is a React anti-pattern and can cause race conditions with auth state updates
+### 4. ✅ Outstanding Void Filter
+- **File:** `src/pages/finance/Outstanding.tsx`
+- Added `.neq("status", "void")` to exclude voided invoices from outstanding calculations
 
-### Changes
+### 5. ✅ Login Page Robustness
+- **File:** `src/pages/Login.tsx`
+- Already had try/catch/finally and `<Navigate>` — confirmed correct
 
-**File: `src/pages/Login.tsx`**
+---
 
-1. Replace the render-time `navigate` with the `<Navigate>` component (already imported)
-2. Wrap `handleSubmit` in try/catch/finally so `setLoading(false)` always runs
-3. Add a timeout safety net so the button can't stay stuck forever
+## Remaining Items (Not Yet Fixed)
 
-```text
-Before:
-  if (session) {
-    navigate("/dashboard", { replace: true });
-    return null;
-  }
+### Non-Atomic Order/PO Creation (Race Condition)
+- `src/pages/sales/Orders.tsx` reads `next_order_number` and increments it in two separate queries
+- Should be refactored into a server-side RPC like `create_order_atomic`
+- Same issue in Purchase Orders
 
-After:
-  if (session) {
-    return <Navigate to="/dashboard" replace />;
-  }
-```
+### Order → Invoice Conversion (UI-Only)
+- `Orders.tsx` navigates to `/sales/invoices` with `state.convertOrder` but `Invoices.tsx` doesn't consume it
 
-```text
-Before:
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    ...
-    setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-    if (error) { ... } else { navigate(...); }
-  };
+### Unbounded Queries (No Pagination)
+- All listing pages fetch without `LIMIT`; will hit the 1000-row default
 
-After:
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    ...
-    setLoading(true);
-    try {
-      const { error } = await signIn(email, password);
-      if (error) {
-        toast.error(error.message);
-      } else {
-        navigate("/dashboard", { replace: true });
-      }
-    } catch (err) {
-      toast.error("An unexpected error occurred. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-```
-
-This ensures the loading state always resets regardless of what happens during sign-in.
-
+### Hardcoded State Code
+- `COMPANY_STATE_CODE = "36"` in `gst.ts` should pull from `company_settings`
