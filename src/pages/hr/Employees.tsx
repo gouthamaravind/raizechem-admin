@@ -29,25 +29,19 @@ export default function Employees() {
   const { data: employees = [], isLoading } = useQuery({
     queryKey: ["employees"],
     queryFn: async () => {
-      try {
-        const { data, error } = await supabase.from("employees").select("*").order("name");
-        if (error) return [];
-        return data ?? [];
-      } catch { return []; }
+      const { data, error } = await supabase.from("employees").select("*").order("name");
+      if (error) throw error;
+      return data;
     },
-    retry: false,
   });
 
   const { data: components = [] } = useQuery({
     queryKey: ["salary-components-active"],
     queryFn: async () => {
-      try {
-        const { data, error } = await supabase.from("salary_components").select("*").eq("is_active", true);
-        if (error) return [];
-        return data ?? [];
-      } catch { return []; }
+      const { data, error } = await supabase.from("salary_components").select("*").eq("is_active", true);
+      if (error) throw error;
+      return data;
     },
-    retry: false,
   });
 
   const mutation = useMutation({

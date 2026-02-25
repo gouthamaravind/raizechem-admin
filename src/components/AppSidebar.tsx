@@ -3,7 +3,7 @@ import {
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
-  ScrollText, Radio, MapPinned, Eye, ClipboardCheck, BadgeCheck, Grid3X3,
+  ScrollText, Radio, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -118,9 +118,13 @@ const navGroups = [
 
 export function AppSidebar() {
   const location = useLocation();
+  const { userRoles } = useAuth();
 
-  // Auth bypass — show all modules temporarily
-  const hasModuleAccess = (_module: string) => true;
+  const hasModuleAccess = (module: string) => {
+    const allowed = MODULE_ACCESS[module as keyof typeof MODULE_ACCESS];
+    if (!allowed) return true;
+    return userRoles.some((r) => allowed.includes(r));
+  };
 
   return (
     <Sidebar className="border-r-0">

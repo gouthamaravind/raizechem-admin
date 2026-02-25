@@ -9,6 +9,14 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, allowedRoles }: RoleGuardProps) {
-  // Auth bypass — login system temporarily disabled
+  const { userRoles, loading } = useAuth();
+
+  if (loading) return null;
+
+  const hasAccess = userRoles.some((r) => allowedRoles.includes(r));
+  if (!hasAccess) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return <>{children}</>;
 }
