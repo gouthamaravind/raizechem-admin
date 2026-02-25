@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ export default function Invoices() {
   const { user, hasRole } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
@@ -35,6 +36,7 @@ export default function Invoices() {
   });
   const canVoid = hasRole("admin") || hasRole("accounts");
   const [dealerId, setDealerId] = useState("");
+  const [convertingOrderId, setConvertingOrderId] = useState<string | null>(null);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [items, setItems] = useState<InvItem[]>([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
   // E-way bill fields
@@ -56,7 +58,37 @@ export default function Invoices() {
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); return data || []; } });
   const { data: batches = [] } = useQuery({ queryKey: ["batches-available"], queryFn: async () => { const { data } = await supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); return data || []; } });
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
-  
+
+  // Handle Order → Invoice conversion from navigation state
+  useEffect(() => {
+    const convertOrder = (location.state as any)?.convertOrder;
+    if (convertOrder && products.length > 0) {
+      setDealerId(convertOrder.dealer_id);
+      setConvertingOrderId(convertOrder.id);
+      // Fetch order items and pre-fill
+      supabase
+        .from("order_items")
+        .select("*, products(gst_rate, hsn_code)")
+        .eq("order_id", convertOrder.id)
+        .then(({ data: orderItems }) => {
+          if (orderItems && orderItems.length > 0) {
+            setItems(
+              orderItems.map((oi: any) => ({
+                product_id: oi.product_id,
+                batch_id: "", // User must select batch
+                qty: Number(oi.qty),
+                rate: Number(oi.rate),
+                gst_rate: Number(oi.products?.gst_rate ?? 18),
+                hsn_code: oi.products?.hsn_code || "",
+              }))
+            );
+          }
+          setDialogOpen(true);
+        });
+      // Clear navigation state so refresh doesn't re-trigger
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, products.length]);
 
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
 
@@ -109,7 +141,13 @@ export default function Invoices() {
       } as any);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // If converting from an order, mark it as dispatched
+      if (convertingOrderId) {
+        await supabase.from("orders").update({ status: "dispatched" as any }).eq("id", convertingOrderId);
+        qc.invalidateQueries({ queryKey: ["orders"] });
+        setConvertingOrderId(null);
+      }
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["batches-available"] });
