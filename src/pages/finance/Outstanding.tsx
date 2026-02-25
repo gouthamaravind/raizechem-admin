@@ -12,7 +12,7 @@ export default function Outstanding() {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["outstanding-invoices"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").neq("status", "paid").order("due_date");
+      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").neq("status", "paid").neq("status", "void").order("due_date");
       if (error) throw error;
       return data;
     },

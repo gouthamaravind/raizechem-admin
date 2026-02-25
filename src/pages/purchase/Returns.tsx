@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,12 +59,14 @@ export default function PurchaseReturns() {
     },
   });
 
-  if (piId && piItems.length > 0 && items.length === 0) {
-    setItems(piItems.map((ii: any) => ({
-      product_id: ii.product_id, batch_id: ii.batch_id, qty: 0,
-      rate: Number(ii.rate), gst_rate: Number(ii.gst_rate), hsn_code: ii.hsn_code || "",
-    })));
-  }
+  useEffect(() => {
+    if (piId && piItems.length > 0 && items.length === 0) {
+      setItems(piItems.map((ii: any) => ({
+        product_id: ii.product_id, batch_id: ii.batch_id, qty: 0,
+        rate: Number(ii.rate), gst_rate: Number(ii.gst_rate), hsn_code: ii.hsn_code || "",
+      })));
+    }
+  }, [piId, piItems, items.length]);
 
   const selectedPI = purchaseInvoices.find((i: any) => i.id === piId) as any;
   const supplierStateCode = selectedPI?.suppliers?.state_code;

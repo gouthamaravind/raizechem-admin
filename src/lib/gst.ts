@@ -6,13 +6,22 @@ export function calculateGST(
   dealerStateCode: string | null
 ) {
   const isIntraState = dealerStateCode === COMPANY_STATE_CODE;
-  const gstAmount = (taxableAmount * gstRate) / 100;
+  const gstAmount = Math.round((taxableAmount * gstRate) / 100 * 100) / 100;
+
+  let cgst = 0, sgst = 0, igst = 0;
+  if (isIntraState) {
+    // Split evenly, ensure cgst + sgst === gstAmount
+    cgst = Math.floor(gstAmount / 2 * 100) / 100;
+    sgst = Math.round((gstAmount - cgst) * 100) / 100;
+  } else {
+    igst = gstAmount;
+  }
 
   return {
-    cgst: isIntraState ? Math.round((gstAmount / 2) * 100) / 100 : 0,
-    sgst: isIntraState ? Math.round((gstAmount / 2) * 100) / 100 : 0,
-    igst: isIntraState ? 0 : Math.round(gstAmount * 100) / 100,
-    totalGst: Math.round(gstAmount * 100) / 100,
+    cgst,
+    sgst,
+    igst,
+    totalGst: gstAmount,
     totalWithGst: Math.round((taxableAmount + gstAmount) * 100) / 100,
   };
 }
