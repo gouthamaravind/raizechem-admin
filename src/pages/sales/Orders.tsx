@@ -49,28 +49,20 @@ export default function Orders() {
       const validItems = items.filter((i) => i.product_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
-      const total = validItems.reduce((s, i) => s + i.qty * i.rate, 0);
-
-      // Get sequential order number
-      const { data: settings } = await supabase.from("company_settings").select("next_order_number, id").limit(1).single();
-      const nextNum = settings?.next_order_number || 1;
-      const orderNum = `ORD/${new Date().getFullYear()}/${String(nextNum).padStart(3, "0")}`;
-
-      const { data: order, error } = await supabase.from("orders").insert({
-        order_number: orderNum, dealer_id: dealerId, total_amount: total,
-        notes, created_by: user?.id,
-      }).select("id").single();
-      if (error) throw error;
-
-      // Increment order number
-      await supabase.from("company_settings").update({ next_order_number: nextNum + 1 } as any).eq("id", settings?.id as any);
-
-      const orderItems = validItems.map((i) => ({
-        order_id: order.id, product_id: i.product_id, qty: i.qty,
-        rate: i.rate, amount: i.qty * i.rate,
+      const p_items = validItems.map((i) => ({
+        product_id: i.product_id,
+        qty: i.qty,
+        rate: i.rate,
       }));
-      const { error: itemErr } = await supabase.from("order_items").insert(orderItems);
-      if (itemErr) throw itemErr;
+
+      const { data, error } = await supabase.rpc("create_order_atomic" as any, {
+        p_dealer_id: dealerId,
+        p_notes: notes || null,
+        p_created_by: user?.id,
+        p_items: p_items,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
