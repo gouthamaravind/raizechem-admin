@@ -61,6 +61,7 @@ export default function Payroll() {
 
   const processPayroll = useMutation({
     mutationFn: async () => {
+      if (payrollRun) throw new Error("Payroll already processed for this month");
       if (employees.length === 0) throw new Error("No active employees");
       if (components.length === 0) throw new Error("No salary components configured");
 
