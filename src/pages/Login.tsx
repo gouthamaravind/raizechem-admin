@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
@@ -20,8 +20,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   if (session) {
-    navigate("/dashboard", { replace: true });
-    return null;
+    return <Navigate to="/dashboard" replace />;
   }
 
   const validateDomain = (email: string) => {
@@ -36,12 +35,17 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      navigate("/dashboard", { replace: true });
+    try {
+      const { error } = await signIn(email, password);
+      if (error) {
+        toast.error(error.message);
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
+    } catch (err) {
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
