@@ -1,4 +1,4 @@
-export type AppRole = "admin" | "sales" | "warehouse" | "accounts" | "inventory";
+export type AppRole = "admin" | "sales" | "warehouse" | "accounts" | "inventory" | "fieldops";
 
 // Module access rules (overlapping)
 export const MODULE_ACCESS: Record<string, AppRole[]> = {

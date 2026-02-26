@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePagination } from "@/hooks/usePagination";
@@ -21,6 +21,7 @@ import { AdvanceAllocationsView } from "@/components/finance/AdvanceAllocationsV
 
 export default function Advances() {
   const { hasRole } = useAuth();
+  const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dealerFilter, setDealerFilter] = useState("all");
@@ -62,8 +63,8 @@ export default function Advances() {
     if (error) { toast.error(error.message); return; }
     toast.success("Advance receipt voided");
     setVoidTarget(null);
-    // Invalidation handled by component remount
-    window.location.reload();
+    qc.invalidateQueries({ queryKey: ["advance-receipts"] });
+    qc.invalidateQueries({ queryKey: ["dealer-advance-balance"] });
   };
 
   const filtered = advances.filter((a: any) => {
