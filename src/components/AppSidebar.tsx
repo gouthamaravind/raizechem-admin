@@ -4,7 +4,7 @@ import {
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
-  ScrollText, Radio, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3,
+  ScrollText, Radio, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
   ChevronDown,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -119,6 +119,7 @@ const navGroups = [
       { title: "Financial Years", url: "/settings/financial-years", icon: CalendarDays },
       { title: "Opening Balances", url: "/settings/opening-balances", icon: Landmark },
       { title: "Audit Logs", url: "/settings/audit-logs", icon: ScrollText },
+      { title: "Help & Docs", url: "/settings/help", icon: HelpCircle },
     ],
   },
 ];
