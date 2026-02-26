@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 const OVERDUE_THRESHOLD_DAYS = 120;
+const EMPTY_MAP = new Map<string, OverdueDealer>();
 
 export interface OverdueDealer {
   dealer_id: string;
@@ -14,7 +16,7 @@ export interface OverdueDealer {
  * Returns a map of dealer_id → overdue info for dealers with any invoice overdue > 120 days.
  */
 export function useDealerOverdue() {
-  const { data: overdueMap = new Map<string, OverdueDealer>(), isLoading } = useQuery({
+  const { data: overdueMap, isLoading } = useQuery({
     queryKey: ["dealer-overdue-120"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -55,8 +57,9 @@ export function useDealerOverdue() {
     staleTime: 60_000,
   });
 
-  const isOverdue = (dealerId: string) => overdueMap.has(dealerId);
-  const getOverdue = (dealerId: string) => overdueMap.get(dealerId);
+  const safeMap = overdueMap ?? EMPTY_MAP;
+  const isOverdue = (dealerId: string) => safeMap.has(dealerId);
+  const getOverdue = (dealerId: string) => safeMap.get(dealerId);
 
-  return { overdueMap, isOverdue, getOverdue, isLoading };
+  return { overdueMap: safeMap, isOverdue, getOverdue, isLoading };
 }
