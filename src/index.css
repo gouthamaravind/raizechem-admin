@@ -163,10 +163,13 @@
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border);
     box-shadow: var(--shadow);
+  }
+
+  .glass-card-hover {
     transition: box-shadow 0.2s ease, transform 0.2s ease;
   }
 
-  .glass-card:hover {
+  .glass-card-hover:hover {
     box-shadow: var(--shadow-md);
     transform: translateY(-1px);
   }
