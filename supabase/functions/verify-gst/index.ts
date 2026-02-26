@@ -117,24 +117,27 @@ Deno.serve(async (req) => {
     // Appyflow wraps data inside taxpayerInfo
     const info = raw.taxpayerInfo || raw;
 
-    // Normalize Appyflow response
-    const pradr = info.pradr?.addr || info.pradr || {};
+    // Normalize Appyflow response — address is nested under pradr.addr
+    const addr = info.pradr?.addr || {};
     const addressParts = [
-      pradr.bnm, pradr.st, pradr.loc,
-      pradr.bno, pradr.dst, pradr.flno,
+      addr.bno, addr.bnm, addr.flno, addr.st, addr.loc, addr.dst,
     ].filter(Boolean);
-    const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : (pradr.adr || "");
+    const fullAddress = addressParts.length > 0 ? addressParts.join(", ") : "";
 
     const normalized = {
+      gstin: gstNo,
       legal_name: info.lgnm || "",
       trade_name: info.tradeNam || "",
       gst_status: info.sts || "",
       registration_date: info.rgdt || null,
-      state_code: info.pradr?.addr?.stcd ? undefined : (info.stj?.split(" - ")?.[0] || gstNo.substring(0, 2)),
-      state: pradr.stcd || "",
+      state: addr.stcd || "",
+      state_code: gstNo.substring(0, 2),
       address: fullAddress,
-      pincode: pradr.pncd || "",
+      city: addr.dst || "",
+      pincode: addr.pncd || "",
       constitution: info.ctb || "",
+      business_type: info.dty || "",
+      last_updated: info.lstupdt || null,
     };
 
     await logVerification(adminClient, gstNo, userId, "success", { normalized, raw_status: info.sts });
