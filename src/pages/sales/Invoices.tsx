@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Plus, Trash2, Download, Printer, Ban } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
@@ -46,6 +47,9 @@ export default function Invoices() {
   const [vehicleNo, setVehicleNo] = useState("");
   const [dispatchFrom, setDispatchFrom] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
+  // Advance adjustment
+  const [adjustAdvance, setAdjustAdvance] = useState(false);
+  const [advanceAdjustAmount, setAdvanceAdjustAmount] = useState(0);
 
   const pg = usePagination();
 
@@ -63,6 +67,21 @@ export default function Invoices() {
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); return data || []; } });
   const { data: batches = [] } = useQuery({ queryKey: ["batches-available"], queryFn: async () => { const { data } = await supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); return data || []; } });
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
+
+  // Dealer advance balance
+  const { data: dealerAdvanceBalance = 0 } = useQuery({
+    queryKey: ["dealer-advance-balance", dealerId],
+    enabled: !!dealerId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("advance_receipts" as any)
+        .select("balance_amount")
+        .eq("dealer_id", dealerId)
+        .eq("status", "OPEN");
+      if (error) return 0;
+      return (data || []).reduce((sum: number, r: any) => sum + Number(r.balance_amount), 0);
+    },
+  });
 
   // Handle Order → Invoice conversion from navigation state
   useEffect(() => {
@@ -145,6 +164,20 @@ export default function Invoices() {
         p_items: itemsPayload,
       } as any);
       if (error) throw error;
+
+      // Allocate advance if requested
+      if (adjustAdvance && advanceAdjustAmount > 0 && data) {
+        const invoiceId = (data as any).invoice_id;
+        if (invoiceId) {
+          const { error: allocErr } = await supabase.rpc("allocate_advance_to_invoice_atomic" as any, {
+            p_invoice_id: invoiceId,
+            p_dealer_id: dealerId,
+            p_amount_to_allocate: advanceAdjustAmount,
+            p_allocated_by: user?.id,
+          });
+          if (allocErr) toast.error("Invoice created but advance allocation failed: " + allocErr.message);
+        }
+      }
     },
     onSuccess: async () => {
       // If converting from an order, mark it as dispatched
@@ -156,10 +189,13 @@ export default function Invoices() {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["batches-available"] });
+      qc.invalidateQueries({ queryKey: ["advance-receipts"] });
+      qc.invalidateQueries({ queryKey: ["dealer-advance-balance"] });
       
       setDialogOpen(false); setDealerId("");
       setItems([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
       setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo("");
+      setAdjustAdvance(false); setAdvanceAdjustAmount(0);
       toast.success("Invoice created with GST and ledger entry");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -239,12 +275,40 @@ export default function Invoices() {
                       <div className="space-y-1"><Label className="text-xs">Delivery To</Label><Input value={deliveryTo} onChange={(e) => setDeliveryTo(e.target.value)} placeholder="City, State" /></div>
                     </div>
                   </div>
+                  {/* Advance Adjustment */}
+                  {dealerId && dealerAdvanceBalance > 0 && (
+                    <div className="border-t pt-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Checkbox id="adjust-advance" checked={adjustAdvance} onCheckedChange={(v) => {
+                          setAdjustAdvance(!!v);
+                          if (v) setAdvanceAdjustAmount(Math.min(grandTotal, dealerAdvanceBalance));
+                          else setAdvanceAdjustAmount(0);
+                        }} />
+                        <Label htmlFor="adjust-advance" className="cursor-pointer">
+                          Adjust from advance balance (Available: <span className="font-semibold text-primary">₹{dealerAdvanceBalance.toLocaleString("en-IN")}</span>)
+                        </Label>
+                      </div>
+                      {adjustAdvance && (
+                        <div className="flex items-center gap-2">
+                          <Label className="text-xs whitespace-nowrap">Adjust Amount:</Label>
+                          <Input type="number" className="w-32" min={0.01} max={Math.min(grandTotal, dealerAdvanceBalance)} step="0.01"
+                            value={advanceAdjustAmount || ""} onChange={(e) => setAdvanceAdjustAmount(Math.min(Number(e.target.value), grandTotal, dealerAdvanceBalance))} />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="border-t pt-3 space-y-1 text-sm text-right">
                     <p>Subtotal: ₹{subtotal.toFixed(2)}</p>
                     {cgstTotal > 0 && <p>CGST: ₹{cgstTotal.toFixed(2)}</p>}
                     {sgstTotal > 0 && <p>SGST: ₹{sgstTotal.toFixed(2)}</p>}
                     {igstTotal > 0 && <p>IGST: ₹{igstTotal.toFixed(2)}</p>}
                     <p className="text-lg font-bold">Grand Total: ₹{grandTotal.toFixed(2)}</p>
+                    {adjustAdvance && advanceAdjustAmount > 0 && (
+                      <p className="text-primary">Less Advance: −₹{advanceAdjustAmount.toFixed(2)}</p>
+                    )}
+                    {adjustAdvance && advanceAdjustAmount > 0 && (
+                      <p className="text-lg font-bold">Net Due: ₹{(grandTotal - advanceAdjustAmount).toFixed(2)}</p>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={createInvoice.isPending}>{createInvoice.isPending ? "Creating..." : "Create Invoice"}</Button>
                 </form>
