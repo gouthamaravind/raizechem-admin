@@ -14,6 +14,7 @@ import Dealers from "./pages/masters/Dealers";
 import Products from "./pages/masters/Products";
 import Suppliers from "./pages/masters/Suppliers";
 import PriceLevels from "./pages/masters/PriceLevels";
+import Transporters from "./pages/masters/Transporters";
 import Batches from "./pages/inventory/Batches";
 import StockIn from "./pages/inventory/StockIn";
 import Alerts from "./pages/inventory/Alerts";
@@ -84,6 +85,7 @@ const App = () => (
             <Route path="/masters/suppliers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Suppliers /></RoleGuard></P>} />
             <Route path="/masters/products" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Products /></RoleGuard></P>} />
             <Route path="/masters/price-levels" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><PriceLevels /></RoleGuard></P>} />
+            <Route path="/masters/transporters" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Transporters /></RoleGuard></P>} />
             <Route path="/inventory/batches" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><Batches /></RoleGuard></P>} />
             <Route path="/inventory/stock-in" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><StockIn /></RoleGuard></P>} />
             <Route path="/inventory/alerts" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><Alerts /></RoleGuard></P>} />

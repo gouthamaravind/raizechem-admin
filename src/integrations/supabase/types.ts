@@ -387,6 +387,7 @@ export type Database = {
           payment_terms_days: number | null
           phone: string | null
           pincode: string | null
+          preferred_transporter_id: string | null
           price_level_id: string | null
           shipping_address_line1: string | null
           shipping_address_line2: string | null
@@ -421,6 +422,7 @@ export type Database = {
           payment_terms_days?: number | null
           phone?: string | null
           pincode?: string | null
+          preferred_transporter_id?: string | null
           price_level_id?: string | null
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
@@ -455,6 +457,7 @@ export type Database = {
           payment_terms_days?: number | null
           phone?: string | null
           pincode?: string | null
+          preferred_transporter_id?: string | null
           price_level_id?: string | null
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
@@ -467,6 +470,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "dealers_preferred_transporter_id_fkey"
+            columns: ["preferred_transporter_id"]
+            isOneToOne: false
+            referencedRelation: "transporters"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "dealers_price_level_id_fkey"
             columns: ["price_level_id"]
@@ -2229,6 +2239,75 @@ export type Database = {
           state_code?: string | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      transporters: {
+        Row: {
+          address_line1: string | null
+          city: string | null
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          gst_last_verified_at: string | null
+          gst_legal_name: string | null
+          gst_number: string | null
+          gst_status: string | null
+          gst_trade_name: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          pincode: string | null
+          state: string | null
+          state_code: string | null
+          status: string
+          updated_at: string
+          vehicle_types: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gst_last_verified_at?: string | null
+          gst_legal_name?: string | null
+          gst_number?: string | null
+          gst_status?: string | null
+          gst_trade_name?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_types?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          city?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          gst_last_verified_at?: string | null
+          gst_legal_name?: string | null
+          gst_number?: string | null
+          gst_status?: string | null
+          gst_trade_name?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          pincode?: string | null
+          state?: string | null
+          state_code?: string | null
+          status?: string
+          updated_at?: string
+          vehicle_types?: string | null
         }
         Relationships: []
       }

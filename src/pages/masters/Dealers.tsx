@@ -43,6 +43,7 @@ const emptyForm = {
   pincode: "", credit_limit: 0, payment_terms_days: 30,
   shipping_address_line1: "", shipping_address_line2: "", shipping_city: "",
   shipping_state: "", shipping_pincode: "", price_level_id: "",
+  preferred_transporter_id: "",
 };
 
 type FormErrors = Partial<Record<keyof typeof emptyForm, string>>;
@@ -95,6 +96,15 @@ export default function Dealers() {
       const { data, error } = await supabase.from("price_levels").select("*").order("sort_order");
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: transporters = [] } = useQuery({
+    queryKey: ["transporters-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("transporters" as any).select("id, name").eq("status", "active").order("name");
+      if (error) throw error;
+      return data as any[];
     },
   });
 
@@ -151,6 +161,7 @@ export default function Dealers() {
       shipping_address_line1: d.shipping_address_line1 || "", shipping_address_line2: d.shipping_address_line2 || "",
       shipping_city: d.shipping_city || "", shipping_state: d.shipping_state || "",
       shipping_pincode: d.shipping_pincode || "", price_level_id: d.price_level_id || "",
+      preferred_transporter_id: d.preferred_transporter_id || "",
     });
     setErrors({});
     setGstWarning(d.gst_status && d.gst_status !== "Active" ? `GST Status: ${d.gst_status}` : null);
@@ -207,6 +218,7 @@ export default function Dealers() {
     if (!validate()) return;
     const submitData: any = { ...form };
     if (!submitData.price_level_id) submitData.price_level_id = null;
+    if (!submitData.preferred_transporter_id) submitData.preferred_transporter_id = null;
     if (sameAsBilling) {
       submitData.shipping_address_line1 = form.address_line1;
       submitData.shipping_address_line2 = form.address_line2;
@@ -402,13 +414,24 @@ export default function Dealers() {
                          <Input type="number" value={form.credit_limit} onChange={(e) => set("credit_limit", Number(e.target.value))} min={0} className={errors.credit_limit ? "border-destructive" : ""} />
                          {fieldError("credit_limit")}
                        </div>
-                       <div className="space-y-1">
-                         <Label>Payment Terms (days)</Label>
-                         <Input type="number" value={form.payment_terms_days} onChange={(e) => set("payment_terms_days", Number(e.target.value))} min={0} max={365} className={errors.payment_terms_days ? "border-destructive" : ""} />
-                         {fieldError("payment_terms_days")}
-                       </div>
-                     </div>
-                   </fieldset>
+                        <div className="space-y-1">
+                          <Label>Payment Terms (days)</Label>
+                          <Input type="number" value={form.payment_terms_days} onChange={(e) => set("payment_terms_days", Number(e.target.value))} min={0} max={365} className={errors.payment_terms_days ? "border-destructive" : ""} />
+                          {fieldError("payment_terms_days")}
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Preferred Transporter</Label>
+                          <Select value={form.preferred_transporter_id || "none"} onValueChange={(v) => set("preferred_transporter_id", v === "none" ? "" : v)}>
+                            <SelectTrigger><SelectValue placeholder="Select Transporter" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— None —</SelectItem>
+                              {transporters.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground">Default transport partner for this dealer</p>
+                        </div>
+                      </div>
+                    </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
                     {mutation.isPending ? "Saving..." : editId ? "Update Dealer" : "Add Dealer"}
