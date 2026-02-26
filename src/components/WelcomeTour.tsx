@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -118,7 +118,7 @@ const slides = [
   },
 ];
 
-export function WelcomeTour({ open, onOpenChange }: WelcomeTourProps) {
+export const WelcomeTour = forwardRef<HTMLDivElement, WelcomeTourProps>(function WelcomeTour({ open, onOpenChange }, _ref) {
   const [step, setStep] = useState(0);
   const slide = slides[step];
   const isLast = step === slides.length - 1;
@@ -196,4 +196,4 @@ export function WelcomeTour({ open, onOpenChange }: WelcomeTourProps) {
       </DialogContent>
     </Dialog>
   );
-}
+});

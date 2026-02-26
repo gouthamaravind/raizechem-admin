@@ -63,7 +63,8 @@ export default function Invoices() {
   });
   const invoices = invoicesRaw.slice(0, pg.pageSize);
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, state_code, payment_terms_days, price_level_id").eq("status", "active").order("name"); return data || []; } });
+  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); return data || []; } });
+  const { data: companySettings } = useQuery({ queryKey: ["company-settings"], queryFn: async () => { const { data } = await supabase.from("company_settings").select("state_code, state").limit(1).single(); return data; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); return data || []; } });
   const { data: batches = [] } = useQuery({ queryKey: ["batches-available"], queryFn: async () => { const { data } = await supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); return data || []; } });
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
@@ -118,7 +119,7 @@ export default function Invoices() {
 
   const computedItems = items.map((item) => {
     const amount = item.qty * item.rate;
-    const gst = calculateGST(amount, item.gst_rate, selectedDealer?.state_code);
+    const gst = calculateGST(amount, item.gst_rate, selectedDealer?.state_code, companySettings?.state_code || "36");
     return { ...item, amount, ...gst };
   });
   const subtotal = computedItems.reduce((s, i) => s + i.amount, 0);
@@ -137,7 +138,8 @@ export default function Invoices() {
         ? new Date(Date.now() + Number(selectedDealer.payment_terms_days) * 86400000).toISOString().split("T")[0]
         : null;
 
-      const placeOfSupply = selectedDealer?.state_code === "36" ? "Telangana" : (selectedDealer?.state || "");
+      const companyStateCode = companySettings?.state_code || "36";
+      const placeOfSupply = selectedDealer?.state_code === companyStateCode ? (companySettings?.state || "Telangana") : (selectedDealer?.state || "");
 
       const itemsPayload = validItems.map((i) => ({
         product_id: i.product_id, batch_id: i.batch_id, hsn_code: i.hsn_code,
@@ -228,7 +230,7 @@ export default function Invoices() {
                       <Select value={dealerId} onValueChange={setDealerId}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{dealers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select>
                     </div>
                     <div className="space-y-2"><Label>Invoice Date</Label><Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} /></div>
-                    {selectedDealer && <div className="space-y-2"><Label>GST Type</Label><p className="text-sm font-medium pt-2">{selectedDealer.state_code === "36" ? "Intra-state (CGST+SGST)" : "Inter-state (IGST)"}</p></div>}
+                    {selectedDealer && <div className="space-y-2"><Label>GST Type</Label><p className="text-sm font-medium pt-2">{selectedDealer.state_code === (companySettings?.state_code || "36") ? "Intra-state (CGST+SGST)" : "Inter-state (IGST)"}</p></div>}
                   </div>
                   <div className="space-y-2">
                     <Label>Line Items (select batch for each)</Label>
