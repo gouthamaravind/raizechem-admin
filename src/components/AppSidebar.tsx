@@ -74,6 +74,7 @@ const navGroups = [
       { title: "Supplier Ledger", url: "/finance/supplier-ledger", icon: BookOpen },
       { title: "Supplier Outstanding", url: "/finance/supplier-outstanding", icon: CreditCard },
       { title: "Supplier Payments", url: "/finance/supplier-payments", icon: Banknote },
+      { title: "Advance Receipts", url: "/finance/advances", icon: Wallet },
     ],
   },
   {

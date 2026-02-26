@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      advance_allocations: {
+        Row: {
+          advance_receipt_id: string
+          allocated_amount: number
+          allocated_at: string
+          allocated_by: string | null
+          id: string
+          invoice_id: string
+        }
+        Insert: {
+          advance_receipt_id: string
+          allocated_amount: number
+          allocated_at?: string
+          allocated_by?: string | null
+          id?: string
+          invoice_id: string
+        }
+        Update: {
+          advance_receipt_id?: string
+          allocated_amount?: number
+          allocated_at?: string
+          allocated_by?: string | null
+          id?: string
+          invoice_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advance_allocations_advance_receipt_id_fkey"
+            columns: ["advance_receipt_id"]
+            isOneToOne: false
+            referencedRelation: "advance_receipts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advance_allocations_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      advance_receipts: {
+        Row: {
+          adjusted_amount: number
+          balance_amount: number
+          created_at: string
+          created_by: string | null
+          dealer_id: string
+          gross_amount: number
+          id: string
+          notes: string | null
+          payment_mode: string
+          receipt_date: string
+          receipt_number: string
+          reference_number: string | null
+          status: string
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          adjusted_amount?: number
+          balance_amount: number
+          created_at?: string
+          created_by?: string | null
+          dealer_id: string
+          gross_amount: number
+          id?: string
+          notes?: string | null
+          payment_mode?: string
+          receipt_date?: string
+          receipt_number: string
+          reference_number?: string | null
+          status?: string
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          adjusted_amount?: number
+          balance_amount?: number
+          created_at?: string
+          created_by?: string | null
+          dealer_id?: string
+          gross_amount?: number
+          id?: string
+          notes?: string | null
+          payment_mode?: string
+          receipt_date?: string
+          receipt_number?: string
+          reference_number?: string | null
+          status?: string
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advance_receipts_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       api_rate_limits: {
         Row: {
           called_at: string
@@ -88,6 +198,7 @@ export type Database = {
           invoice_template: string
           legal_name: string | null
           logo_url: string | null
+          next_ar_number: number
           next_cn_number: number
           next_dn_number: number
           next_invoice_number: number
@@ -116,6 +227,7 @@ export type Database = {
           invoice_template?: string
           legal_name?: string | null
           logo_url?: string | null
+          next_ar_number?: number
           next_cn_number?: number
           next_dn_number?: number
           next_invoice_number?: number
@@ -144,6 +256,7 @@ export type Database = {
           invoice_template?: string
           legal_name?: string | null
           logo_url?: string | null
+          next_ar_number?: number
           next_cn_number?: number
           next_dn_number?: number
           next_invoice_number?: number
@@ -2340,6 +2453,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      allocate_advance_to_invoice_atomic: {
+        Args: {
+          p_allocated_by?: string
+          p_amount_to_allocate: number
+          p_dealer_id: string
+          p_invoice_id: string
+        }
+        Returns: Json
+      }
       approve_field_order: {
         Args: { _field_order_id: string; _order_number: string }
         Returns: string
@@ -2349,6 +2471,18 @@ export type Database = {
         Returns: number
       }
       compute_session_km: { Args: { _session_id: string }; Returns: number }
+      create_advance_receipt_atomic: {
+        Args: {
+          p_amount?: number
+          p_created_by?: string
+          p_dealer_id: string
+          p_notes?: string
+          p_payment_mode: string
+          p_receipt_date: string
+          p_reference_number?: string
+        }
+        Returns: Json
+      }
       create_credit_note_atomic: {
         Args: {
           p_created_by: string
@@ -2447,6 +2581,10 @@ export type Database = {
           p_supplier_id: string
         }
         Returns: Json
+      }
+      void_advance_receipt_atomic: {
+        Args: { p_reason: string; p_receipt_id: string; p_voided_by: string }
+        Returns: undefined
       }
       void_credit_note_atomic: {
         Args: { p_cn_id: string; p_reason: string; p_voided_by: string }

@@ -32,6 +32,7 @@ import Payments from "./pages/finance/Payments";
 import SupplierLedger from "./pages/finance/SupplierLedger";
 import SupplierOutstanding from "./pages/finance/SupplierOutstanding";
 import SupplierPayments from "./pages/finance/SupplierPayments";
+import Advances from "./pages/finance/Advances";
 import CompanySettings from "./pages/settings/CompanySettings";
 import UserManagement from "./pages/settings/UserManagement";
 import FinancialYears from "./pages/settings/FinancialYears";
@@ -103,6 +104,7 @@ const App = () => (
             <Route path="/finance/supplier-ledger" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierLedger /></RoleGuard></P>} />
             <Route path="/finance/supplier-outstanding" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierOutstanding /></RoleGuard></P>} />
             <Route path="/finance/supplier-payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierPayments /></RoleGuard></P>} />
+            <Route path="/finance/advances" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Advances /></RoleGuard></P>} />
             <Route path="/settings/company" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><CompanySettings /></RoleGuard></P>} />
             <Route path="/settings/users" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><UserManagement /></RoleGuard></P>} />
             <Route path="/settings/financial-years" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><FinancialYears /></RoleGuard></P>} />
