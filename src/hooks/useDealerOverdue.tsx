@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -55,11 +55,12 @@ export function useDealerOverdue() {
       return map;
     },
     staleTime: 60_000,
+    refetchOnWindowFocus: false,
   });
 
   const safeMap = overdueMap ?? EMPTY_MAP;
-  const isOverdue = (dealerId: string) => safeMap.has(dealerId);
-  const getOverdue = (dealerId: string) => safeMap.get(dealerId);
+  const isOverdue = useCallback((dealerId: string) => safeMap.has(dealerId), [safeMap]);
+  const getOverdue = useCallback((dealerId: string) => safeMap.get(dealerId), [safeMap]);
 
   return { overdueMap: safeMap, isOverdue, getOverdue, isLoading };
 }
