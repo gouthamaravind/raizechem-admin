@@ -244,7 +244,7 @@ export default function Dealers() {
     if (errors[key as keyof FormErrors]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
-  const FieldError = ({ field }: { field: keyof FormErrors }) =>
+  const fieldError = (field: keyof FormErrors) =>
     errors[field] ? <p className="text-xs text-destructive mt-1">{errors[field]}</p> : null;
 
   return (
@@ -278,7 +278,7 @@ export default function Dealers() {
                       <div className="col-span-2 space-y-1">
                         <Label>Dealer Name <span className="text-destructive">*</span></Label>
                         <Input required value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Mehta Chemicals Ltd" className={errors.name ? "border-destructive" : ""} />
-                        <FieldError field="name" />
+                        {fieldError("name")}
                       </div>
                       <div className="col-span-2 space-y-1">
                         <Label>GSTIN</Label>
@@ -308,7 +308,7 @@ export default function Dealers() {
                             {gstFetching ? "Fetching..." : gstVerifiedAt ? "Re-Verify" : "Fetch GST"}
                           </Button>
                         </div>
-                        <FieldError field="gst_number" />
+                        {fieldError("gst_number")}
                         {gstVerifiedAt && (
                           <p className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1 mt-1">
                             <ShieldCheck className="h-3 w-3" />
@@ -323,12 +323,12 @@ export default function Dealers() {
                       <div className="space-y-1">
                         <Label>Phone</Label>
                         <Input value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="+91 98765 43210" className={errors.phone ? "border-destructive" : ""} />
-                        <FieldError field="phone" />
+                        {fieldError("phone")}
                       </div>
                       <div className="space-y-1">
                         <Label>Email</Label>
                         <Input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="dealer@example.com" className={errors.email ? "border-destructive" : ""} />
-                        <FieldError field="email" />
+                        {fieldError("email")}
                       </div>
                     </div>
                   </fieldset>
@@ -352,7 +352,7 @@ export default function Dealers() {
                       <div className="space-y-1">
                         <Label>Pincode</Label>
                         <Input value={form.pincode} onChange={(e) => set("pincode", e.target.value)} placeholder="500001" maxLength={6} className={errors.pincode ? "border-destructive" : ""} />
-                        <FieldError field="pincode" />
+                        {fieldError("pincode")}
                       </div>
                     </div>
                   </fieldset>
@@ -376,7 +376,7 @@ export default function Dealers() {
                         <div className="space-y-1">
                           <Label>Pincode</Label>
                           <Input value={form.shipping_pincode} onChange={(e) => set("shipping_pincode", e.target.value)} maxLength={6} className={errors.shipping_pincode ? "border-destructive" : ""} />
-                          <FieldError field="shipping_pincode" />
+                          {fieldError("shipping_pincode")}
                         </div>
                       </div>
                     )}
@@ -400,12 +400,12 @@ export default function Dealers() {
                        <div className="space-y-1">
                          <Label>Credit Limit (₹)</Label>
                          <Input type="number" value={form.credit_limit} onChange={(e) => set("credit_limit", Number(e.target.value))} min={0} className={errors.credit_limit ? "border-destructive" : ""} />
-                         <FieldError field="credit_limit" />
+                         {fieldError("credit_limit")}
                        </div>
                        <div className="space-y-1">
                          <Label>Payment Terms (days)</Label>
                          <Input type="number" value={form.payment_terms_days} onChange={(e) => set("payment_terms_days", Number(e.target.value))} min={0} max={365} className={errors.payment_terms_days ? "border-destructive" : ""} />
-                         <FieldError field="payment_terms_days" />
+                         {fieldError("payment_terms_days")}
                        </div>
                      </div>
                    </fieldset>
