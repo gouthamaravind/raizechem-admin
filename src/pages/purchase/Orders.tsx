@@ -47,27 +47,20 @@ export default function PurchaseOrders() {
       const validItems = items.filter((i) => i.product_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
-      const total = validItems.reduce((s, i) => s + i.qty * i.rate, 0);
-
-      // Get sequential PO number
-      const { data: settings } = await supabase.from("company_settings").select("next_po_number, id").limit(1).single();
-      const nextNum = settings?.next_po_number || 1;
-      const poNum = `PO/${new Date().getFullYear()}/${String(nextNum).padStart(3, "0")}`;
-
-      const { data: po, error } = await supabase.from("purchase_orders").insert({
-        po_number: poNum, supplier_id: supplierId, total_amount: total,
-        notes, created_by: user?.id,
-      }).select("id").single();
-      if (error) throw error;
-
-      await supabase.from("company_settings").update({ next_po_number: nextNum + 1 } as any).eq("id", settings?.id as any);
-
-      const orderItems = validItems.map((i) => ({
-        purchase_order_id: po.id, product_id: i.product_id, qty: i.qty,
-        rate: i.rate, amount: i.qty * i.rate,
+      const p_items = validItems.map((i) => ({
+        product_id: i.product_id,
+        qty: i.qty,
+        rate: i.rate,
       }));
-      const { error: itemErr } = await supabase.from("purchase_order_items").insert(orderItems);
-      if (itemErr) throw itemErr;
+
+      const { data, error } = await supabase.rpc("create_po_atomic" as any, {
+        p_supplier_id: supplierId,
+        p_notes: notes || null,
+        p_created_by: user?.id,
+        p_items: p_items,
+      });
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });

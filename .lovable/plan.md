@@ -25,13 +25,12 @@
 
 ## Remaining Items (Not Yet Fixed)
 
-### Non-Atomic Order/PO Creation (Race Condition)
-- `src/pages/sales/Orders.tsx` reads `next_order_number` and increments it in two separate queries
-- Should be refactored into a server-side RPC like `create_order_atomic`
-- Same issue in Purchase Orders
+### ✅ Non-Atomic Order/PO Creation (Race Condition) — FIXED
+- Sales Orders already used `create_order_atomic` RPC (no issue)
+- Purchase Orders had client-side read+increment — created `create_po_atomic` RPC with `FOR UPDATE` lock
 
-### Order → Invoice Conversion (UI-Only)
-- `Orders.tsx` navigates to `/sales/invoices` with `state.convertOrder` but `Invoices.tsx` doesn't consume it
+### ✅ Order → Invoice Conversion — Already Working
+- `Invoices.tsx` already consumes `state.convertOrder` via `useEffect` (lines 88-116)
 
 ### Unbounded Queries (No Pagination)
 - All listing pages fetch without `LIMIT`; will hit the 1000-row default

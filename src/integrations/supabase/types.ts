@@ -2530,6 +2530,15 @@ export type Database = {
         }
         Returns: Json
       }
+      create_po_atomic: {
+        Args: {
+          p_created_by?: string
+          p_items?: Json
+          p_notes?: string
+          p_supplier_id: string
+        }
+        Returns: Json
+      }
       create_purchase_invoice_atomic: {
         Args: {
           p_cgst_total: number
