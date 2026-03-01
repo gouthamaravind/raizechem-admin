@@ -19,6 +19,8 @@ import Batches from "./pages/inventory/Batches";
 import StockIn from "./pages/inventory/StockIn";
 import Alerts from "./pages/inventory/Alerts";
 import BOM from "./pages/inventory/BOM";
+import WarehousesPage from "./pages/inventory/Warehouses";
+import StockTransfersPage from "./pages/inventory/StockTransfers";
 import Orders from "./pages/sales/Orders";
 import Invoices from "./pages/sales/Invoices";
 import InvoicePrint from "./pages/sales/InvoicePrint";
@@ -34,6 +36,7 @@ import SupplierLedger from "./pages/finance/SupplierLedger";
 import SupplierOutstanding from "./pages/finance/SupplierOutstanding";
 import SupplierPayments from "./pages/finance/SupplierPayments";
 import Advances from "./pages/finance/Advances";
+import Vouchers from "./pages/finance/Vouchers";
 import CompanySettings from "./pages/settings/CompanySettings";
 import UserManagement from "./pages/settings/UserManagement";
 import FinancialYears from "./pages/settings/FinancialYears";
@@ -97,6 +100,8 @@ const App = () => (
             <Route path="/inventory/stock-in" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><StockIn /></RoleGuard></P>} />
             <Route path="/inventory/alerts" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><Alerts /></RoleGuard></P>} />
             <Route path="/inventory/bom" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><BOM /></RoleGuard></P>} />
+            <Route path="/inventory/warehouses" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><WarehousesPage /></RoleGuard></P>} />
+            <Route path="/inventory/stock-transfers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><StockTransfersPage /></RoleGuard></P>} />
             <Route path="/sales/orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Orders /></RoleGuard></P>} />
             <Route path="/sales/invoices" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Invoices /></RoleGuard></P>} />
             <Route path="/sales/invoices/:id/print" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><InvoicePrint /></RoleGuard></P>} />
@@ -112,6 +117,7 @@ const App = () => (
             <Route path="/finance/supplier-outstanding" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierOutstanding /></RoleGuard></P>} />
             <Route path="/finance/supplier-payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierPayments /></RoleGuard></P>} />
             <Route path="/finance/advances" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Advances /></RoleGuard></P>} />
+            <Route path="/finance/vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Vouchers /></RoleGuard></P>} />
             <Route path="/settings/company" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><CompanySettings /></RoleGuard></P>} />
             <Route path="/settings/users" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><UserManagement /></RoleGuard></P>} />
             <Route path="/settings/financial-years" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><FinancialYears /></RoleGuard></P>} />

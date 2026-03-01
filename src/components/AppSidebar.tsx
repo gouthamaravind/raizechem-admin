@@ -43,6 +43,8 @@ const navGroups = [
     items: [
       { title: "Batches", url: "/inventory/batches", icon: Boxes },
       { title: "Stock In", url: "/inventory/stock-in", icon: ArrowDownToLine },
+      { title: "Warehouses", url: "/inventory/warehouses", icon: WarehouseIcon },
+      { title: "Stock Transfers", url: "/inventory/stock-transfers", icon: Truck },
       { title: "Alerts", url: "/inventory/alerts", icon: AlertTriangle },
       { title: "Bill of Materials", url: "/inventory/bom", icon: Combine },
     ],
@@ -76,6 +78,7 @@ const navGroups = [
       { title: "Supplier Outstanding", url: "/finance/supplier-outstanding", icon: CreditCard },
       { title: "Supplier Payments", url: "/finance/supplier-payments", icon: Banknote },
       { title: "Advance Receipts", url: "/finance/advances", icon: Wallet },
+      { title: "Vouchers", url: "/finance/vouchers", icon: ScrollText },
     ],
   },
   {
