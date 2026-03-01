@@ -286,10 +286,15 @@ export type Database = {
           logo_url: string | null
           next_ar_number: number
           next_cn_number: number
+          next_contra_number: number
           next_dn_number: number
           next_invoice_number: number
+          next_journal_number: number
           next_order_number: number
+          next_payment_voucher_number: number
           next_po_number: number
+          next_receipt_voucher_number: number
+          next_transfer_number: number
           pan_number: string | null
           phone: string | null
           pincode: string | null
@@ -317,10 +322,15 @@ export type Database = {
           logo_url?: string | null
           next_ar_number?: number
           next_cn_number?: number
+          next_contra_number?: number
           next_dn_number?: number
           next_invoice_number?: number
+          next_journal_number?: number
           next_order_number?: number
+          next_payment_voucher_number?: number
           next_po_number?: number
+          next_receipt_voucher_number?: number
+          next_transfer_number?: number
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
@@ -348,10 +358,15 @@ export type Database = {
           logo_url?: string | null
           next_ar_number?: number
           next_cn_number?: number
+          next_contra_number?: number
           next_dn_number?: number
           next_invoice_number?: number
+          next_journal_number?: number
           next_order_number?: number
+          next_payment_voucher_number?: number
           next_po_number?: number
+          next_receipt_voucher_number?: number
+          next_transfer_number?: number
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
@@ -1455,6 +1470,39 @@ export type Database = {
           },
         ]
       }
+      ledger_accounts: {
+        Row: {
+          account_type: string
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          parent_type: string
+        }
+        Insert: {
+          account_type?: string
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          parent_type?: string
+        }
+        Update: {
+          account_type?: string
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          parent_type?: string
+        }
+        Relationships: []
+      }
       ledger_entries: {
         Row: {
           created_at: string
@@ -1909,6 +1957,7 @@ export type Database = {
       product_batches: {
         Row: {
           batch_no: string
+          bin_id: string | null
           created_at: string
           created_by: string | null
           current_qty: number
@@ -1918,9 +1967,11 @@ export type Database = {
           product_id: string
           purchase_rate: number
           updated_at: string
+          warehouse_id: string | null
         }
         Insert: {
           batch_no: string
+          bin_id?: string | null
           created_at?: string
           created_by?: string | null
           current_qty?: number
@@ -1930,9 +1981,11 @@ export type Database = {
           product_id: string
           purchase_rate?: number
           updated_at?: string
+          warehouse_id?: string | null
         }
         Update: {
           batch_no?: string
+          bin_id?: string | null
           created_at?: string
           created_by?: string | null
           current_qty?: number
@@ -1942,13 +1995,28 @@ export type Database = {
           product_id?: string
           purchase_rate?: number
           updated_at?: string
+          warehouse_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "product_batches_bin_id_fkey"
+            columns: ["bin_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_bins"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "product_batches_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_batches_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
             referencedColumns: ["id"]
           },
         ]
@@ -2355,6 +2423,141 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_transfer_items: {
+        Row: {
+          batch_id: string
+          created_at: string
+          from_bin_id: string | null
+          id: string
+          product_id: string
+          qty: number
+          to_bin_id: string | null
+          transfer_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          from_bin_id?: string | null
+          id?: string
+          product_id: string
+          qty: number
+          to_bin_id?: string | null
+          transfer_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          from_bin_id?: string | null
+          id?: string
+          product_id?: string
+          qty?: number
+          to_bin_id?: string | null
+          transfer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfer_items_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_items_from_bin_id_fkey"
+            columns: ["from_bin_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_items_to_bin_id_fkey"
+            columns: ["to_bin_id"]
+            isOneToOne: false
+            referencedRelation: "warehouse_bins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfer_items_transfer_id_fkey"
+            columns: ["transfer_id"]
+            isOneToOne: false
+            referencedRelation: "stock_transfers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          created_by: string | null
+          from_warehouse_id: string
+          id: string
+          notes: string | null
+          received_at: string | null
+          received_by: string | null
+          status: string
+          to_warehouse_id: string
+          transfer_date: string
+          transfer_number: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_warehouse_id: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          status?: string
+          to_warehouse_id: string
+          transfer_date?: string
+          transfer_number: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          from_warehouse_id?: string
+          id?: string
+          notes?: string | null
+          received_at?: string | null
+          received_by?: string | null
+          status?: string
+          to_warehouse_id?: string
+          transfer_date?: string
+          transfer_number?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_from_warehouse_id_fkey"
+            columns: ["from_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_to_warehouse_id_fkey"
+            columns: ["to_warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_ledger_entries: {
         Row: {
           created_at: string
@@ -2552,6 +2755,199 @@ export type Database = {
         }
         Relationships: []
       }
+      voucher_lines: {
+        Row: {
+          account_id: string
+          created_at: string
+          credit: number
+          dealer_id: string | null
+          debit: number
+          id: string
+          narration: string | null
+          supplier_id: string | null
+          voucher_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          credit?: number
+          dealer_id?: string | null
+          debit?: number
+          id?: string
+          narration?: string | null
+          supplier_id?: string | null
+          voucher_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          credit?: number
+          dealer_id?: string | null
+          debit?: number
+          id?: string
+          narration?: string | null
+          supplier_id?: string | null
+          voucher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voucher_lines_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "ledger_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voucher_lines_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voucher_lines_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voucher_lines_voucher_id_fkey"
+            columns: ["voucher_id"]
+            isOneToOne: false
+            referencedRelation: "vouchers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vouchers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          narration: string | null
+          status: string
+          total_amount: number
+          updated_at: string
+          void_reason: string | null
+          voided_at: string | null
+          voided_by: string | null
+          voucher_date: string
+          voucher_number: string
+          voucher_type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          narration?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voucher_date?: string
+          voucher_number: string
+          voucher_type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          narration?: string | null
+          status?: string
+          total_amount?: number
+          updated_at?: string
+          void_reason?: string | null
+          voided_at?: string | null
+          voided_by?: string | null
+          voucher_date?: string
+          voucher_number?: string
+          voucher_type?: string
+        }
+        Relationships: []
+      }
+      warehouse_bins: {
+        Row: {
+          bin_code: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          warehouse_id: string
+        }
+        Insert: {
+          bin_code: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          warehouse_id: string
+        }
+        Update: {
+          bin_code?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          warehouse_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "warehouse_bins_warehouse_id_fkey"
+            columns: ["warehouse_id"]
+            isOneToOne: false
+            referencedRelation: "warehouses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      warehouses: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          city: string | null
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          pincode: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          city?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          pincode?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2658,6 +3054,10 @@ export type Database = {
           p_total_amount: number
         }
         Returns: Json
+      }
+      execute_stock_transfer: {
+        Args: { p_action: string; p_transfer_id: string; p_user_id: string }
+        Returns: undefined
       }
       finalize_duty_session: { Args: { _session_id: string }; Returns: Json }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
