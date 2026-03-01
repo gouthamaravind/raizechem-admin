@@ -5,10 +5,11 @@ import {
   UserCog, CalendarDays, AlertTriangle, ArrowDownToLine, WarehouseIcon,
   Combine, Scale, PieChart, Sheet, Grid3X3, Landmark, ClipboardCheck,
   BadgeCheck, HelpCircle, Shield, Smartphone, Globe, Zap, ChevronRight,
-  ArrowLeft, type LucideIcon,
+  type LucideIcon,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface FeatureModule {
   title: string;
@@ -147,21 +148,27 @@ const highlights = [
 ];
 
 export default function Features() {
+  const { session } = useAuth();
+  const dest = session ? "/dashboard" : "/login";
+
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link to="/dashboard" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Link>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <img src="/favicon.svg" alt="Raizechem" className="w-5 h-5" />
             </div>
             <span className="font-semibold text-sm tracking-tight">Raizechem</span>
           </div>
+          <Link
+            to={dest}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            {session ? "Go to Dashboard" : "Sign In"}
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Link>
         </div>
       </nav>
 
@@ -246,10 +253,10 @@ export default function Features() {
           <h2 className="font-serif text-3xl font-bold text-foreground">Ready to get started?</h2>
           <p className="mt-3 text-muted-foreground">Sign in to explore all features in your dashboard.</p>
           <Link
-            to="/dashboard"
+            to={dest}
             className="mt-8 inline-flex items-center gap-2 rounded-xl bg-primary px-8 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/25 hover:opacity-90 transition-opacity"
           >
-            Go to Dashboard
+            {session ? "Go to Dashboard" : "Sign In"}
             <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
