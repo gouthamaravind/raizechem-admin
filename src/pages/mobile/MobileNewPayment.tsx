@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
 import { Send } from "lucide-react";
 
-const MODES = ["cash", "upi", "cheque", "bank_transfer", "neft", "rtgs"];
+const MODES = ["cash", "upi", "cheque", "bank_transfer", "neft", "rtgs", "imps", "dd"];
 
 export default function MobileNewPayment() {
   const navigate = useNavigate();

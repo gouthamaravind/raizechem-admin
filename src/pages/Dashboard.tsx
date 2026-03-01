@@ -96,7 +96,7 @@ const statusColors: Record<string, string> = {
 };
 
 const modeLabels: Record<string, string> = {
-  cash: "Cash", bank_transfer: "Bank", cheque: "Cheque", upi: "UPI",
+  cash: "Cash", bank_transfer: "Bank", cheque: "Cheque", upi: "UPI", neft: "NEFT", rtgs: "RTGS", imps: "IMPS", dd: "DD",
 };
 
 export default function Dashboard() {
