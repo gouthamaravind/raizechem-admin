@@ -24,6 +24,7 @@ const emptyForm = {
 };
 const UNITS = ["KG", "L", "MT", "PCS", "DRUM", "BAG", "BOX", "TON", "GM", "ML"];
 const GST_RATES = [0, 5, 12, 18, 28];
+const CATEGORIES = ["Pesticide", "Herbicide", "Fertiliser", "Insecticide", "Fungicide", "Plant Growth Regulator", "Bio Pesticide", "Micronutrient", "Seed", "Other"];
 
 type FormErrors = Partial<Record<keyof typeof emptyForm, string>>;
 
@@ -233,8 +234,13 @@ export default function Products() {
                       </div>
                       <div className="space-y-1">
                         <Label>Category</Label>
-                        <Input value={form.category} onChange={(e) => set("category", e.target.value)} placeholder="e.g. Acids, Solvents" list="categories" />
-                        <datalist id="categories">{categories.map((c: any) => <option key={c} value={c} />)}</datalist>
+                        <Select value={form.category || "none"} onValueChange={(v) => set("category", v === "none" ? "" : v)}>
+                          <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">— None —</SelectItem>
+                            {CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="space-y-1">
