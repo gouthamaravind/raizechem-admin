@@ -24,7 +24,7 @@ const emptyForm = {
 };
 const UNITS = ["KG", "L", "MT", "PCS", "DRUM", "BAG", "BOX", "TON", "GM", "ML"];
 const GST_RATES = [0, 5, 12, 18, 28];
-const CATEGORIES = ["Pesticide", "Herbicide", "Fertiliser", "Insecticide", "Fungicide", "Plant Growth Regulator", "Bio Pesticide", "Micronutrient", "Seed", "Other"];
+const CATEGORIES = ["Pesticide", "Herbicide", "Fertiliser", "Insecticide"];
 
 type FormErrors = Partial<Record<keyof typeof emptyForm, string>>;
 
