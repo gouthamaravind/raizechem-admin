@@ -76,7 +76,7 @@ export default function Payments() {
     mutationFn: async () => {
       if (!dealerId || amount <= 0) throw new Error("Select dealer and enter amount");
 
-      const { error } = await supabase.rpc("record_payment_atomic" as any, {
+      const { data: paymentResult, error } = await supabase.rpc("record_payment_atomic" as any, {
         p_dealer_id: dealerId,
         p_payment_date: paymentDate,
         p_amount: amount,
@@ -91,14 +91,27 @@ export default function Payments() {
         p_net_amount: netAmount,
       });
       if (error) throw error;
+
+      // Apply pro rata credit if payment was recorded
+      if (paymentResult) {
+        const { data: proRataDiscount } = await supabase.rpc("apply_prorata_credit" as any, {
+          p_payment_id: paymentResult,
+        });
+        return proRataDiscount as number | null;
+      }
+      return null;
     },
-    onSuccess: () => {
+    onSuccess: (proRataDiscount) => {
       qc.invalidateQueries({ queryKey: ["payments"] });
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["outstanding-invoices"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
       setDialogOpen(false); resetForm();
-      toast.success("Payment recorded and applied to invoices");
+      if (proRataDiscount && proRataDiscount > 0) {
+        toast.success(`Payment recorded! Pro rata credit of ₹${Number(proRataDiscount).toLocaleString("en-IN")} applied.`);
+      } else {
+        toast.success("Payment recorded and applied to invoices");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });

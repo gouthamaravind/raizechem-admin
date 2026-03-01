@@ -293,6 +293,8 @@ export type Database = {
           pan_number: string | null
           phone: string | null
           pincode: string | null
+          prorata_90day_pct: number
+          prorata_sameday_pct: number
           state: string | null
           state_code: string | null
           updated_at: string
@@ -322,6 +324,8 @@ export type Database = {
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
+          prorata_90day_pct?: number
+          prorata_sameday_pct?: number
           state?: string | null
           state_code?: string | null
           updated_at?: string
@@ -351,6 +355,8 @@ export type Database = {
           pan_number?: string | null
           phone?: string | null
           pincode?: string | null
+          prorata_90day_pct?: number
+          prorata_sameday_pct?: number
           state?: string | null
           state_code?: string | null
           updated_at?: string
@@ -2560,6 +2566,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_prorata_credit: { Args: { p_payment_id: string }; Returns: number }
       approve_field_order: {
         Args: { _field_order_id: string; _order_number: string }
         Returns: string
