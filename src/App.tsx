@@ -75,6 +75,7 @@ import MobileNewOrder from "./pages/mobile/MobileNewOrder";
 import MobilePayments from "./pages/mobile/MobilePayments";
 import MobileNewPayment from "./pages/mobile/MobileNewPayment";
 import { MobileGuard } from "./components/mobile/MobileGuard";
+import Features from "./pages/Features";
 
 const queryClient = new QueryClient();
 
@@ -90,6 +91,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/features" element={<Features />} />
             <Route path="/dashboard" element={<P><Dashboard /></P>} />
             <Route path="/masters/dealers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealers /></RoleGuard></P>} />
             <Route path="/masters/suppliers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Suppliers /></RoleGuard></P>} />
