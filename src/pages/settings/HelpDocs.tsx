@@ -85,10 +85,11 @@ export default function HelpDocs() {
             <Section icon={Truck} title="Suppliers">
               <p>Suppliers are your vendors. Same structure as dealers with GST verification. Used in purchase orders and purchase invoices.</p>
             </Section>
-            <Section icon={Package} title="Products">
-              <p>Each product has: name, HSN code, GST rate (%), unit, category, sale price, purchase price, and minimum stock alert quantity.</p>
-              <p><strong>Price Levels:</strong> Multiple price tiers (e.g., Retail, Wholesale, Distributor). Each dealer is assigned a price level. During order/invoice creation, the system auto-picks the rate from the dealer's assigned price level.</p>
-            </Section>
+             <Section icon={Package} title="Products">
+               <p>Each product has: name, HSN code, GST rate (%), unit, category, sale price, purchase price, and minimum stock alert quantity.</p>
+               <p><strong>Categories:</strong> Products are classified into fixed categories — Pesticide, Herbicide, Fertiliser, Insecticide — selected via dropdown.</p>
+               <p><strong>Price Levels:</strong> Multiple price tiers (e.g., Retail, Wholesale, Distributor). Each dealer is assigned a price level. During order/invoice creation, the system auto-picks the rate from the dealer's assigned price level.</p>
+             </Section>
             <Section icon={Truck} title="Transporters">
               <p>Transport partners with GST details, contact info, and vehicle types. Linked to dealers as "Preferred Transporter" for auto-fill on invoices and e-way bills.</p>
             </Section>
@@ -102,24 +103,39 @@ export default function HelpDocs() {
               <p><strong>Stock In:</strong> Manual stock entry creates an inventory transaction (type: STOCK_IN) increasing the batch quantity.</p>
               <p><strong>Alerts:</strong> Products where current total stock falls below <code>min_stock_alert_qty</code> appear in the alerts page.</p>
             </Section>
-            <Section icon={Boxes} title="Inventory Transactions">
-              <p>Every stock movement is recorded as an inventory transaction with type:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li><strong>STOCK_IN:</strong> Manual stock addition</li>
-                <li><strong>PURCHASE:</strong> From purchase invoice confirmation</li>
-                <li><strong>SALE:</strong> From sales invoice confirmation (qty_out)</li>
-                <li><strong>SALE_RETURN:</strong> Credit note increases stock back</li>
-                <li><strong>PURCHASE_RETURN:</strong> Debit note decreases stock</li>
-              </ul>
-            </Section>
-          </TabsContent>
+             <Section icon={Boxes} title="Inventory Transactions">
+               <p>Every stock movement is recorded as an inventory transaction with type:</p>
+               <ul className="list-disc list-inside space-y-1">
+                 <li><strong>STOCK_IN:</strong> Manual stock addition</li>
+                 <li><strong>PURCHASE:</strong> From purchase invoice confirmation</li>
+                 <li><strong>SALE:</strong> From sales invoice confirmation (qty_out)</li>
+                 <li><strong>SALE_RETURN:</strong> Credit note increases stock back</li>
+                 <li><strong>PURCHASE_RETURN:</strong> Debit note decreases stock</li>
+               </ul>
+             </Section>
+             <Section icon={Boxes} title="Bill of Materials (BOM)">
+               <p>Define raw material recipes for finished products. Each BOM has a header (linked to a product) and line items specifying raw materials with quantities and units.</p>
+               <p>Use cases: production planning, material requirement tracking, and cost estimation based on component purchase rates.</p>
+             </Section>
+             <Section icon={Boxes} title="Stock Valuation">
+               <p>The Stock Summary report supports multiple valuation methods:</p>
+               <ul className="list-disc list-inside space-y-1">
+                 <li><strong>FIFO:</strong> Values stock based on the oldest batches first</li>
+                 <li><strong>Weighted Average:</strong> Values stock using the weighted average purchase rate across all batches</li>
+               </ul>
+               <Formula label="Weighted Avg Rate" formula="SUM(batch_qty × purchase_rate) / SUM(batch_qty)" />
+             </Section>
+           </TabsContent>
 
           {/* ── Sales ── */}
           <TabsContent value="sales">
-            <Section icon={ShoppingCart} title="Sales Orders">
-              <p>Orders are booking requests from dealers. They don't affect inventory or ledger. Status flow:</p>
-              <p><Badge variant="outline">Draft</Badge> → <Badge variant="outline">Confirmed</Badge> → <Badge variant="outline">Invoiced</Badge> / <Badge variant="outline">Cancelled</Badge></p>
-              <Formula label="Order Total" formula="SUM(qty × rate) for all line items" />
+             <Section icon={ShoppingCart} title="Sales Orders">
+               <p>Orders are booking requests from dealers. They don't affect inventory or ledger. Status flow:</p>
+               <p><Badge variant="outline">Draft</Badge> → <Badge variant="outline">Confirmed</Badge> → <Badge variant="outline">Invoiced</Badge> / <Badge variant="outline">Cancelled</Badge></p>
+               <Formula label="Order Total" formula="SUM((qty × rate) − discount) for all line items" />
+               <p><strong>Line-level Discounts:</strong> Each line item supports percentage (%) or flat amount (₹) discount applied before tax calculation.</p>
+               <Formula label="Discount (Pct)" formula="qty × rate × discount_pct / 100" />
+               <Formula label="Net Amount" formula="(qty × rate) − discount_amount" />
               <p>Auto-numbering: ORD/{"{FY}"}/{"{seq}"} using company_settings.next_order_number with concurrency-safe SELECT FOR UPDATE.</p>
             </Section>
             <Section icon={FileText} title="Sales Invoices">
@@ -205,7 +221,13 @@ export default function HelpDocs() {
               <p>Mirror of dealer finance but for suppliers. Purchase invoices create CREDIT entries; supplier payments create DEBIT entries.</p>
               <Formula label="Supplier Outstanding" formula="SUM(credit) − SUM(debit) for a supplier" />
             </Section>
-            <Section icon={CreditCard} title="Outstanding & Aging">
+             <Section icon={CreditCard} title="Pro-Rata Credit (Early Payment Discount)">
+               <p>Incentivises early payment from dealers via configurable discount slabs set in Company Settings:</p>
+               <Formula label="Same-day discount" formula="invoice_total × prorata_sameday_pct / 100 (default 24%)" />
+               <Formula label="Within 90 days" formula="invoice_total × prorata_90day_pct / 100 (default 12%)" />
+               <p>When a payment qualifies, the system automatically creates a <code>prorata_credit</code> ledger entry reducing the dealer's outstanding balance.</p>
+             </Section>
+             <Section icon={CreditCard} title="Outstanding & Aging">
               <p>Outstanding aging buckets invoices by days overdue:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li>Current (not yet due)</li>
@@ -317,10 +339,15 @@ export default function HelpDocs() {
             <Section icon={Boxes} title="Batch Stock Report">
               <p>Shows current stock per product per batch with manufacturing/expiry dates and purchase rates.</p>
             </Section>
-            <Section icon={BarChart3} title="Price Matrix">
-              <p>Cross-tabular view of all products × all price levels showing the configured rate for each combination.</p>
-            </Section>
-          </TabsContent>
+             <Section icon={BarChart3} title="Price Matrix">
+               <p>Cross-tabular view of all products × all price levels showing the configured rate for each combination.</p>
+             </Section>
+             <Section icon={BarChart3} title="Financial Reports">
+               <p><strong>Trial Balance:</strong> Aggregates all ledger entries (dealer + supplier) showing total debits, credits, and closing balances.</p>
+               <p><strong>Profit & Loss:</strong> Revenue (sales) minus costs (purchases) and payroll expenses for the selected period.</p>
+               <p><strong>Balance Sheet:</strong> Summary of trade receivables (dealer outstanding), trade payables (supplier outstanding), and net position.</p>
+             </Section>
+           </TabsContent>
 
           {/* ── Settings ── */}
           <TabsContent value="settings">
