@@ -126,7 +126,7 @@ export default function Payments() {
     return p.dealers?.name?.toLowerCase().includes(s) || p.reference_number?.toLowerCase().includes(s);
   });
 
-  const modeLabels: Record<string, string> = { cash: "Cash", bank_transfer: "Bank Transfer", cheque: "Cheque", upi: "UPI" };
+  const modeLabels: Record<string, string> = { cash: "Cash", bank_transfer: "Bank Transfer", cheque: "Cheque", upi: "UPI", neft: "NEFT", rtgs: "RTGS", imps: "IMPS", dd: "Demand Draft" };
 
   return (
     <DashboardLayout>
@@ -142,7 +142,7 @@ export default function Payments() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2"><Label>Gross Amount (₹) *</Label><Input type="number" required min={0.01} step="0.01" value={amount || ""} onChange={(e) => setAmount(Number(e.target.value))} /></div>
                   <div className="space-y-2"><Label>Date</Label><Input type="date" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} /></div>
-                  <div className="space-y-2"><Label>Mode</Label><Select value={mode} onValueChange={setMode}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bank_transfer">Bank Transfer</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="upi">UPI</SelectItem></SelectContent></Select></div>
+                  <div className="space-y-2"><Label>Mode</Label><Select value={mode} onValueChange={setMode}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="bank_transfer">Bank Transfer</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="upi">UPI</SelectItem><SelectItem value="neft">NEFT</SelectItem><SelectItem value="rtgs">RTGS</SelectItem><SelectItem value="imps">IMPS</SelectItem><SelectItem value="dd">Demand Draft</SelectItem></SelectContent></Select></div>
                   <div className="space-y-2"><Label>Reference No.</Label><Input value={refNo} onChange={(e) => setRefNo(e.target.value)} /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">

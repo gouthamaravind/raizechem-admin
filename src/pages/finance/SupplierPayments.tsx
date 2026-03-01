@@ -109,6 +109,10 @@ export default function SupplierPayments() {
                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                         <SelectItem value="cheque">Cheque</SelectItem>
                         <SelectItem value="upi">UPI</SelectItem>
+                        <SelectItem value="neft">NEFT</SelectItem>
+                        <SelectItem value="rtgs">RTGS</SelectItem>
+                        <SelectItem value="imps">IMPS</SelectItem>
+                        <SelectItem value="dd">Demand Draft</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

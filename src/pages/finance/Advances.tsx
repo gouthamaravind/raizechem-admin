@@ -72,7 +72,7 @@ export default function Advances() {
     return a.receipt_number?.toLowerCase().includes(s) || a.dealers?.name?.toLowerCase().includes(s);
   });
 
-  const modeLabels: Record<string, string> = { cash: "Cash", bank_transfer: "Bank Transfer", cheque: "Cheque", upi: "UPI" };
+  const modeLabels: Record<string, string> = { cash: "Cash", bank_transfer: "Bank Transfer", cheque: "Cheque", upi: "UPI", neft: "NEFT", rtgs: "RTGS", imps: "IMPS", dd: "Demand Draft" };
   const statusVariant = (s: string) => s === "VOID" ? "destructive" as const : s === "ADJUSTED" ? "default" as const : "secondary" as const;
 
   return (

@@ -112,7 +112,7 @@ export default function FieldOpsPayments() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const modeLabels: Record<string, string> = { cash: "Cash", upi: "UPI", neft: "NEFT", cheque: "Cheque", bank_transfer: "Bank Transfer" };
+  const modeLabels: Record<string, string> = { cash: "Cash", upi: "UPI", neft: "NEFT", rtgs: "RTGS", imps: "IMPS", cheque: "Cheque", bank_transfer: "Bank Transfer", dd: "Demand Draft" };
 
   const filtered = payments.filter((p: any) => {
     const s = search.toLowerCase();
