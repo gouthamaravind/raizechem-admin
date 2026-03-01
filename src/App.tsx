@@ -18,6 +18,7 @@ import Transporters from "./pages/masters/Transporters";
 import Batches from "./pages/inventory/Batches";
 import StockIn from "./pages/inventory/StockIn";
 import Alerts from "./pages/inventory/Alerts";
+import BOM from "./pages/inventory/BOM";
 import Orders from "./pages/sales/Orders";
 import Invoices from "./pages/sales/Invoices";
 import InvoicePrint from "./pages/sales/InvoicePrint";
@@ -43,6 +44,10 @@ import BatchStockReport from "./pages/reports/BatchStockReport";
 import GSTSummary from "./pages/reports/GSTSummary";
 import PriceMatrix from "./pages/reports/PriceMatrix";
 import TdsTcsReport from "./pages/reports/TdsTcsReport";
+import TrialBalance from "./pages/reports/TrialBalance";
+import ProfitAndLoss from "./pages/reports/ProfitAndLoss";
+import BalanceSheet from "./pages/reports/BalanceSheet";
+import StockSummary from "./pages/reports/StockSummary";
 import HrEmployees from "./pages/hr/Employees";
 import SalaryComponents from "./pages/hr/SalaryComponents";
 import HrPayroll from "./pages/hr/Payroll";
@@ -91,6 +96,7 @@ const App = () => (
             <Route path="/inventory/batches" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><Batches /></RoleGuard></P>} />
             <Route path="/inventory/stock-in" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><StockIn /></RoleGuard></P>} />
             <Route path="/inventory/alerts" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><Alerts /></RoleGuard></P>} />
+            <Route path="/inventory/bom" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.inventory}><BOM /></RoleGuard></P>} />
             <Route path="/sales/orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Orders /></RoleGuard></P>} />
             <Route path="/sales/invoices" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Invoices /></RoleGuard></P>} />
             <Route path="/sales/invoices/:id/print" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><InvoicePrint /></RoleGuard></P>} />
@@ -119,6 +125,10 @@ const App = () => (
             <Route path="/reports/gst-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GSTSummary /></RoleGuard></P>} />
             <Route path="/reports/tds-tcs" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><TdsTcsReport /></RoleGuard></P>} />
             <Route path="/reports/price-matrix" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><PriceMatrix /></RoleGuard></P>} />
+            <Route path="/reports/trial-balance" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><TrialBalance /></RoleGuard></P>} />
+            <Route path="/reports/profit-loss" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><ProfitAndLoss /></RoleGuard></P>} />
+            <Route path="/reports/balance-sheet" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><BalanceSheet /></RoleGuard></P>} />
+            <Route path="/reports/stock-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><StockSummary /></RoleGuard></P>} />
             <Route path="/hr/employees" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrEmployees /></RoleGuard></P>} />
             <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
             <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />

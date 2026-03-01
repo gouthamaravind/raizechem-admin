@@ -5,7 +5,7 @@ import {
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
   ScrollText, Radio, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
-  ChevronDown,
+  ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -44,6 +44,7 @@ const navGroups = [
       { title: "Batches", url: "/inventory/batches", icon: Boxes },
       { title: "Stock In", url: "/inventory/stock-in", icon: ArrowDownToLine },
       { title: "Alerts", url: "/inventory/alerts", icon: AlertTriangle },
+      { title: "Bill of Materials", url: "/inventory/bom", icon: Combine },
     ],
   },
   {
@@ -85,6 +86,10 @@ const navGroups = [
       { title: "Purchase Register", url: "/reports/purchase-register", icon: ClipboardList },
       { title: "Outstanding Aging", url: "/reports/outstanding-aging", icon: TrendingDown },
       { title: "Batch Stock", url: "/reports/batch-stock", icon: PackageSearch },
+      { title: "Stock Summary", url: "/reports/stock-summary", icon: WarehouseIcon },
+      { title: "Trial Balance", url: "/reports/trial-balance", icon: Scale },
+      { title: "Profit & Loss", url: "/reports/profit-loss", icon: PieChart },
+      { title: "Balance Sheet", url: "/reports/balance-sheet", icon: Sheet },
       { title: "GST Summary", url: "/reports/gst-summary", icon: Receipt },
       { title: "TDS / TCS", url: "/reports/tds-tcs", icon: Landmark },
       { title: "Price Matrix", url: "/reports/price-matrix", icon: Grid3X3 },
