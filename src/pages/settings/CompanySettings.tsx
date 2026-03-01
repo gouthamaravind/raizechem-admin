@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Building2, MapPin, Landmark, FileText, Upload, Loader2, Trash2 } from "lucide-react";
+import { Building2, MapPin, Landmark, FileText, Upload, Loader2, Trash2, Percent } from "lucide-react";
 
 export default function CompanySettings() {
   const qc = useQueryClient();
@@ -20,6 +20,7 @@ export default function CompanySettings() {
     address_line1: "", address_line2: "", city: "", state: "", pincode: "",
     phone: "", email: "", bank_name: "", bank_account: "", bank_ifsc: "",
     invoice_series: "RC", logo_url: "", invoice_template: "standard",
+    prorata_sameday_pct: "24", prorata_90day_pct: "12",
   });
 
   const { data: settings, isLoading } = useQuery({
@@ -42,6 +43,8 @@ export default function CompanySettings() {
         bank_name: settings.bank_name || "", bank_account: settings.bank_account || "",
         bank_ifsc: settings.bank_ifsc || "", invoice_series: settings.invoice_series || "RC",
         logo_url: settings.logo_url || "", invoice_template: (settings as any).invoice_template || "standard",
+        prorata_sameday_pct: String((settings as any).prorata_sameday_pct ?? 24),
+        prorata_90day_pct: String((settings as any).prorata_90day_pct ?? 12),
       });
     }
   }, [settings]);
@@ -49,7 +52,13 @@ export default function CompanySettings() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!settings) throw new Error("No settings found");
-      const { error } = await supabase.from("company_settings").update(form as any).eq("id", settings.id);
+      const { prorata_sameday_pct, prorata_90day_pct, ...rest } = form;
+      const payload = {
+        ...rest,
+        prorata_sameday_pct: Number(prorata_sameday_pct),
+        prorata_90day_pct: Number(prorata_90day_pct),
+      };
+      const { error } = await supabase.from("company_settings").update(payload as any).eq("id", settings.id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -292,6 +301,34 @@ export default function CompanySettings() {
                   {form.invoice_template === "export" && "Formal commercial invoice for export / SEZ supplies."}
                 </p>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Pro Rata Credit */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Percent className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Pro Rata Credit (Early Payment Discount)</CardTitle>
+                  <CardDescription>Automatic discount applied to outstanding when dealers pay early</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Same-Day Payment Discount (%)</Label>
+                  <Input type="number" min={0} max={100} step="0.01" value={form.prorata_sameday_pct} onChange={(e) => set("prorata_sameday_pct", e.target.value)} placeholder="24" />
+                  <p className="text-xs text-muted-foreground">Applied when payment date = invoice date</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Within 90 Days Discount (%)</Label>
+                  <Input type="number" min={0} max={100} step="0.01" value={form.prorata_90day_pct} onChange={(e) => set("prorata_90day_pct", e.target.value)} placeholder="12" />
+                  <p className="text-xs text-muted-foreground">Applied when payment is within 90 days of invoice</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Set to 0 to disable. Credit is auto-applied as a ledger adjustment when payments are recorded.</p>
             </CardContent>
           </Card>
 
