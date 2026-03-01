@@ -181,6 +181,92 @@ export type Database = {
         }
         Relationships: []
       }
+      bom_headers: {
+        Row: {
+          bom_name: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          notes: string | null
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          bom_name: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          bom_name?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_headers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bom_items: {
+        Row: {
+          bom_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          qty: number
+          raw_material_id: string
+          unit: string | null
+        }
+        Insert: {
+          bom_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          qty?: number
+          raw_material_id: string
+          unit?: string | null
+        }
+        Update: {
+          bom_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          qty?: number
+          raw_material_id?: string
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bom_items_bom_id_fkey"
+            columns: ["bom_id"]
+            isOneToOne: false
+            referencedRelation: "bom_headers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bom_items_raw_material_id_fkey"
+            columns: ["raw_material_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address_line1: string | null
@@ -1191,6 +1277,8 @@ export type Database = {
           batch_id: string
           cgst_amount: number
           created_at: string
+          discount_amount: number
+          discount_pct: number
           gst_rate: number
           hsn_code: string | null
           id: string
@@ -1207,6 +1295,8 @@ export type Database = {
           batch_id: string
           cgst_amount?: number
           created_at?: string
+          discount_amount?: number
+          discount_pct?: number
           gst_rate?: number
           hsn_code?: string | null
           id?: string
@@ -1223,6 +1313,8 @@ export type Database = {
           batch_id?: string
           cgst_amount?: number
           created_at?: string
+          discount_amount?: number
+          discount_pct?: number
           gst_rate?: number
           hsn_code?: string | null
           id?: string
@@ -1484,6 +1576,8 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          discount_amount: number
+          discount_pct: number
           id: string
           order_id: string
           product_id: string
@@ -1493,6 +1587,8 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          discount_amount?: number
+          discount_pct?: number
           id?: string
           order_id: string
           product_id: string
@@ -1502,6 +1598,8 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          discount_amount?: number
+          discount_pct?: number
           id?: string
           order_id?: string
           product_id?: string

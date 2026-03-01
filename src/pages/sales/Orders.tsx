@@ -20,7 +20,7 @@ import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
 
-type LineItem = { product_id: string; qty: number; rate: number };
+type LineItem = { product_id: string; qty: number; rate: number; discount_pct: number; discount_amount: number };
 
 export default function Orders() {
   const { user } = useAuth();
@@ -31,7 +31,7 @@ export default function Orders() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dealerId, setDealerId] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0 }]);
+  const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
 
   const { isOverdue, getOverdue } = useDealerOverdue();
 
@@ -66,6 +66,8 @@ export default function Orders() {
         product_id: i.product_id,
         qty: i.qty,
         rate: i.rate,
+        discount_pct: i.discount_pct,
+        discount_amount: i.discount_amount,
       }));
 
       const { data, error } = await supabase.rpc("create_order_atomic" as any, {
@@ -79,7 +81,7 @@ export default function Orders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
-      setDialogOpen(false); setDealerId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0 }]);
+      setDialogOpen(false); setDealerId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
       toast.success("Order created");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -104,7 +106,7 @@ export default function Orders() {
     return match && (statusFilter === "all" || o.status === statusFilter);
   });
 
-  const addItem = () => setItems([...items, { product_id: "", qty: 1, rate: 0 }]);
+  const addItem = () => setItems([...items, { product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i: number, field: string, val: any) => { const n = [...items]; (n[i] as any)[field] = val; setItems(n); };
 
@@ -147,13 +149,15 @@ export default function Orders() {
                         </Select>
                         <Input type="number" className="w-20" placeholder="Qty" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} />
                         <Input type="number" className="w-28" placeholder="Rate" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} />
-                        <span className="text-sm w-24 text-right">₹{(item.qty * item.rate).toLocaleString("en-IN")}</span>
+                        <Input type="number" className="w-16" placeholder="Disc%" value={item.discount_pct || ""} onChange={(e) => updateItem(i, "discount_pct", Number(e.target.value))} title="Discount %" />
+                        <Input type="number" className="w-20" placeholder="Disc₹" value={item.discount_amount || ""} onChange={(e) => updateItem(i, "discount_amount", Number(e.target.value))} title="Discount Flat" />
+                        <span className="text-sm w-24 text-right">₹{(item.qty * item.rate - item.discount_amount - (item.qty * item.rate * item.discount_pct / 100)).toLocaleString("en-IN")}</span>
                         {items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>}
                       </div>
                     ))}
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
-                  <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + i.qty * i.rate, 0).toLocaleString("en-IN")}</div>
+                  <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + (i.qty * i.rate - i.discount_amount - (i.qty * i.rate * i.discount_pct / 100)), 0).toLocaleString("en-IN")}</div>
                   <Button type="submit" className="w-full" disabled={createOrder.isPending || isOverdue(dealerId)}>{createOrder.isPending ? "Creating..." : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
                 </form>
               </DialogContent>

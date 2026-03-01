@@ -22,7 +22,7 @@ import { calculateGST } from "@/lib/gst";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
 
-type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string };
+type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number };
 
 export default function Invoices() {
   const { user, hasRole } = useAuth();
@@ -41,7 +41,7 @@ export default function Invoices() {
   const [dealerId, setDealerId] = useState("");
   const [convertingOrderId, setConvertingOrderId] = useState<string | null>(null);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
-  const [items, setItems] = useState<InvItem[]>([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
+  const [items, setItems] = useState<InvItem[]>([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
   // E-way bill fields
   const [transportMode, setTransportMode] = useState("");
   const [vehicleNo, setVehicleNo] = useState("");
@@ -100,11 +100,13 @@ export default function Invoices() {
             setItems(
               orderItems.map((oi: any) => ({
                 product_id: oi.product_id,
-                batch_id: "", // User must select batch
+                batch_id: "",
                 qty: Number(oi.qty),
                 rate: Number(oi.rate),
                 gst_rate: Number(oi.products?.gst_rate ?? 18),
                 hsn_code: oi.products?.hsn_code || "",
+                discount_pct: Number(oi.discount_pct ?? 0),
+                discount_amount: Number(oi.discount_amount ?? 0),
               }))
             );
           }
@@ -118,9 +120,11 @@ export default function Invoices() {
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
 
   const computedItems = items.map((item) => {
-    const amount = item.qty * item.rate;
+    const grossAmount = item.qty * item.rate;
+    const discountAmt = item.discount_amount + (grossAmount * item.discount_pct / 100);
+    const amount = grossAmount - discountAmt;
     const gst = calculateGST(amount, item.gst_rate, selectedDealer?.state_code, companySettings?.state_code || "36");
-    return { ...item, amount, ...gst };
+    return { ...item, amount, discountAmt, ...gst };
   });
   const subtotal = computedItems.reduce((s, i) => s + i.amount, 0);
   const cgstTotal = computedItems.reduce((s, i) => s + i.cgst, 0);
@@ -146,6 +150,7 @@ export default function Invoices() {
         qty: i.qty, rate: i.rate, amount: i.amount,
         gst_rate: i.gst_rate, cgst_amount: i.cgst, sgst_amount: i.sgst,
         igst_amount: i.igst, total_amount: i.totalWithGst,
+        discount_pct: i.discount_pct, discount_amount: i.discount_amount,
       }));
 
       const { data, error } = await supabase.rpc("create_invoice_atomic", {
@@ -195,7 +200,7 @@ export default function Invoices() {
       qc.invalidateQueries({ queryKey: ["dealer-advance-balance"] });
       
       setDialogOpen(false); setDealerId("");
-      setItems([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
+      setItems([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
       setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo("");
       setAdjustAdvance(false); setAdvanceAdjustAmount(0);
       toast.success("Invoice created with GST and ledger entry");
@@ -203,7 +208,7 @@ export default function Invoices() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const addItem = () => setItems([...items, { product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
+  const addItem = () => setItems([...items, { product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
 
@@ -258,7 +263,9 @@ export default function Invoices() {
                           </Select>
                           <Input type="number" className="w-16" placeholder="Qty" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} />
                           <Input type="number" className="w-24" placeholder="Rate" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} />
-                          <span className="text-xs w-20">₹{(item.qty * item.rate).toFixed(2)}</span>
+                          <Input type="number" className="w-16" placeholder="Disc%" value={item.discount_pct || ""} onChange={(e) => updateItem(i, "discount_pct", Number(e.target.value))} title="Discount %" />
+                          <Input type="number" className="w-20" placeholder="Disc₹" value={item.discount_amount || ""} onChange={(e) => updateItem(i, "discount_amount", Number(e.target.value))} title="Discount Amount" />
+                          <span className="text-xs w-20">₹{(item.qty * item.rate - item.discount_amount - (item.qty * item.rate * item.discount_pct / 100)).toFixed(2)}</span>
                           {items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       );
