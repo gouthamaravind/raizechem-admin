@@ -34,6 +34,7 @@ export default function Products() {
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [formLevelPrices, setFormLevelPrices] = useState<Record<string, string>>({});
   const [pricingProductId, setPricingProductId] = useState<string | null>(null);
   const [levelPrices, setLevelPrices] = useState<Record<string, string>>({});
   const qc = useQueryClient();
@@ -85,17 +86,29 @@ export default function Products() {
     mutationFn: async (values: any) => {
       const { id, ...rest } = values;
       const slug = rest.slug || rest.name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      let productId = id;
       if (id) {
         const { error } = await supabase.from("products").update({ ...rest, slug }).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("products").insert({ ...rest, slug });
+        const { data, error } = await supabase.from("products").insert({ ...rest, slug }).select("id").single();
         if (error) throw error;
+        productId = data.id;
+      }
+      // Save price levels inline
+      const upserts = Object.entries(formLevelPrices)
+        .filter(([, val]) => val !== "" && Number(val) >= 0)
+        .map(([levelId, price]) => ({ product_id: productId, price_level_id: levelId, price: Number(price) }));
+      await supabase.from("product_price_levels").delete().eq("product_id", productId);
+      if (upserts.length > 0) {
+        const { error: plErr } = await supabase.from("product_price_levels").insert(upserts);
+        if (plErr) throw plErr;
       }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["products"] });
-      setDialogOpen(false); setEditId(null); setForm(emptyForm); setErrors({});
+      qc.invalidateQueries({ queryKey: ["product_price_levels"] });
+      setDialogOpen(false); setEditId(null); setForm(emptyForm); setErrors({}); setFormLevelPrices({});
       toast.success(editId ? "Product updated" : "Product added");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -160,6 +173,12 @@ export default function Products() {
       sale_price: p.sale_price || 0, purchase_price_default: p.purchase_price_default || 0,
       min_stock_alert_qty: p.min_stock_alert_qty || 0,
     });
+    // Pre-fill price levels for editing
+    const existing: Record<string, string> = {};
+    allProductPrices.filter((pp: any) => pp.product_id === p.id).forEach((pp: any) => {
+      existing[pp.price_level_id] = String(pp.price);
+    });
+    setFormLevelPrices(existing);
     setErrors({});
     setDialogOpen(true);
   };
@@ -193,7 +212,7 @@ export default function Products() {
               { key: "purchase_price_default", label: "Purchase Price" }, { key: "category", label: "Category" },
               { key: "min_stock_alert_qty", label: "Min Alert Qty" },
             ])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); } }}>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setFormLevelPrices({}); } }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Product</Button></DialogTrigger>
               <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>{editId ? "Edit Product" : "Add Product"}</DialogTitle></DialogHeader>
@@ -261,6 +280,27 @@ export default function Products() {
                       </div>
                     )}
                   </fieldset>
+
+                  {/* Price Levels (Retail, Dealer, etc.) */}
+                  {priceLevels.length > 0 && (
+                    <fieldset className="space-y-3 border-t pt-4">
+                      <legend className="text-sm font-semibold text-foreground">Price Levels</legend>
+                      <p className="text-xs text-muted-foreground">Set custom prices per tier. Leave blank to use default sale price.</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {priceLevels.map((pl: any) => (
+                          <div key={pl.id} className="space-y-1">
+                            <Label className="text-xs">{pl.name}</Label>
+                            <Input
+                              type="number" min={0} step="0.01"
+                              placeholder={`₹ ${form.sale_price || 0}`}
+                              value={formLevelPrices[pl.id] || ""}
+                              onChange={(e) => setFormLevelPrices(prev => ({ ...prev, [pl.id]: e.target.value }))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </fieldset>
+                  )}
 
                   {/* Inventory */}
                   <fieldset className="space-y-3 border-t pt-4">
