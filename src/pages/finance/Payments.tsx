@@ -64,7 +64,7 @@ export default function Payments() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("payment_allocations" as any)
-        .select("id, allocated_amount, invoice_id, invoices(invoice_number, total_amount, invoice_date)")
+        .select("id, allocated_amount, days_elapsed, prorata_rate, prorata_discount, invoice_id, invoices(invoice_number, total_amount, invoice_date)")
         .eq("payment_id", allocViewId!)
         .order("created_at");
       if (error) throw error;
@@ -93,9 +93,10 @@ export default function Payments() {
       if (error) throw error;
 
       // Apply pro rata credit if payment was recorded
-      if (paymentResult) {
+      const paymentId = paymentResult?.payment_id || paymentResult;
+      if (paymentId) {
         const { data: proRataDiscount } = await supabase.rpc("apply_prorata_credit" as any, {
-          p_payment_id: paymentResult,
+          p_payment_id: paymentId,
         });
         return proRataDiscount as number | null;
       }
@@ -200,33 +201,62 @@ export default function Payments() {
         </Card>
       </div>
 
-      {/* Allocations Viewer */}
+      {/* Allocations Viewer with Pro Rata Details */}
       <Dialog open={!!allocViewId} onOpenChange={(v) => { if (!v) setAllocViewId(null); }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>Payment Allocations</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>Payment Allocations & Pro Rata</DialogTitle></DialogHeader>
           {allocations.length === 0 ? (
             <p className="text-muted-foreground text-center py-4">No allocations found for this payment.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Invoice #</TableHead>
-                  <TableHead>Invoice Date</TableHead>
-                  <TableHead>Invoice Total</TableHead>
-                  <TableHead>Allocated</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allocations.map((a: any) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="font-medium">{a.invoices?.invoice_number || "—"}</TableCell>
-                    <TableCell>{a.invoices?.invoice_date || "—"}</TableCell>
-                    <TableCell>₹{Number(a.invoices?.total_amount || 0).toLocaleString("en-IN")}</TableCell>
-                    <TableCell className="font-semibold text-primary">₹{Number(a.allocated_amount).toLocaleString("en-IN")}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice #</TableHead>
+                      <TableHead>Invoice Date</TableHead>
+                      <TableHead className="text-right">Allocated</TableHead>
+                      <TableHead className="text-center">Days</TableHead>
+                      <TableHead className="text-right">Rate %</TableHead>
+                      <TableHead className="text-right">Discount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(allocations as any[]).map((a: any) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-medium">{a.invoices?.invoice_number || "—"}</TableCell>
+                        <TableCell>{a.invoices?.invoice_date || "—"}</TableCell>
+                        <TableCell className="text-right">₹{Number(a.allocated_amount).toLocaleString("en-IN")}</TableCell>
+                        <TableCell className="text-center">
+                          {a.days_elapsed != null ? (
+                            <Badge variant={a.days_elapsed > 60 ? "destructive" : a.days_elapsed > 30 ? "secondary" : "outline"} className="text-xs">
+                              {a.days_elapsed}
+                            </Badge>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right">{Number(a.prorata_rate) > 0 ? `${Number(a.prorata_rate).toFixed(4)}%` : "—"}</TableCell>
+                        <TableCell className="text-right font-semibold text-primary">
+                          {Number(a.prorata_discount) > 0 ? `₹${Number(a.prorata_discount).toLocaleString("en-IN")}` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {/* Totals */}
+              {(() => {
+                const totalAlloc = (allocations as any[]).reduce((s: number, a: any) => s + Number(a.allocated_amount), 0);
+                const totalDiscount = (allocations as any[]).reduce((s: number, a: any) => s + Number(a.prorata_discount || 0), 0);
+                return (
+                  <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+                    <div className="flex justify-between"><span>Total Allocated</span><span className="font-semibold">₹{totalAlloc.toLocaleString("en-IN")}</span></div>
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between border-t pt-1"><span>Total Pro Rata Credit</span><span className="font-bold text-primary">₹{totalDiscount.toLocaleString("en-IN")}</span></div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
           )}
         </DialogContent>
       </Dialog>

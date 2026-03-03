@@ -1728,23 +1728,32 @@ export type Database = {
         Row: {
           allocated_amount: number
           created_at: string
+          days_elapsed: number | null
           id: string
           invoice_id: string
           payment_id: string
+          prorata_discount: number | null
+          prorata_rate: number | null
         }
         Insert: {
           allocated_amount: number
           created_at?: string
+          days_elapsed?: number | null
           id?: string
           invoice_id: string
           payment_id: string
+          prorata_discount?: number | null
+          prorata_rate?: number | null
         }
         Update: {
           allocated_amount?: number
           created_at?: string
+          days_elapsed?: number | null
           id?: string
           invoice_id?: string
           payment_id?: string
+          prorata_discount?: number | null
+          prorata_rate?: number | null
         }
         Relationships: [
           {
