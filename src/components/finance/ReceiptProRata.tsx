@@ -89,25 +89,29 @@ export function ReceiptProRata({ dealerId, voucherDate, receiptAmount, onAllocat
   // Recalculate pro-rata whenever allocations or date changes
   const computed = useMemo(() => {
     return allocations.map((a) => {
-      // Only Agst Ref lines get PR calculation
-      if (a.adj_method !== "agst_ref" || a.allocated <= 0 || !a.invoice_date) {
-        return { ...a, days_elapsed: 0, prorata_rate: 0, prorata_discount: 0 };
+      if (a.allocated <= 0) return { ...a, days_elapsed: 0, prorata_rate: 0, prorata_discount: 0 };
+
+      // Advance gets max PR (90 days equivalent)
+      if (a.adj_method === "advance") {
+        const days = 90;
+        const rate = +(maxPct).toFixed(4);
+        const discount = +(a.allocated * rate / 100).toFixed(2);
+        return { ...a, days_elapsed: days, prorata_rate: rate, prorata_discount: discount };
       }
 
-      const invDate = new Date(a.invoice_date);
-      const vDate = new Date(voucherDate);
-      const diffMs = vDate.getTime() - invDate.getTime();
-      const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-
-      let rate: number;
-      if (days >= 90) {
-        rate = maxPct;
-      } else {
-        rate = +(days * maxPct / 90).toFixed(4);
+      // Agst Ref — linear daily calculation
+      if (a.adj_method === "agst_ref" && a.invoice_date) {
+        const invDate = new Date(a.invoice_date);
+        const vDate = new Date(voucherDate);
+        const diffMs = vDate.getTime() - invDate.getTime();
+        const days = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+        const rate = days >= 90 ? maxPct : +(days * maxPct / 90).toFixed(4);
+        const discount = +(a.allocated * rate / 100).toFixed(2);
+        return { ...a, days_elapsed: days, prorata_rate: rate, prorata_discount: discount };
       }
 
-      const discount = +(a.allocated * rate / 100).toFixed(2);
-      return { ...a, days_elapsed: days, prorata_rate: rate, prorata_discount: discount };
+      // New Ref / On Account — no PR
+      return { ...a, days_elapsed: 0, prorata_rate: 0, prorata_discount: 0 };
     });
   }, [allocations, voucherDate, maxPct]);
 
@@ -214,20 +218,22 @@ export function ReceiptProRata({ dealerId, voucherDate, receiptAmount, onAllocat
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-xs w-[110px]">Method of Adj.</TableHead>
-                  <TableHead className="text-xs">Bill Ref / Name</TableHead>
-                  <TableHead className="text-xs text-right">Outstanding</TableHead>
-                  <TableHead className="text-xs text-right w-[120px]">Amount (₹)</TableHead>
+                  <TableHead className="text-xs w-[110px]">Type of Ref</TableHead>
+                  <TableHead className="text-xs">Name</TableHead>
+                  <TableHead className="text-xs">Due Date</TableHead>
+                  <TableHead className="text-xs text-right">Amount (₹)</TableHead>
+                  <TableHead className="text-xs text-center">Cr</TableHead>
+                  <TableHead className="text-xs text-center">Date</TableHead>
                   <TableHead className="text-xs text-center">Days</TableHead>
                   <TableHead className="text-xs text-right">PR Rate %</TableHead>
-                  <TableHead className="text-xs text-right">PR Discount</TableHead>
+                  <TableHead className="text-xs text-right">PR Amt</TableHead>
                   <TableHead className="text-xs w-[36px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {computed.map((a, i) => (
                   <TableRow key={i} className={a.allocated > 0 ? "bg-primary/5" : ""}>
-                    {/* Method of Adj. */}
+                    {/* Type of Ref */}
                     <TableCell>
                       <Select value={a.adj_method} onValueChange={(v) => changeMethod(i, v as AdjMethod)}>
                         <SelectTrigger className="text-xs h-8">
@@ -241,7 +247,7 @@ export function ReceiptProRata({ dealerId, voucherDate, receiptAmount, onAllocat
                       </Select>
                     </TableCell>
 
-                    {/* Bill Reference */}
+                    {/* Name (invoice number or label) */}
                     <TableCell>
                       {a.adj_method === "agst_ref" ? (
                         <Select value={a.invoice_id || ""} onValueChange={(v) => selectInvoice(i, v)}>
@@ -253,28 +259,30 @@ export function ReceiptProRata({ dealerId, voucherDate, receiptAmount, onAllocat
                               .filter((inv) => inv.id === a.invoice_id || !selectedInvIds.has(inv.id))
                               .map((inv) => (
                                 <SelectItem key={inv.id} value={inv.id}>
-                                  {inv.invoice_number} ({inv.invoice_date})
+                                  {inv.invoice_number}
                                 </SelectItem>
                               ))}
                           </SelectContent>
                         </Select>
                       ) : (
                         <span className="text-xs font-medium text-muted-foreground">
-                          {a.adj_method === "advance" && "Advance Payment"}
-                          {a.adj_method === "new_ref" && "New Reference"}
+                          {a.adj_method === "advance" && "Advance"}
+                          {a.adj_method === "new_ref" && "New Ref"}
                           {a.adj_method === "on_account" && "On Account"}
                         </span>
                       )}
                     </TableCell>
 
-                    {/* Outstanding */}
-                    <TableCell className="text-right text-xs">
-                      {a.adj_method === "agst_ref" && a.outstanding > 0
-                        ? `₹${a.outstanding.toLocaleString("en-IN")}`
+                    {/* Due Date (invoice date) */}
+                    <TableCell className="text-xs">
+                      {a.adj_method === "agst_ref" && a.invoice_date
+                        ? a.invoice_date
+                        : a.adj_method === "advance"
+                        ? voucherDate
                         : "—"}
                     </TableCell>
 
-                    {/* Allocated Amount */}
+                    {/* Amount */}
                     <TableCell>
                       <Input
                         type="number"
@@ -291,31 +299,41 @@ export function ReceiptProRata({ dealerId, voucherDate, receiptAmount, onAllocat
                       />
                     </TableCell>
 
-                    {/* Days Elapsed */}
+                    {/* Cr indicator */}
+                    <TableCell className="text-center text-xs text-muted-foreground">
+                      {a.allocated > 0 ? "Cr" : ""}
+                    </TableCell>
+
+                    {/* Voucher Date */}
+                    <TableCell className="text-xs text-center">
+                      {a.allocated > 0 ? voucherDate : ""}
+                    </TableCell>
+
+                    {/* Days */}
                     <TableCell className="text-center">
-                      {a.adj_method === "agst_ref" && a.allocated > 0 ? (
+                      {a.allocated > 0 ? (
                         <Badge
                           variant={a.days_elapsed > 60 ? "destructive" : a.days_elapsed > 30 ? "secondary" : "outline"}
                           className="text-xs"
                         >
-                          {a.days_elapsed}d
+                          {a.days_elapsed}
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
 
-                    {/* PR Rate */}
+                    {/* PR Rate (4 decimal places like Tally) */}
                     <TableCell className="text-right text-xs">
-                      {a.adj_method === "agst_ref" && a.allocated > 0
-                        ? `${a.prorata_rate.toFixed(2)}%`
+                      {a.allocated > 0 && (a.adj_method === "agst_ref" || a.adj_method === "advance")
+                        ? `${a.prorata_rate.toFixed(4)}`
                         : "—"}
                     </TableCell>
 
-                    {/* PR Discount */}
+                    {/* PR Amount */}
                     <TableCell className="text-right text-xs font-semibold text-primary">
                       {a.prorata_discount > 0
-                        ? `₹${a.prorata_discount.toLocaleString("en-IN")}`
+                        ? a.prorata_discount.toLocaleString("en-IN")
                         : "—"}
                     </TableCell>
 
@@ -334,10 +352,12 @@ export function ReceiptProRata({ dealerId, voucherDate, receiptAmount, onAllocat
                 <TableRow className="font-semibold border-t-2 bg-muted/50">
                   <TableCell colSpan={3} className="text-right text-xs">Total</TableCell>
                   <TableCell className="text-right text-xs">₹{totalAllocated.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-center text-xs">Cr</TableCell>
                   <TableCell />
                   <TableCell />
-                  <TableCell className="text-right text-xs text-primary">
-                    {totalDiscount > 0 ? `₹${totalDiscount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "—"}
+                  <TableCell />
+                  <TableCell className="text-right text-xs text-primary font-bold">
+                    {totalDiscount > 0 ? totalDiscount.toLocaleString("en-IN", { minimumFractionDigits: 2 }) : "—"}
                   </TableCell>
                   <TableCell />
                 </TableRow>
