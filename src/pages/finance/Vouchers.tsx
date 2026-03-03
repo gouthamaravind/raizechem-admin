@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Plus, BookOpen, X, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ReceiptProRata, type ProRataAllocation } from "@/components/finance/ReceiptProRata";
 
 const VOUCHER_TYPES = [
   { value: "journal", label: "Journal Voucher", prefix: "JV", counterKey: "next_journal_number" },
@@ -48,6 +48,8 @@ export default function Vouchers() {
     { account_id: "", debit: 0, credit: 0, narration: "" },
   ]);
   const [activeTab, setActiveTab] = useState("all");
+  const [proRataAllocations, setProRataAllocations] = useState<ProRataAllocation[]>([]);
+  const [proRataDiscount, setProRataDiscount] = useState(0);
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["ledger-accounts"],
@@ -87,9 +89,35 @@ export default function Vouchers() {
     },
   });
 
+  // Find the dealer selected in a receipt voucher (credit-side dealer account line)
+  const receiptDealerId = useMemo(() => {
+    if (voucherType !== "receipt") return null;
+    for (const line of lines) {
+      if (!line.account_id || !line.dealer_id) continue;
+      const acct = accounts.find((a) => a.id === line.account_id);
+      if (acct?.account_type === "dealer" && line.credit > 0) return line.dealer_id;
+    }
+    return null;
+  }, [voucherType, lines, accounts]);
+
+  // Receipt amount = total credit on dealer lines
+  const receiptAmount = useMemo(() => {
+    if (voucherType !== "receipt") return 0;
+    return lines.reduce((sum, l) => {
+      const acct = accounts.find((a) => a.id === l.account_id);
+      if (acct?.account_type === "dealer" && l.credit > 0) return sum + l.credit;
+      return sum;
+    }, 0);
+  }, [voucherType, lines, accounts]);
+
   const totalDebit = lines.reduce((s, l) => s + (l.debit || 0), 0);
   const totalCredit = lines.reduce((s, l) => s + (l.credit || 0), 0);
   const isBalanced = Math.abs(totalDebit - totalCredit) < 0.01 && totalDebit > 0;
+
+  const handleAllocationsChange = (allocs: ProRataAllocation[], discount: number) => {
+    setProRataAllocations(allocs);
+    setProRataDiscount(discount);
+  };
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -125,10 +153,66 @@ export default function Vouchers() {
       if (linesErr) throw linesErr;
 
       await supabase.from("company_settings").update({ [vtConfig.counterKey]: num + 1 } as any).not("id", "is", null);
+
+      // If receipt voucher with pro-rata allocations, record them
+      if (voucherType === "receipt" && proRataAllocations.length > 0 && receiptDealerId) {
+        for (const alloc of proRataAllocations) {
+          // Update invoice amount_paid
+          const { data: inv } = await supabase
+            .from("invoices")
+            .select("amount_paid")
+            .eq("id", alloc.invoice_id)
+            .single();
+          if (inv) {
+            const newPaid = Number(inv.amount_paid) + alloc.allocated;
+            await supabase.from("invoices").update({ amount_paid: newPaid } as any).eq("id", alloc.invoice_id);
+          }
+
+          // Ledger entry for payment
+          await supabase.from("ledger_entries").insert({
+            dealer_id: receiptDealerId,
+            entry_type: "payment",
+            entry_date: voucherDate,
+            credit: alloc.allocated,
+            description: `Receipt Voucher ${voucherNum} against ${alloc.invoice_number}`,
+            ref_id: voucher.id,
+          });
+
+          // Pro-rata credit ledger entry
+          if (alloc.prorata_discount > 0) {
+            await supabase.from("ledger_entries").insert({
+              dealer_id: receiptDealerId,
+              entry_type: "prorata_credit",
+              entry_date: voucherDate,
+              credit: alloc.prorata_discount,
+              description: `PR ${alloc.prorata_rate.toFixed(2)}% (${alloc.days_elapsed}d) on ${alloc.invoice_number}`,
+              ref_id: voucher.id,
+            });
+
+            // Also update invoice amount_paid with discount
+            const { data: inv2 } = await supabase
+              .from("invoices")
+              .select("amount_paid")
+              .eq("id", alloc.invoice_id)
+              .single();
+            if (inv2) {
+              await supabase.from("invoices").update({
+                amount_paid: Number(inv2.amount_paid) + alloc.prorata_discount,
+              } as any).eq("id", alloc.invoice_id);
+            }
+          }
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["vouchers"] });
-      toast.success("Voucher created");
+      qc.invalidateQueries({ queryKey: ["invoices"] });
+      qc.invalidateQueries({ queryKey: ["ledger"] });
+      if (proRataDiscount > 0) {
+        toast.success(`Voucher created! Pro rata credit of ₹${proRataDiscount.toLocaleString("en-IN")} applied.`);
+      } else {
+        toast.success("Voucher created");
+      }
       resetForm();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -163,6 +247,8 @@ export default function Vouchers() {
       { account_id: "", debit: 0, credit: 0, narration: "" },
       { account_id: "", debit: 0, credit: 0, narration: "" },
     ]);
+    setProRataAllocations([]);
+    setProRataDiscount(0);
   };
 
   const updateLine = (idx: number, field: keyof VoucherLine, value: any) => {
@@ -188,7 +274,7 @@ export default function Vouchers() {
             <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />New Voucher</Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Create Voucher</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
@@ -299,6 +385,24 @@ export default function Vouchers() {
                     </div>
                   )}
                 </div>
+
+                {/* Pro Rata section for Receipt vouchers */}
+                {voucherType === "receipt" && receiptDealerId && receiptAmount > 0 && (
+                  <ReceiptProRata
+                    dealerId={receiptDealerId}
+                    voucherDate={voucherDate}
+                    receiptAmount={receiptAmount}
+                    onAllocationsChange={handleAllocationsChange}
+                  />
+                )}
+
+                {/* Pro rata info hint for receipt type */}
+                {voucherType === "receipt" && !receiptDealerId && (
+                  <div className="text-xs text-muted-foreground flex items-center gap-1.5 bg-muted/50 rounded-md p-3">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Select a dealer account on the Credit side to enable bill-wise pro rata allocation.
+                  </div>
+                )}
 
                 <Button className="w-full" disabled={createMutation.isPending || !isBalanced} onClick={() => createMutation.mutate()}>
                   {createMutation.isPending ? "Creating..." : "Create Voucher"}
