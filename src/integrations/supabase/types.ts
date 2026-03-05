@@ -1205,6 +1205,89 @@ export type Database = {
         }
         Relationships: []
       }
+      gstr2b_entries: {
+        Row: {
+          cess: number
+          cgst: number
+          created_at: string
+          doc_type: string | null
+          id: string
+          igst: number
+          invoice_date: string
+          invoice_number: string
+          invoice_value: number
+          itc_availability: string | null
+          match_status: string
+          matched_pi_id: string | null
+          mismatch_reasons: Json | null
+          place_of_supply: string | null
+          return_period: string
+          reverse_charge: boolean
+          sgst: number
+          supplier_gstin: string
+          supplier_name: string | null
+          taxable_value: number
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          cess?: number
+          cgst?: number
+          created_at?: string
+          doc_type?: string | null
+          id?: string
+          igst?: number
+          invoice_date: string
+          invoice_number: string
+          invoice_value?: number
+          itc_availability?: string | null
+          match_status?: string
+          matched_pi_id?: string | null
+          mismatch_reasons?: Json | null
+          place_of_supply?: string | null
+          return_period: string
+          reverse_charge?: boolean
+          sgst?: number
+          supplier_gstin: string
+          supplier_name?: string | null
+          taxable_value?: number
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          cess?: number
+          cgst?: number
+          created_at?: string
+          doc_type?: string | null
+          id?: string
+          igst?: number
+          invoice_date?: string
+          invoice_number?: string
+          invoice_value?: number
+          itc_availability?: string | null
+          match_status?: string
+          matched_pi_id?: string | null
+          mismatch_reasons?: Json | null
+          place_of_supply?: string | null
+          return_period?: string
+          reverse_charge?: boolean
+          sgst?: number
+          supplier_gstin?: string
+          supplier_name?: string | null
+          taxable_value?: number
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gstr2b_entries_matched_pi_id_fkey"
+            columns: ["matched_pi_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incentive_rules: {
         Row: {
           created_at: string
