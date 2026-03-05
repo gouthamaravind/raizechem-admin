@@ -12,7 +12,7 @@ export default function OutstandingAging() {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["aging-report"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").neq("status", "paid").order("dealer_id");
+      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").neq("status", "paid").neq("status", "void").order("dealer_id");
       if (error) throw error;
       return data || [];
     },
