@@ -34,9 +34,10 @@ export default function GSTSummary() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoice_items")
-        .select("*, invoices!inner(invoice_number, invoice_date, dealer_id, total_amount, dealers(name, gst_number, state_code)), products(name)")
+        .select("*, invoices!inner(invoice_number, invoice_date, dealer_id, total_amount, status, dealers(name, gst_number, state_code)), products(name)")
         .gte("invoices.invoice_date", from)
-        .lte("invoices.invoice_date", to);
+        .lte("invoices.invoice_date", to)
+        .neq("invoices.status", "void");
       if (error) throw error;
       return data || [];
     },
@@ -48,9 +49,10 @@ export default function GSTSummary() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("credit_note_items")
-        .select("*, credit_notes!inner(credit_note_number, credit_date, dealer_id, invoice_id, dealers(name, gst_number), invoices(invoice_number, invoice_date))")
+        .select("*, credit_notes!inner(credit_note_number, credit_date, dealer_id, invoice_id, status, dealers(name, gst_number), invoices(invoice_number, invoice_date))")
         .gte("credit_notes.credit_date", from)
-        .lte("credit_notes.credit_date", to);
+        .lte("credit_notes.credit_date", to)
+        .neq("credit_notes.status", "void");
       if (error) throw error;
       return data || [];
     },
@@ -62,9 +64,10 @@ export default function GSTSummary() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("purchase_invoice_items")
-        .select("*, purchase_invoices!inner(pi_date)")
+        .select("*, purchase_invoices!inner(pi_date, status)")
         .gte("purchase_invoices.pi_date", from)
-        .lte("purchase_invoices.pi_date", to);
+        .lte("purchase_invoices.pi_date", to)
+        .neq("purchase_invoices.status", "void");
       if (error) throw error;
       return data || [];
     },
@@ -76,7 +79,8 @@ export default function GSTSummary() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
-        .select("invoice_date, subtotal, cgst_total, sgst_total, igst_total, total_amount")
+        .select("invoice_date, subtotal, cgst_total, sgst_total, igst_total, total_amount, status")
+        .neq("status", "void")
         .gte("invoice_date", `${year}-01-01`)
         .lte("invoice_date", `${year}-12-31`);
       if (error) throw error;
@@ -89,7 +93,8 @@ export default function GSTSummary() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("credit_notes")
-        .select("credit_date, subtotal, cgst_total, sgst_total, igst_total, total_amount")
+        .select("credit_date, subtotal, cgst_total, sgst_total, igst_total, total_amount, status")
+        .neq("status", "void")
         .gte("credit_date", `${year}-01-01`)
         .lte("credit_date", `${year}-12-31`);
       if (error) throw error;
