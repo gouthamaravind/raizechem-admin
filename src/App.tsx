@@ -51,6 +51,7 @@ import TrialBalance from "./pages/reports/TrialBalance";
 import ProfitAndLoss from "./pages/reports/ProfitAndLoss";
 import BalanceSheet from "./pages/reports/BalanceSheet";
 import StockSummary from "./pages/reports/StockSummary";
+import Gstr2bReconciliation from "./pages/reports/Gstr2bReconciliation";
 import HrEmployees from "./pages/hr/Employees";
 import SalaryComponents from "./pages/hr/SalaryComponents";
 import HrPayroll from "./pages/hr/Payroll";
@@ -137,6 +138,7 @@ const App = () => (
             <Route path="/reports/profit-loss" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><ProfitAndLoss /></RoleGuard></P>} />
             <Route path="/reports/balance-sheet" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><BalanceSheet /></RoleGuard></P>} />
             <Route path="/reports/stock-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><StockSummary /></RoleGuard></P>} />
+            <Route path="/reports/gstr2b-recon" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><Gstr2bReconciliation /></RoleGuard></P>} />
             <Route path="/hr/employees" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrEmployees /></RoleGuard></P>} />
             <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
             <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
