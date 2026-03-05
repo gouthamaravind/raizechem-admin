@@ -31,6 +31,7 @@ export default function SalesRegister() {
     queryKey: ["sales-register", from, to, dealerFilter],
     queryFn: async () => {
       let q = supabase.from("invoices").select("*, dealers(name)")
+        .neq("status", "void")
         .gte("invoice_date", from).lte("invoice_date", to)
         .order("invoice_date", { ascending: false });
       if (dealerFilter !== "all") q = q.eq("dealer_id", dealerFilter);
