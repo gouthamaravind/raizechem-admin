@@ -1388,6 +1388,7 @@ export type Database = {
           notes: string | null
           order_id: string | null
           place_of_supply: string | null
+          round_off: number
           sgst_total: number
           status: string
           subtotal: number
@@ -1415,6 +1416,7 @@ export type Database = {
           notes?: string | null
           order_id?: string | null
           place_of_supply?: string | null
+          round_off?: number
           sgst_total?: number
           status?: string
           subtotal?: number
@@ -1442,6 +1444,7 @@ export type Database = {
           notes?: string | null
           order_id?: string | null
           place_of_supply?: string | null
+          round_off?: number
           sgst_total?: number
           status?: string
           subtotal?: number
@@ -2238,6 +2241,7 @@ export type Database = {
           pi_date: string
           pi_number: string
           purchase_order_id: string | null
+          round_off: number
           sgst_total: number
           status: string
           subtotal: number
@@ -2259,6 +2263,7 @@ export type Database = {
           pi_date?: string
           pi_number: string
           purchase_order_id?: string | null
+          round_off?: number
           sgst_total?: number
           status?: string
           subtotal?: number
@@ -2280,6 +2285,7 @@ export type Database = {
           pi_date?: string
           pi_number?: string
           purchase_order_id?: string | null
+          round_off?: number
           sgst_total?: number
           status?: string
           subtotal?: number
@@ -3011,26 +3017,48 @@ export type Database = {
         }
         Returns: Json
       }
-      create_invoice_atomic: {
-        Args: {
-          p_cgst_total: number
-          p_created_by: string
-          p_dealer_id: string
-          p_delivery_to?: string
-          p_dispatch_from?: string
-          p_due_date?: string
-          p_igst_total: number
-          p_invoice_date: string
-          p_items?: Json
-          p_place_of_supply?: string
-          p_sgst_total: number
-          p_subtotal: number
-          p_total_amount: number
-          p_transport_mode?: string
-          p_vehicle_no?: string
-        }
-        Returns: Json
-      }
+      create_invoice_atomic:
+        | {
+            Args: {
+              p_cgst_total: number
+              p_created_by: string
+              p_dealer_id: string
+              p_delivery_to?: string
+              p_dispatch_from?: string
+              p_due_date?: string
+              p_igst_total: number
+              p_invoice_date: string
+              p_items?: Json
+              p_place_of_supply?: string
+              p_sgst_total: number
+              p_subtotal: number
+              p_total_amount: number
+              p_transport_mode?: string
+              p_vehicle_no?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_cgst_total: number
+              p_created_by: string
+              p_dealer_id: string
+              p_delivery_to?: string
+              p_dispatch_from?: string
+              p_due_date?: string
+              p_igst_total: number
+              p_invoice_date: string
+              p_items?: Json
+              p_place_of_supply?: string
+              p_round_off?: number
+              p_sgst_total: number
+              p_subtotal: number
+              p_total_amount: number
+              p_transport_mode?: string
+              p_vehicle_no?: string
+            }
+            Returns: Json
+          }
       create_order_atomic: {
         Args: {
           p_created_by?: string

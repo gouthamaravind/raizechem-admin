@@ -131,6 +131,8 @@ export default function Invoices() {
   const sgstTotal = computedItems.reduce((s, i) => s + i.sgst, 0);
   const igstTotal = computedItems.reduce((s, i) => s + i.igst, 0);
   const grandTotal = subtotal + cgstTotal + sgstTotal + igstTotal;
+  const roundOff = Math.round(grandTotal) - grandTotal;
+  const roundedTotal = Math.round(grandTotal);
 
   const createInvoice = useMutation({
     mutationFn: async () => {
@@ -169,6 +171,7 @@ export default function Invoices() {
         p_place_of_supply: placeOfSupply || null,
         p_due_date: dueDate,
         p_items: itemsPayload,
+        p_round_off: roundOff,
       } as any);
       if (error) throw error;
 
@@ -290,7 +293,7 @@ export default function Invoices() {
                       <div className="flex items-center gap-2">
                         <Checkbox id="adjust-advance" checked={adjustAdvance} onCheckedChange={(v) => {
                           setAdjustAdvance(!!v);
-                          if (v) setAdvanceAdjustAmount(Math.min(grandTotal, dealerAdvanceBalance));
+                          if (v) setAdvanceAdjustAmount(Math.min(roundedTotal, dealerAdvanceBalance));
                           else setAdvanceAdjustAmount(0);
                         }} />
                         <Label htmlFor="adjust-advance" className="cursor-pointer">
@@ -300,8 +303,8 @@ export default function Invoices() {
                       {adjustAdvance && (
                         <div className="flex items-center gap-2">
                           <Label className="text-xs whitespace-nowrap">Adjust Amount:</Label>
-                          <Input type="number" className="w-32" min={0.01} max={Math.min(grandTotal, dealerAdvanceBalance)} step="0.01"
-                            value={advanceAdjustAmount || ""} onChange={(e) => setAdvanceAdjustAmount(Math.min(Number(e.target.value), grandTotal, dealerAdvanceBalance))} />
+                          <Input type="number" className="w-32" min={0.01} max={Math.min(roundedTotal, dealerAdvanceBalance)} step="0.01"
+                            value={advanceAdjustAmount || ""} onChange={(e) => setAdvanceAdjustAmount(Math.min(Number(e.target.value), roundedTotal, dealerAdvanceBalance))} />
                         </div>
                       )}
                     </div>
@@ -311,12 +314,15 @@ export default function Invoices() {
                     {cgstTotal > 0 && <p>CGST: ₹{cgstTotal.toFixed(2)}</p>}
                     {sgstTotal > 0 && <p>SGST: ₹{sgstTotal.toFixed(2)}</p>}
                     {igstTotal > 0 && <p>IGST: ₹{igstTotal.toFixed(2)}</p>}
-                    <p className="text-lg font-bold">Grand Total: ₹{grandTotal.toFixed(2)}</p>
+                    {roundOff !== 0 && (
+                      <p className="text-muted-foreground">Round Off: {roundOff > 0 ? "+" : ""}₹{roundOff.toFixed(2)}</p>
+                    )}
+                    <p className="text-lg font-bold">Grand Total: ₹{roundedTotal.toFixed(2)}</p>
                     {adjustAdvance && advanceAdjustAmount > 0 && (
                       <p className="text-primary">Less Advance: −₹{advanceAdjustAmount.toFixed(2)}</p>
                     )}
                     {adjustAdvance && advanceAdjustAmount > 0 && (
-                      <p className="text-lg font-bold">Net Due: ₹{(grandTotal - advanceAdjustAmount).toFixed(2)}</p>
+                      <p className="text-lg font-bold">Net Due: ₹{(roundedTotal - advanceAdjustAmount).toFixed(2)}</p>
                     )}
                   </div>
                   <Button type="submit" className="w-full" disabled={createInvoice.isPending}>{createInvoice.isPending ? "Creating..." : "Create Invoice"}</Button>

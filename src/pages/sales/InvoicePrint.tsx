@@ -125,6 +125,9 @@ function RetailTemplate({ inv, dealer, items, company, isIntra, placeOfSupply }:
       ) : (
         <div className="flex justify-between"><span>IGST:</span><span>₹{Number(inv.igst_total).toFixed(2)}</span></div>
       )}
+      {Number(inv.round_off || 0) !== 0 && (
+        <div className="flex justify-between text-[10px]"><span>Round Off:</span><span>{Number(inv.round_off) > 0 ? "+" : ""}₹{Number(inv.round_off).toFixed(2)}</span></div>
+      )}
       <div className="border-t border-dashed border-foreground/40 my-1" />
       <div className="flex justify-between font-bold text-sm"><span>TOTAL:</span><span>₹{Number(inv.total_amount).toFixed(2)}</span></div>
       <div className="text-center mt-4 text-[10px]">Thank you for your business!</div>
@@ -231,6 +234,7 @@ function ItemsTable({ items, isIntra }: { items: any[]; isIntra: boolean }) {
 }
 
 function TotalBlock({ inv, isIntra }: { inv: any; isIntra: boolean }) {
+  const roundOff = Number(inv.round_off || 0);
   return (
     <div className="flex justify-end mb-4">
       <div className="w-64 text-xs space-y-1">
@@ -242,6 +246,9 @@ function TotalBlock({ inv, isIntra }: { inv: any; isIntra: boolean }) {
           </>
         ) : (
           <div className="flex justify-between"><span>IGST:</span><span>₹{Number(inv.igst_total).toFixed(2)}</span></div>
+        )}
+        {roundOff !== 0 && (
+          <div className="flex justify-between text-muted-foreground"><span>Round Off:</span><span>{roundOff > 0 ? "+" : ""}₹{roundOff.toFixed(2)}</span></div>
         )}
         <div className="flex justify-between font-bold text-sm border-t pt-1"><span>Grand Total:</span><span>₹{Number(inv.total_amount).toFixed(2)}</span></div>
       </div>
