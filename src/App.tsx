@@ -86,9 +86,12 @@ const queryClient = new QueryClient();
 const P = ({ children }: { children: React.ReactNode }) => <ProtectedRoute>{children}</ProtectedRoute>;
 const M = ({ children }: { children: React.ReactNode }) => <MobileGuard>{children}</MobileGuard>;
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+const App = () => {
+  if (MAINTENANCE_MODE) {
+    return <MaintenanceMode />;
+  }
+
+  return (
       <TooltipProvider>
         <Toaster />
         <Sonner />
