@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useBranch } from "@/hooks/useBranch";
 import { useDealerOverdue } from "@/hooks/useDealerOverdue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,21 +35,24 @@ export default function Orders() {
   const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
 
   const { isOverdue, getOverdue } = useDealerOverdue();
+  const { branchId } = useBranch();
 
   const pg = usePagination();
 
   const { data: ordersRaw = [], isLoading } = useQuery({
-    queryKey: ["orders", pg.page],
+    queryKey: ["orders", pg.page, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("orders").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
+      let q = supabase.from("orders").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
   const orders = ordersRaw.slice(0, pg.pageSize);
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, price_level_id").eq("status", "active").order("name"); return data || []; } });
-  const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, unit").eq("is_active", true).order("name"); return data || []; } });
+  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
+  const { data: products = [] } = useQuery({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
 
