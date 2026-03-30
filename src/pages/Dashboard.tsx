@@ -106,6 +106,8 @@ const modeLabels: Record<string, string> = {
 
 export default function Dashboard() {
   const { activeBranch, branchId } = useBranch();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const { data, isLoading } = useDashboardStats(branchId);
 
   const stats = [
