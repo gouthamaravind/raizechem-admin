@@ -4,6 +4,7 @@ import { TablePagination } from "@/components/TablePagination";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useBranch } from "@/hooks/useBranch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -12,12 +13,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 
 export default function Ledger() {
+  const { branchId } = useBranch();
   const [dealerId, setDealerId] = useState("all");
   const [fyId, setFyId] = useState("all");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name").order("name"); return data || []; } });
+  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
 
   const { data: fys = [] } = useQuery({
     queryKey: ["financial-years"],

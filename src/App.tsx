@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
+import { BranchProvider } from "@/hooks/useBranch";
 import { MaintenanceMode } from "@/components/MaintenanceMode";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -27,6 +28,7 @@ import Invoices from "./pages/sales/Invoices";
 import InvoicePrint from "./pages/sales/InvoicePrint";
 import EwayBillPrint from "./pages/sales/EwayBillPrint";
 import Returns from "./pages/sales/Returns";
+import BranchTransfers from "./pages/sales/BranchTransfers";
 import PurchaseOrders from "./pages/purchase/Orders";
 import PurchaseInvoices from "./pages/purchase/Invoices";
 import PurchaseReturns from "./pages/purchase/Returns";
@@ -94,6 +96,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <BranchProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -118,6 +121,7 @@ const App = () => {
               <Route path="/sales/invoices/:id/print" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><InvoicePrint /></RoleGuard></P>} />
               <Route path="/sales/invoices/:id/eway-bill" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><EwayBillPrint /></RoleGuard></P>} />
               <Route path="/sales/returns" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><Returns /></RoleGuard></P>} />
+              <Route path="/sales/branch-transfers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><BranchTransfers /></RoleGuard></P>} />
               <Route path="/purchase/orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseOrders /></RoleGuard></P>} />
               <Route path="/purchase/invoices" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseInvoices /></RoleGuard></P>} />
               <Route path="/purchase/returns" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseReturns /></RoleGuard></P>} />
@@ -174,6 +178,7 @@ const App = () => {
             </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </BranchProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

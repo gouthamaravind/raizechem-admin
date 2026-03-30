@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useBranch } from "@/hooks/useBranch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,7 @@ export default function Products() {
   const [pricingProductId, setPricingProductId] = useState<string | null>(null);
   const [levelPrices, setLevelPrices] = useState<Record<string, string>>({});
   const qc = useQueryClient();
+  const { branchId } = useBranch();
 
   // Fetch price levels
   const { data: priceLevels = [] } = useQuery({
@@ -61,9 +63,11 @@ export default function Products() {
   });
 
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("products").select("*").order("name");
+      let q = supabase.from("products").select("*").order("name");
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -92,7 +96,7 @@ export default function Products() {
         const { error } = await supabase.from("products").update({ ...rest, slug }).eq("id", id);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.from("products").insert({ ...rest, slug }).select("id").single();
+        const { data, error } = await supabase.from("products").insert({ ...rest, slug, branch_id: branchId }).select("id").single();
         if (error) throw error;
         productId = data.id;
       }

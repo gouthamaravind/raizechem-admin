@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/hooks/useBranch";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,23 +19,27 @@ export default function SalesRegister() {
   const [from, setFrom] = useState(monthAgo);
   const [to, setTo] = useState(today);
   const [dealerFilter, setDealerFilter] = useState("all");
+  const { branchId } = useBranch();
 
   const { data: dealers = [] } = useQuery({
-    queryKey: ["dealers-list-report"],
+    queryKey: ["dealers-list-report", branchId],
     queryFn: async () => {
-      const { data } = await supabase.from("dealers").select("id, name").order("name");
+      let q = supabase.from("dealers").select("id, name").order("name");
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data } = await q;
       return data || [];
     },
   });
 
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ["sales-register", from, to, dealerFilter],
+    queryKey: ["sales-register", from, to, dealerFilter, branchId],
     queryFn: async () => {
       let q = supabase.from("invoices").select("*, dealers(name)")
         .neq("status", "void")
         .gte("invoice_date", from).lte("invoice_date", to)
         .order("invoice_date", { ascending: false });
       if (dealerFilter !== "all") q = q.eq("dealer_id", dealerFilter);
+      if (branchId) q = q.eq("branch_id", branchId);
       const { data, error } = await q;
       if (error) throw error;
       return data || [];

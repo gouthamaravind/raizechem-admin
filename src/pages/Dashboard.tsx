@@ -1,5 +1,6 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useBranch } from "@/hooks/useBranch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -13,9 +14,9 @@ import { format, startOfMonth, startOfDay, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Link } from "react-router-dom";
 
-function useDashboardStats() {
+function useDashboardStats(branchId: string | null) {
   return useQuery({
-    queryKey: ["dashboard-stats"],
+    queryKey: ["dashboard-stats", branchId],
     queryFn: async () => {
       const today = format(startOfDay(new Date()), "yyyy-MM-dd");
       const monthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
@@ -30,17 +31,19 @@ function useDashboardStats() {
         }
       };
 
+      const branchFilter = (q: any) => branchId ? q.eq("branch_id", branchId) : q;
+
       const [ordersToday, pendingInvoices, lowStock, monthlyRevenue, recentOrders, topProducts, totalDealers, totalProducts, recentPayments, overdueInvoices] = await Promise.all([
-        safe(supabase.from("orders").select("id", { count: "exact", head: true }).gte("order_date", today)),
-        safe(supabase.from("invoices").select("total_amount, amount_paid").neq("status", "cancelled").neq("status", "void")),
+        safe(branchFilter(supabase.from("orders").select("id", { count: "exact", head: true }).gte("order_date", today))),
+        safe(branchFilter(supabase.from("invoices").select("total_amount, amount_paid").neq("status", "cancelled").neq("status", "void"))),
         safe(supabase.from("product_batches").select("current_qty, product_id, products(name, min_stock_alert_qty)").gt("current_qty", 0)),
-        safe(supabase.from("invoices").select("total_amount").gte("invoice_date", monthStart).neq("status", "cancelled").neq("status", "void")),
-        safe(supabase.from("orders").select("id, order_number, order_date, total_amount, status, dealers(name)").order("created_at", { ascending: false }).limit(5)),
+        safe(branchFilter(supabase.from("invoices").select("total_amount").gte("invoice_date", monthStart).neq("status", "cancelled").neq("status", "void"))),
+        safe(branchFilter(supabase.from("orders").select("id, order_number, order_date, total_amount, status, dealers(name)").order("created_at", { ascending: false }).limit(5))),
         safe(supabase.from("invoice_items").select("qty, amount, products(name), invoices!inner(invoice_date)").gte("invoices.invoice_date", monthStart)),
-        safe(supabase.from("dealers").select("id", { count: "exact", head: true }).eq("status", "active")),
-        safe(supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true)),
-        safe(supabase.from("payments").select("id, amount, payment_date, payment_mode, dealers(name)").neq("status", "void").order("created_at", { ascending: false }).limit(5)),
-        safe(supabase.from("invoices").select("id, invoice_number, total_amount, amount_paid, due_date, dealers(name)").neq("status", "void").neq("status", "paid").not("due_date", "is", null).lt("due_date", today).order("due_date").limit(5)),
+        safe(branchFilter(supabase.from("dealers").select("id", { count: "exact", head: true }).eq("status", "active"))),
+        safe(branchFilter(supabase.from("products").select("id", { count: "exact", head: true }).eq("is_active", true))),
+        safe(branchFilter(supabase.from("payments").select("id, amount, payment_date, payment_mode, dealers(name)").neq("status", "void").order("created_at", { ascending: false }).limit(5))),
+        safe(branchFilter(supabase.from("invoices").select("id, invoice_number, total_amount, amount_paid, due_date, dealers(name)").neq("status", "void").neq("status", "paid").not("due_date", "is", null).lt("due_date", today).order("due_date").limit(5))),
       ]);
 
       const pendingAmount = ((pendingInvoices.data as any[]) || []).reduce((sum, inv) => {
@@ -100,7 +103,8 @@ const modeLabels: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const { data, isLoading } = useDashboardStats();
+  const { activeBranch, branchId } = useBranch();
+  const { data, isLoading } = useDashboardStats(branchId);
 
   const stats = [
     { title: "Today's Orders", value: data ? String(data.todayOrders) : "—", icon: ShoppingCart, color: "text-primary", link: "/sales/orders" },
@@ -120,7 +124,9 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Welcome back to Raizechem Admin Panel</p>
+            <p className="text-sm text-muted-foreground">
+              {activeBranch ? `${activeBranch.branch_name} Branch` : "Welcome back to Raizechem Admin Panel"}
+            </p>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border rounded-lg px-3 py-1.5">
             <CalendarDays className="h-4 w-4" />

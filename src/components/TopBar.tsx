@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { WelcomeTour } from "@/components/WelcomeTour";
+import { BranchSwitcher } from "@/components/BranchSwitcher";
 
 export function TopBar() {
   const { profile, userRoles, signOut } = useAuth();
@@ -23,6 +24,7 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-3">
+        <BranchSwitcher />
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg" onClick={() => setTourOpen(true)}>

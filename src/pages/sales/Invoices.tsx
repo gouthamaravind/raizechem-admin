@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useBranch } from "@/hooks/useBranch";
 import { useNavigate, useLocation } from "react-router-dom";
 import { usePagination } from "@/hooks/usePagination";
 import { TablePagination } from "@/components/TablePagination";
@@ -52,21 +53,24 @@ export default function Invoices() {
   const [advanceAdjustAmount, setAdvanceAdjustAmount] = useState(0);
 
   const pg = usePagination();
+  const { branchId, activeBranch } = useBranch();
 
   const { data: invoicesRaw = [], isLoading } = useQuery({
-    queryKey: ["invoices", pg.page],
+    queryKey: ["invoices", pg.page, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
+      let q = supabase.from("invoices").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
   const invoices = invoicesRaw.slice(0, pg.pageSize);
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); return data || []; } });
+  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
   const { data: companySettings } = useQuery({ queryKey: ["company-settings"], queryFn: async () => { const { data } = await supabase.from("company_settings").select("state_code, state").limit(1).single(); return data; } });
-  const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); return data || []; } });
-  const { data: batches = [] } = useQuery({ queryKey: ["batches-available"], queryFn: async () => { const { data } = await supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); return data || []; } });
+  const { data: products = [] } = useQuery({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
+  const { data: batches = [] } = useQuery({ queryKey: ["batches-available", branchId], queryFn: async () => { let q = supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
 
   // Dealer advance balance
