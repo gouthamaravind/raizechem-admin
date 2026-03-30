@@ -28,6 +28,7 @@ import Invoices from "./pages/sales/Invoices";
 import InvoicePrint from "./pages/sales/InvoicePrint";
 import EwayBillPrint from "./pages/sales/EwayBillPrint";
 import Returns from "./pages/sales/Returns";
+import BranchTransfers from "./pages/sales/BranchTransfers";
 import PurchaseOrders from "./pages/purchase/Orders";
 import PurchaseInvoices from "./pages/purchase/Invoices";
 import PurchaseReturns from "./pages/purchase/Returns";
