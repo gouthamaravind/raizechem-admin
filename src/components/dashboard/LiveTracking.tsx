@@ -235,7 +235,7 @@ export function LiveTracking() {
             center={defaultCenter}
             zoom={12}
             style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={false}
+            scrollWheelZoom={true}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org">OSM</a>'
