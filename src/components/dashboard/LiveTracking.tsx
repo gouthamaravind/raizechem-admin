@@ -207,7 +207,7 @@ export function LiveTracking() {
 
   const defaultCenter: [number, number] = positions.length
     ? positions[0]
-    : [17.385, 78.4867]; // Hyderabad fallback
+    : [17.385, 78.4867];
 
   return (
     <Card>
@@ -216,9 +216,16 @@ export function LiveTracking() {
           <CardTitle className="text-base flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />Live Field Tracking
           </CardTitle>
-          <Badge variant="default" className="text-xs">
-            {employees.length} on duty
-          </Badge>
+          <div className="flex items-center gap-2">
+            {useMock && (
+              <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">
+                Demo Data
+              </Badge>
+            )}
+            <Badge variant="default" className="text-xs">
+              {employees.length} on duty
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
