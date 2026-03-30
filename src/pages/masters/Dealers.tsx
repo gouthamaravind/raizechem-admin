@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useBranch } from "@/hooks/useBranch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,12 +80,15 @@ export default function Dealers() {
   const [gstWarning, setGstWarning] = useState<string | null>(null);
   const [gstVerifiedAt, setGstVerifiedAt] = useState<string | null>(null);
   const qc = useQueryClient();
+  const { branchId } = useBranch();
   const { isOverdue, getOverdue } = useDealerOverdue();
 
   const { data: dealers = [], isLoading } = useQuery({
-    queryKey: ["dealers"],
+    queryKey: ["dealers", branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("dealers").select("*").order("name");
+      let q = supabase.from("dealers").select("*").order("name");
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -132,7 +136,7 @@ export default function Dealers() {
         const { error } = await supabase.from("dealers").update(rest).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("dealers").insert(rest);
+        const { error } = await supabase.from("dealers").insert({ ...rest, branch_id: branchId });
         if (error) throw error;
       }
     },
