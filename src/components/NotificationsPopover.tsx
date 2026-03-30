@@ -14,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 export function NotificationsPopover() {
   const [open, setOpen] = useState(false);
   const { session } = useAuth();
-  const { activeBranchId } = useBranch();
+  const { activeBranch } = useBranch();
   const navigate = useNavigate();
 
   const { data: overdueInvoices = [] } = useQuery({
