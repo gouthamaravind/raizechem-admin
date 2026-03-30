@@ -337,6 +337,8 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+        {/* Live Field Tracking - Admin only */}
+        {isAdmin && <LiveTracking />}
       </div>
     </DashboardLayout>
   );
