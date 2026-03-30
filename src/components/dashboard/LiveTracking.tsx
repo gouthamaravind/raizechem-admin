@@ -55,8 +55,17 @@ interface ActiveEmployee {
   lastUpdated: string | null;
 }
 
+const MOCK_EMPLOYEES: ActiveEmployee[] = [
+  { sessionId: "mock-1", userId: "u1", name: "Ravi Kumar", startTime: new Date(Date.now() - 3 * 3600000).toISOString(), totalKm: 42.3, durationMins: 180, lat: 17.4065, lng: 78.4772, lastUpdated: new Date().toISOString() },
+  { sessionId: "mock-2", userId: "u2", name: "Suresh Babu", startTime: new Date(Date.now() - 2 * 3600000).toISOString(), totalKm: 28.7, durationMins: 120, lat: 17.4401, lng: 78.3489, lastUpdated: new Date().toISOString() },
+  { sessionId: "mock-3", userId: "u3", name: "Priya Sharma", startTime: new Date(Date.now() - 1.5 * 3600000).toISOString(), totalKm: 15.1, durationMins: 90, lat: 17.3616, lng: 78.4747, lastUpdated: new Date().toISOString() },
+  { sessionId: "mock-4", userId: "u4", name: "Venkat Reddy", startTime: new Date(Date.now() - 4 * 3600000).toISOString(), totalKm: 56.8, durationMins: 240, lat: 17.4948, lng: 78.3996, lastUpdated: new Date().toISOString() },
+  { sessionId: "mock-5", userId: "u5", name: "Anita Desai", startTime: new Date(Date.now() - 0.5 * 3600000).toISOString(), totalKm: 6.2, durationMins: 30, lat: 17.3850, lng: 78.4867, lastUpdated: new Date().toISOString() },
+];
+
 export function LiveTracking() {
   const [employees, setEmployees] = useState<ActiveEmployee[]>([]);
+  const [useMock, setUseMock] = useState(false);
 
   // Fetch active duty sessions with latest location
   const { data: activeSessions, isLoading } = useQuery({
@@ -73,7 +82,6 @@ export function LiveTracking() {
 
       const [empRes, locRes] = await Promise.all([
         supabase.from("employee_profiles").select("user_id, name").in("user_id", userIds),
-        // Get latest location per session
         Promise.all(
           sessions.map((s) =>
             supabase
@@ -110,7 +118,13 @@ export function LiveTracking() {
   });
 
   useEffect(() => {
-    if (activeSessions) setEmployees(activeSessions);
+    if (activeSessions && activeSessions.length > 0) {
+      setEmployees(activeSessions);
+      setUseMock(false);
+    } else if (activeSessions && activeSessions.length === 0) {
+      setEmployees(MOCK_EMPLOYEES);
+      setUseMock(true);
+    }
   }, [activeSessions]);
 
   // Realtime subscription for new location points
