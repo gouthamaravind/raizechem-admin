@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, MapPin, Clock, Navigation, IndianRupee, ShoppingCart, CreditCard, Users } from "lucide-react";
+import { LiveTracking } from "@/components/dashboard/LiveTracking";
 import { format } from "date-fns";
 import { useNavigate } from "react-router-dom";
 
@@ -126,6 +127,8 @@ export default function FieldOpsSessions() {
             </Select>
           )}
         </div>
+        {/* Live Tracking Map */}
+        {isAdminOrAccounts && <LiveTracking />}
 
         {/* Sessions Table */}
         <Card>
