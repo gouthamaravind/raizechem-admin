@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useBranch } from "@/hooks/useBranch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,11 +66,14 @@ export default function Suppliers() {
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState<FormErrors>({});
   const qc = useQueryClient();
+  const { branchId } = useBranch();
 
   const { data: suppliers = [], isLoading } = useQuery({
-    queryKey: ["suppliers"],
+    queryKey: ["suppliers", branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("suppliers").select("*").order("name");
+      let q = supabase.from("suppliers").select("*").order("name");
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
@@ -95,7 +99,7 @@ export default function Suppliers() {
         const { error } = await supabase.from("suppliers").update(rest).eq("id", id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("suppliers").insert(rest);
+        const { error } = await supabase.from("suppliers").insert({ ...rest, branch_id: branchId });
         if (error) throw error;
       }
     },

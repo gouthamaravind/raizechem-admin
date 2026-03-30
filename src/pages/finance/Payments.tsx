@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useBranch } from "@/hooks/useBranch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,18 +46,21 @@ export default function Payments() {
   const netAmount = amount > 0 ? +(amount - tdsAmount + tcsAmount).toFixed(2) : 0;
 
   const pg = usePagination();
+  const { branchId } = useBranch();
 
   const { data: paymentsRaw = [], isLoading } = useQuery({
-    queryKey: ["payments", pg.page],
+    queryKey: ["payments", pg.page, branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("payments").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
+      let q = supabase.from("payments").select("*, dealers(name)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },
   });
   const payments = paymentsRaw.slice(0, pg.pageSize);
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list"], queryFn: async () => { const { data } = await supabase.from("dealers").select("id, name").eq("status", "active").order("name"); return data || []; } });
+  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
 
   const { data: allocations = [] } = useQuery({
     queryKey: ["payment-allocations", allocViewId],
