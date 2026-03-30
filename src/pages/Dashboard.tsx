@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, startOfDay, differenceInDays } from "date-fns";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Link } from "react-router-dom";
+import { LiveTracking } from "@/components/dashboard/LiveTracking";
+import { useAuth } from "@/hooks/useAuth";
 
 function useDashboardStats(branchId: string | null) {
   return useQuery({
@@ -104,6 +106,8 @@ const modeLabels: Record<string, string> = {
 
 export default function Dashboard() {
   const { activeBranch, branchId } = useBranch();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const { data, isLoading } = useDashboardStats(branchId);
 
   const stats = [
@@ -333,6 +337,8 @@ export default function Dashboard() {
             )}
           </CardContent>
         </Card>
+        {/* Live Field Tracking - Admin only */}
+        {isAdmin && <LiveTracking />}
       </div>
     </DashboardLayout>
   );
