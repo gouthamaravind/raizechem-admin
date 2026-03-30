@@ -127,6 +127,8 @@ export default function FieldOpsSessions() {
             </Select>
           )}
         </div>
+        {/* Live Tracking Map */}
+        {isAdminOrAccounts && <LiveTracking />}
 
         {/* Sessions Table */}
         <Card>
