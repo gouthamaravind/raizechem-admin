@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { useBranch } from "@/hooks/useBranch";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,10 +10,13 @@ import { Download } from "lucide-react";
 import { exportToCsv } from "@/lib/csv-export";
 
 export default function Outstanding() {
+  const { branchId } = useBranch();
   const { data: invoices = [], isLoading } = useQuery({
-    queryKey: ["outstanding-invoices"],
+    queryKey: ["outstanding-invoices", branchId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("invoices").select("*, dealers(name)").neq("status", "paid").neq("status", "void").order("due_date");
+      let q = supabase.from("invoices").select("*, dealers(name)").neq("status", "paid").neq("status", "void").order("due_date");
+      if (branchId) q = q.eq("branch_id", branchId);
+      const { data, error } = await q;
       if (error) throw error;
       return data;
     },

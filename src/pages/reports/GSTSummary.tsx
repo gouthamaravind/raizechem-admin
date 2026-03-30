@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useBranch } from "@/hooks/useBranch";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ export default function GSTSummary() {
   const [from, setFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]);
   const [to, setTo] = useState(now.toISOString().split("T")[0]);
   const [year, setYear] = useState(String(now.getFullYear()));
+  const { branchId, activeBranch } = useBranch();
 
   // Fetch invoice items with invoice + dealer + product info
   const { data: items = [], isLoading } = useQuery({
