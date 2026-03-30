@@ -5,7 +5,7 @@ import {
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
   ScrollText, Radio, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
-  ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine,
+  ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine, ArrowLeftRight,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -56,6 +56,7 @@ const navGroups = [
       { title: "Orders", url: "/sales/orders", icon: ShoppingCart },
       { title: "Invoices", url: "/sales/invoices", icon: FileText },
       { title: "Returns", url: "/sales/returns", icon: RotateCcw },
+      { title: "Branch Transfers", url: "/sales/branch-transfers", icon: ArrowLeftRight },
     ],
   },
   {
