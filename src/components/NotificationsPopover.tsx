@@ -18,7 +18,7 @@ export function NotificationsPopover() {
   const navigate = useNavigate();
 
   const { data: overdueInvoices = [] } = useQuery({
-    queryKey: ["notifications-overdue", activeBranchId],
+    queryKey: ["notifications-overdue", activeBranch?.id],
     queryFn: async () => {
       let query = supabase
         .from("invoices")
@@ -29,8 +29,8 @@ export function NotificationsPopover() {
         .order("due_date", { ascending: true })
         .limit(20);
 
-      if (activeBranchId) {
-        query = query.eq("branch_id", activeBranchId);
+      if (activeBranch?.id) {
+        query = query.eq("branch_id", activeBranch.id);
       }
 
       const { data, error } = await query;
