@@ -81,7 +81,7 @@ import MobileNewPayment from "./pages/mobile/MobileNewPayment";
 import { MobileGuard } from "./components/mobile/MobileGuard";
 import Features from "./pages/Features";
 
-const MAINTENANCE_MODE = true;
+const MAINTENANCE_MODE = false;
 
 const queryClient = new QueryClient();
 
