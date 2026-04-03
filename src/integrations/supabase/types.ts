@@ -1177,6 +1177,27 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_pincodes: {
+        Row: {
+          created_at: string
+          id: string
+          pincode: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pincode: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pincode?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       employee_profiles: {
         Row: {
           created_at: string
@@ -3703,6 +3724,37 @@ export type Database = {
         Returns: undefined
       }
       finalize_duty_session: { Args: { _session_id: string }; Returns: Json }
+      get_active_duty_locations: {
+        Args: never
+        Returns: {
+          full_name: string
+          last_point: Json
+          session_id: string
+          start_time: string
+          total_km: number
+          user_id: string
+        }[]
+      }
+      get_pincode_assignees: {
+        Args: { p_pincode: string }
+        Returns: {
+          full_name: string
+          pincode: string
+          user_id: string
+        }[]
+      }
+      get_recent_visits: {
+        Args: { p_since?: string }
+        Returns: {
+          checkin: Json
+          checkout: Json
+          dealer_id: string
+          dealer_name: string
+          full_name: string
+          user_id: string
+          visit_id: string
+        }[]
+      }
       has_any_role: { Args: { _user_id: string }; Returns: boolean }
       has_role: {
         Args: {
