@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { useFieldOps } from "@/hooks/useFieldOps";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Plus, Trash2, Send } from "lucide-react";
+import { Trash2, Send, RefreshCw } from "lucide-react";
+import { useFieldCatalog } from "@/hooks/useFieldCatalog";
+import { SyncBadge } from "@/components/mobile/SyncBadge";
 
 interface OrderItem {
   product_id: string;
@@ -17,26 +18,15 @@ interface OrderItem {
 
 export default function MobileNewOrder() {
   const navigate = useNavigate();
-  const { createFieldOrder, loading } = useFieldOps();
-  const [dealers, setDealers] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const { createFieldOrder, loading, pendingSync } = useFieldOps();
+  const { dealers, products, isLoading, isFetching, refetch, hasCoverageFilter, assignedPincodes } = useFieldCatalog();
   const [selectedDealer, setSelectedDealer] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<OrderItem[]>([]);
   const [dealerSearch, setDealerSearch] = useState("");
   const [productSearch, setProductSearch] = useState("");
 
-  useEffect(() => {
-    Promise.all([
-      supabase.from("dealers").select("id, name").eq("status", "active").order("name"),
-      supabase.from("products").select("id, name, sale_price").eq("is_active", true).order("name"),
-    ]).then(([d, p]) => {
-      setDealers(d.data || []);
-      setProducts(p.data || []);
-    });
-  }, []);
-
-  const addItem = (product: any) => {
+  const addItem = (product: { id: string; name: string; sale_price?: number | null }) => {
     if (items.find((i) => i.product_id === product.id)) return;
     setItems([...items, { product_id: product.id, product_name: product.name, qty: 1, expected_rate: product.sale_price || 0 }]);
     setProductSearch("");
@@ -76,6 +66,24 @@ export default function MobileNewOrder() {
   return (
     <MobileLayout title="New Field Order">
       <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <SyncBadge count={pendingSync.length} />
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+
+        {hasCoverageFilter && (
+          <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+            Dealer list filtered to your assigned pincodes: {assignedPincodes.join(", ")}
+          </div>
+        )}
+
         {/* Dealer Selection */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Dealer</label>
@@ -103,6 +111,12 @@ export default function MobileNewOrder() {
         {/* Items */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Items</label>
+          {isLoading && items.length === 0 && (
+            <div className="space-y-2">
+              <div className="h-12 rounded-lg border border-border bg-card animate-pulse" />
+              <div className="h-12 rounded-lg border border-border bg-card animate-pulse" />
+            </div>
+          )}
           {items.map((item, idx) => (
             <div key={item.product_id} className="bg-card border border-border rounded-lg p-3 space-y-2">
               <div className="flex items-center justify-between">

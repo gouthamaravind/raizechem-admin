@@ -1,30 +1,26 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { useFieldOps } from "@/hooks/useFieldOps";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
-import { Send } from "lucide-react";
+import { Send, RefreshCw } from "lucide-react";
+import { useFieldCatalog } from "@/hooks/useFieldCatalog";
+import { SyncBadge } from "@/components/mobile/SyncBadge";
 
 const MODES = ["cash", "upi", "cheque", "bank_transfer", "neft", "rtgs", "imps", "dd"];
 
 export default function MobileNewPayment() {
   const navigate = useNavigate();
-  const { recordPayment, loading } = useFieldOps();
-  const [dealers, setDealers] = useState<any[]>([]);
+  const { recordPayment, loading, pendingSync } = useFieldOps();
+  const { dealers, isLoading, isFetching, refetch, hasCoverageFilter, assignedPincodes } = useFieldCatalog();
   const [dealerId, setDealerId] = useState("");
   const [dealerSearch, setDealerSearch] = useState("");
   const [amount, setAmount] = useState("");
   const [mode, setMode] = useState("cash");
   const [referenceNo, setReferenceNo] = useState("");
   const [notes, setNotes] = useState("");
-
-  useEffect(() => {
-    supabase.from("dealers").select("id, name").eq("status", "active").order("name")
-      .then(({ data }) => setDealers(data || []));
-  }, []);
 
   const filteredDealers = dealers.filter((d) => d.name.toLowerCase().includes(dealerSearch.toLowerCase()));
   const dealerName = dealers.find((d) => d.id === dealerId)?.name;
@@ -43,6 +39,24 @@ export default function MobileNewPayment() {
   return (
     <MobileLayout title="Record Payment">
       <div className="space-y-4">
+        <div className="flex items-center justify-between gap-2">
+          <SyncBadge count={pendingSync.length} />
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+
+        {hasCoverageFilter && (
+          <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+            Dealer list filtered to your assigned pincodes: {assignedPincodes.join(", ")}
+          </div>
+        )}
+
         {/* Dealer */}
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Dealer</label>
@@ -54,6 +68,12 @@ export default function MobileNewPayment() {
           ) : (
             <>
               <Input placeholder="Search dealer..." value={dealerSearch} onChange={(e) => setDealerSearch(e.target.value)} className="h-11" />
+              {isLoading && (
+                <div className="space-y-2">
+                  <div className="h-10 rounded-lg border border-border bg-card animate-pulse" />
+                  <div className="h-10 rounded-lg border border-border bg-card animate-pulse" />
+                </div>
+              )}
               {dealerSearch && (
                 <div className="bg-card border border-border rounded-lg max-h-40 overflow-y-auto">
                   {filteredDealers.slice(0, 10).map((d) => (

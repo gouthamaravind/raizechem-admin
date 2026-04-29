@@ -68,6 +68,7 @@ import FieldOpsLocations from "./pages/fieldops/Locations";
 import FieldOpsVisits from "./pages/fieldops/Visits";
 import FieldOpsFieldOrders from "./pages/fieldops/FieldOrders";
 import FieldOpsPayments from "./pages/fieldops/FieldPayments";
+import PincodeCoverage from "./pages/fieldops/PincodeCoverage";
 import MobileLogin from "./pages/mobile/MobileLogin";
 import MobileHome from "./pages/mobile/MobileHome";
 import MobileDuty from "./pages/mobile/MobileDuty";
@@ -162,6 +163,7 @@ const App = () => {
               <Route path="/fieldops/visits" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsVisits /></RoleGuard></P>} />
               <Route path="/fieldops/field-orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsFieldOrders /></RoleGuard></P>} />
               <Route path="/fieldops/payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsPayments /></RoleGuard></P>} />
+              <Route path="/fieldops/pincodes" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><PincodeCoverage /></RoleGuard></P>} />
               {/* Mobile Routes */}
               <Route path="/m/login" element={<MobileLogin />} />
               <Route path="/m/home" element={<M><MobileHome /></M>} />

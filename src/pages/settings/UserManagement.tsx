@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, Shield, UserPlus } from "lucide-react";
 
-const ALL_ROLES = ["admin", "sales", "accounts", "inventory", "warehouse"] as const;
+const ALL_ROLES = ["admin", "sales", "accounts", "inventory", "warehouse", "fieldops"] as const;
 
 interface UserRow {
   id: string;
@@ -21,6 +21,13 @@ interface UserRow {
   full_name: string;
   created_at: string;
   roles: string[];
+}
+
+interface CoverageRow {
+  id: string;
+  user_id: string;
+  pincode: string;
+  created_at: string;
 }
 
 function invoke(action: string, body: Record<string, unknown> = {}) {
@@ -59,6 +66,64 @@ export default function UserManagement() {
       setOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Pincode coverage (employee_pincodes)
+  const { data: coverages = [], isLoading: coveragesLoading } = useQuery<CoverageRow[]>({
+    queryKey: ["employee-pincodes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employee_pincodes")
+        .select("id, user_id, pincode, created_at")
+        .order("pincode", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const [coverageForm, setCoverageForm] = useState<{ user_id: string; pincode: string }>({ user_id: "", pincode: "" });
+
+  const addCoverage = useMutation({
+    mutationFn: async () => {
+      if (!coverageForm.user_id || !coverageForm.pincode) throw new Error("Select employee and enter pincode");
+      const { error } = await supabase.from("employee_pincodes").insert({
+        user_id: coverageForm.user_id,
+        pincode: coverageForm.pincode.trim(),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employee-pincodes"] });
+      qc.invalidateQueries({ queryKey: ["pincode-assignees"] });
+      toast.success("Pincode assigned");
+      setCoverageForm({ user_id: "", pincode: "" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteCoverage = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("employee_pincodes").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employee-pincodes"] });
+      qc.invalidateQueries({ queryKey: ["pincode-assignees"] });
+      toast.success("Removed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Pincode lookup
+  const [lookupPin, setLookupPin] = useState("");
+  const { data: lookupAssignees = [], refetch: refetchLookup, isFetching: lookupLoading } = useQuery({
+    queryKey: ["pincode-assignees", lookupPin],
+    enabled: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("get_pincode_assignees", { p_pincode: lookupPin.trim() });
+      if (error) throw error;
+      return data || [];
+    },
   });
 
   const rolesMutation = useMutation({
@@ -192,6 +257,108 @@ export default function UserManagement() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Coverage Assignment */}
+        <Card>
+          <CardHeader><CardTitle>Pincode Coverage</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Employee</Label>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={coverageForm.user_id}
+                  onChange={(e) => setCoverageForm((f) => ({ ...f, user_id: e.target.value }))}
+                >
+                  <option value="">Select employee</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Pincode</Label>
+                <Input
+                  value={coverageForm.pincode}
+                  onChange={(e) => setCoverageForm((f) => ({ ...f, pincode: e.target.value }))}
+                  placeholder="500001"
+                  maxLength={6}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button className="w-full" onClick={() => addCoverage.mutate()} disabled={addCoverage.isPending}>
+                  {addCoverage.isPending ? "Assigning..." : "Assign Pincode"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Pincode</TableHead>
+                    <TableHead>Assigned</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {coveragesLoading ? (
+                    <TableRow><TableCell colSpan={4}>Loading...</TableCell></TableRow>
+                  ) : coverages.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-muted-foreground text-sm">No pincodes assigned yet</TableCell></TableRow>
+                  ) : (
+                    coverages.map((c) => {
+                      const user = users.find((u) => u.id === c.user_id);
+                      return (
+                        <TableRow key={c.id}>
+                          <TableCell>{user?.full_name || user?.email || c.user_id}</TableCell>
+                          <TableCell>{c.pincode}</TableCell>
+                          <TableCell className="text-muted-foreground text-xs">{new Date(c.created_at).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => deleteCoverage.mutate(c.id)} disabled={deleteCoverage.isPending}>
+                              Remove
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pincode Lookup */}
+        <Card>
+          <CardHeader><CardTitle>Find Assignee by Pincode</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <Input
+                className="md:w-64"
+                placeholder="Enter pincode"
+                value={lookupPin}
+                onChange={(e) => setLookupPin(e.target.value)}
+                maxLength={6}
+              />
+              <Button type="button" onClick={() => refetchLookup()} disabled={!lookupPin || lookupLoading}>
+                {lookupLoading ? "Searching..." : "Lookup"}
+              </Button>
+            </div>
+            {lookupAssignees.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {lookupAssignees.map((a: any) => (
+                  <Badge key={a.user_id} variant="secondary" className="flex items-center gap-2 text-xs">
+                    <Shield className="h-3 w-3" /> {a.full_name || a.user_id} · {a.pincode}
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              !!lookupPin && !lookupLoading && <p className="text-sm text-muted-foreground">No assignees for {lookupPin}</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );

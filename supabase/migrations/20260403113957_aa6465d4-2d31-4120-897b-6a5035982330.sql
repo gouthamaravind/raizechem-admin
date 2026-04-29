@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS public.employee_pincodes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,

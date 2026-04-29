@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { SyncBadge } from "@/components/mobile/SyncBadge";
 import { useFieldOps } from "@/hooks/useFieldOps";
@@ -8,46 +8,43 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { MapPin, Play, Square, Navigation, Settings, ShieldCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useBackgroundTracking } from "@/hooks/useBackgroundTracking";
+import { useDutyTimer } from "@/hooks/useDutyTimer";
+import { useLocationCapture } from "@/hooks/useLocationCapture";
 
 type TrackingMode = "low" | "normal" | "high";
 
-const TRACKING_INTERVALS: Record<TrackingMode, number> = {
-  low: 5 * 60 * 1000,
-  normal: 3 * 60 * 1000,
-  high: 1 * 60 * 1000,
-};
-
 const TRACKING_LABELS: Record<TrackingMode, string> = {
   low: "Low (every 5 min)",
-  normal: "Normal (every 3 min)",
-  high: "High (every 1 min)",
+  normal: "Normal (~30 sec)",
+  high: "High (~20 sec)",
 };
 
 const CONSENT_KEY = "fieldops_location_consent";
 
-function getLocation(): Promise<{ lat: number; lng: number; accuracy: number }> {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error("Geolocation not supported"));
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
-  });
+type ActiveSession = {
+  id: string;
+  start_time: string;
+  tracking_mode?: string | null;
+};
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Unable to capture current location";
 }
 
 export default function MobileDuty() {
   const { startDuty, stopDuty, addLocations, getTodaySummary, pendingSync, loading } = useFieldOps();
-  const [activeSession, setActiveSession] = useState<any>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [liveKm, setLiveKm] = useState(0);
-  const [elapsed, setElapsed] = useState("");
   const [pageLoading, setPageLoading] = useState(true);
   const [trackingMode, setTrackingMode] = useState<TrackingMode>("normal");
   const [showSettings, setShowSettings] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
   const [pendingStart, setPendingStart] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
-  const locationIntervalRef = useRef<ReturnType<typeof setInterval>>();
+  const { startTracking, stopTracking, queue, flushQueue, isTracking } = useBackgroundTracking();
+  const { getLocation } = useLocationCapture();
+  const elapsed = useDutyTimer(activeSession?.start_time);
 
   const hasConsent = () => localStorage.getItem(CONSENT_KEY) === "true";
 
@@ -65,55 +62,18 @@ export default function MobileDuty() {
 
   useEffect(() => {
     loadSummary();
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-    };
+    return () => undefined;
   }, []);
 
-  // Timer
+  // Resume background tracking if a session is already active when the page mounts
   useEffect(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (!activeSession) { setElapsed(""); return; }
-
-    const updateElapsed = () => {
-      const start = new Date(activeSession.start_time).getTime();
-      const diff = Date.now() - start;
-      const h = Math.floor(diff / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      const s = Math.floor((diff % 60000) / 1000);
-      setElapsed(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`);
-    };
-    updateElapsed();
-    intervalRef.current = setInterval(updateElapsed, 1000);
-  }, [activeSession]);
-
-  // Auto-capture location based on tracking mode
-  useEffect(() => {
-    if (locationIntervalRef.current) clearInterval(locationIntervalRef.current);
-    if (!activeSession) return;
-
-    const interval = TRACKING_INTERVALS[trackingMode] || TRACKING_INTERVALS.normal;
-
-    const captureLocation = async () => {
-      try {
-        const loc = await getLocation();
-        if (loc.accuracy > 100) {
-          // High inaccuracy — still send but flag it; server will validate
-          console.warn(`Low accuracy GPS: ${loc.accuracy.toFixed(0)}m`);
-        }
-        await addLocations(activeSession.id, [{
-          lat: loc.lat,
-          lng: loc.lng,
-          accuracy: loc.accuracy,
-          recorded_at: new Date().toISOString(),
-        }]);
-      } catch {}
-    };
-
-    locationIntervalRef.current = setInterval(captureLocation, interval);
-    return () => { if (locationIntervalRef.current) clearInterval(locationIntervalRef.current); };
-  }, [activeSession, trackingMode]);
+    if (activeSession && !isTracking) {
+      startTracking(activeSession.id, trackingMode);
+    }
+    if (!activeSession && isTracking) {
+      stopTracking();
+    }
+  }, [activeSession, trackingMode, isTracking, startTracking, stopTracking]);
 
   const doStart = async () => {
     try {
@@ -121,11 +81,13 @@ export default function MobileDuty() {
       const { data, error } = await startDuty(loc.lat, loc.lng, trackingMode);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession(data.session);
+      startTracking(data.session.id, trackingMode);
       toast({ title: "Duty Started", description: `Tracking: ${TRACKING_LABELS[trackingMode]}` });
     } catch {
       const { data, error } = await startDuty(undefined, undefined, trackingMode);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession(data.session);
+      startTracking(data.session.id, trackingMode);
       toast({ title: "Duty Started", description: "Location unavailable" });
     }
   };
@@ -158,6 +120,7 @@ export default function MobileDuty() {
       const { error } = await stopDuty(activeSession.id);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
     }
+    await stopTracking();
     setActiveSession(null);
     toast({ title: "Duty Ended" });
     loadSummary();
@@ -167,11 +130,11 @@ export default function MobileDuty() {
     if (!activeSession) return;
     try {
       const loc = await getLocation();
-      const { error } = await addLocations(activeSession.id, [{ lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy }]);
+      const { error } = await addLocations(activeSession.id, [{ lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, recorded_at: new Date().toISOString() }]);
       if (error) toast({ title: "Error", description: error, variant: "destructive" });
       else toast({ title: "Location Captured", description: `Accuracy: ${loc.accuracy.toFixed(0)}m` });
-    } catch (e: any) {
-      toast({ title: "Location Error", description: e.message, variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Location Error", description: getErrorMessage(error), variant: "destructive" });
     }
   };
 
@@ -189,6 +152,7 @@ export default function MobileDuty() {
     <MobileLayout title="Duty">
       <div className="space-y-6">
         <SyncBadge count={pendingSync.length} />
+        {isTracking && <p className="text-xs text-muted-foreground">Background tracking active • queued points: {queue.length}</p>}
 
         {activeSession ? (
           <div className="space-y-6">

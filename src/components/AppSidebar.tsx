@@ -118,6 +118,7 @@ const navGroups = [
       { title: "Visits", url: "/fieldops/visits", icon: MapPinned },
       { title: "Field Orders", url: "/fieldops/field-orders", icon: ClipboardCheck },
       { title: "Field Payments", url: "/fieldops/payments", icon: BadgeCheck },
+      { title: "Pincode Coverage", url: "/fieldops/pincodes", icon: MapPin },
     ],
   },
   {

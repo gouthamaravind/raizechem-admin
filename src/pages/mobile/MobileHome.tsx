@@ -2,19 +2,22 @@ import { useEffect, useState } from "react";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { SyncBadge } from "@/components/mobile/SyncBadge";
 import { useFieldOps } from "@/hooks/useFieldOps";
-import { MapPin, ShoppingCart, CreditCard, TrendingUp, Clock } from "lucide-react";
+import { MapPin, ShoppingCart, CreditCard, TrendingUp, Clock, RefreshCw } from "lucide-react";
 
 export default function MobileHome() {
   const { getTodaySummary, pendingSync } = useFieldOps();
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    const { data } = await getTodaySummary();
+    if (data) setSummary(data);
+    setLoading(false);
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    const load = async () => {
-      const { data } = await getTodaySummary();
-      if (data) setSummary(data);
-      setLoading(false);
-    };
     load();
   }, []);
 
@@ -36,11 +39,26 @@ export default function MobileHome() {
   return (
     <MobileLayout title="Today's Summary">
       <div className="space-y-4">
-        <SyncBadge count={pendingSync.length} />
+        <div className="flex items-center justify-between gap-2">
+          <SyncBadge count={pendingSync.length} />
+          <button
+            type="button"
+            onClick={() => {
+              setRefreshing(true);
+              load();
+            }}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
 
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="grid grid-cols-2 gap-3">
+            {[1, 2, 3, 4].map((card) => (
+              <div key={card} className="h-24 rounded-xl border border-border bg-card animate-pulse" />
+            ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">

@@ -1,27 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
-import { Search, ChevronRight, MapPin, Phone } from "lucide-react";
+import { Search, ChevronRight, MapPin, Phone, RefreshCw } from "lucide-react";
+import { useFieldCatalog } from "@/hooks/useFieldCatalog";
+import { SyncBadge } from "@/components/mobile/SyncBadge";
+import { useFieldOps } from "@/hooks/useFieldOps";
 
 export default function MobileDealers() {
-  const [dealers, setDealers] = useState<any[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("dealers")
-        .select("id, name, city, state, phone, contact_person")
-        .eq("status", "active")
-        .order("name");
-      setDealers(data || []);
-      setLoading(false);
-    };
-    load();
-  }, []);
+  const { dealers, isLoading, isFetching, refetch, hasCoverageFilter, assignedPincodes } = useFieldCatalog();
+  const { pendingSync } = useFieldOps();
 
   const filtered = dealers.filter(
     (d) =>
@@ -33,6 +22,24 @@ export default function MobileDealers() {
   return (
     <MobileLayout title="Dealers">
       <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <SyncBadge count={pendingSync.length} />
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
+
+        {hasCoverageFilter && (
+          <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+            Showing dealers for assigned pincodes: {assignedPincodes.join(", ")}
+          </div>
+        )}
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -44,8 +51,10 @@ export default function MobileDealers() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="space-y-2 py-2">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="h-20 rounded-xl border border-border bg-card animate-pulse" />
+            ))}
           </div>
         ) : (
           <div className="space-y-2">
