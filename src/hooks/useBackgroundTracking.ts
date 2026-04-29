@@ -13,6 +13,7 @@ const INTERVAL_MS: Record<TrackingMode, number> = {
 
 const BATCH_INTERVAL_MS = 2 * 60 * 1000;
 const STORAGE_KEY = "fieldops_location_queue";
+const MAX_QUEUED_POINTS = 1000;
 
 interface QueuedPoint {
   lat: number;
@@ -54,7 +55,8 @@ export function useBackgroundTracking() {
   }, []);
 
   const enqueue = useCallback((point: QueuedPoint) => {
-    persist([...loadQueue(), point]);
+    const next = [...loadQueue(), point].slice(-MAX_QUEUED_POINTS);
+    persist(next);
   }, [persist]);
 
   const flush = useCallback(async () => {

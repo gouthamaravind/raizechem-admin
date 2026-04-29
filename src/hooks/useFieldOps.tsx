@@ -1,25 +1,87 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+const PENDING_SYNC_KEY = "fieldops_pending_actions";
 
 interface PendingAction {
   id: string;
   action: string;
-  payload: any;
+  payload: unknown;
   timestamp: number;
+}
+
+type FieldOpsResult<T> = {
+  data: T | null;
+  error: string | null;
+};
+
+type AddLocationPoint = {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+  recorded_at?: string;
+};
+
+type CreateOrderItem = {
+  product_id: string;
+  qty: number;
+  expected_rate: number;
+};
+
+function loadPendingActions() {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(PENDING_SYNC_KEY);
+    return raw ? (JSON.parse(raw) as PendingAction[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Request failed";
+}
+
+function isOfflineLikeError(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    !navigator.onLine ||
+    normalized.includes("failed to fetch") ||
+    normalized.includes("networkerror") ||
+    normalized.includes("network request failed") ||
+    normalized.includes("load failed")
+  );
 }
 
 export function useFieldOps() {
   const [loading, setLoading] = useState(false);
-  const [pendingSync, setPendingSync] = useState<PendingAction[]>([]);
+  const [pendingSync, setPendingSync] = useState<PendingAction[]>(loadPendingActions);
 
-  const callFieldOps = useCallback(async (action: string, method: string, body?: any) => {
+  const fieldOpsUrl = useMemo(() => {
+    const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!baseUrl) {
+      throw new Error("VITE_SUPABASE_URL is not configured");
+    }
+    return `${String(baseUrl).replace(/\/$/, "")}/functions/v1/fieldops`;
+  }, []);
+
+  const persistPending = useCallback((updater: PendingAction[] | ((prev: PendingAction[]) => PendingAction[])) => {
+    setPendingSync((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(PENDING_SYNC_KEY, JSON.stringify(next));
+      }
+      return next;
+    });
+  }, []);
+
+  const callFieldOps = useCallback(async <T,>(action: string, method: string, body?: unknown): Promise<FieldOpsResult<T>> => {
     setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Not authenticated");
-
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const url = `https://${projectId}.supabase.co/functions/v1/fieldops?action=${action}`;
+      const url = `${fieldOpsUrl}?action=${encodeURIComponent(action)}`;
       
       const opts: RequestInit = {
         method,
@@ -41,24 +103,57 @@ export function useFieldOps() {
       }
       
       // Clear any pending for this action on success
-      setPendingSync(prev => prev.filter(p => p.action !== action));
-      return { data, error: null };
-    } catch (err: any) {
-      // Queue for offline retry
-      if (body && method === "POST") {
+      persistPending((prev) => prev.filter((pending) => pending.action !== action));
+      return { data: data as T, error: null };
+    } catch (error) {
+      const message = getErrorMessage(error);
+      const shouldQueue = body && method === "POST" && isOfflineLikeError(message);
+      if (shouldQueue) {
         const pending: PendingAction = {
           id: crypto.randomUUID(),
           action,
           payload: body,
           timestamp: Date.now(),
         };
-        setPendingSync(prev => [...prev, pending]);
+        persistPending((prev) => {
+          const next = [...prev, pending].slice(-100);
+          return next;
+        });
       }
-      return { data: null, error: err.message };
+      return { data: null, error: message };
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fieldOpsUrl, persistPending]);
+
+  const syncPending = useCallback(async () => {
+    if (!navigator.onLine) return;
+    const queue = loadPendingActions();
+    if (!queue.length) return;
+
+    for (const pending of queue) {
+      const result = await callFieldOps(pending.action, "POST", pending.payload);
+      if (result.error && isOfflineLikeError(result.error)) {
+        break;
+      }
+      persistPending((prev) => prev.filter((item) => item.id !== pending.id));
+    }
+  }, [callFieldOps, persistPending]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleOnline = () => {
+      void syncPending();
+    };
+
+    window.addEventListener("online", handleOnline);
+    void syncPending();
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [syncPending]);
 
   const startDuty = (lat?: number, lng?: number, tracking_mode?: string) =>
     callFieldOps("start-duty", "POST", { lat, lng, tracking_mode: tracking_mode || "normal" });
@@ -66,7 +161,7 @@ export function useFieldOps() {
   const stopDuty = (sessionId: string, lat?: number, lng?: number) =>
     callFieldOps("stop-duty", "POST", { session_id: sessionId, lat, lng });
 
-  const addLocations = (sessionId: string, points: Array<{ lat: number; lng: number; accuracy?: number; recorded_at?: string }>) =>
+  const addLocations = (sessionId: string, points: AddLocationPoint[]) =>
     callFieldOps("add-locations", "POST", { session_id: sessionId, points });
 
   const checkinVisit = (dealerId: string, sessionId?: string, lat?: number, lng?: number, notes?: string) =>
@@ -75,7 +170,7 @@ export function useFieldOps() {
   const checkoutVisit = (visitId: string, lat?: number, lng?: number, notes?: string, photoUrl?: string) =>
     callFieldOps("checkout-visit", "POST", { visit_id: visitId, lat, lng, notes, photo_url: photoUrl });
 
-  const createFieldOrder = (dealerId: string, items: Array<{ product_id: string; qty: number; expected_rate: number }>, sessionId?: string, notes?: string, deliveryDate?: string) =>
+  const createFieldOrder = (dealerId: string, items: CreateOrderItem[], sessionId?: string, notes?: string, deliveryDate?: string) =>
     callFieldOps("create-field-order", "POST", {
       dealer_id: dealerId,
       session_id: sessionId,
@@ -101,6 +196,7 @@ export function useFieldOps() {
   return {
     loading,
     pendingSync,
+    syncPending,
     startDuty,
     stopDuty,
     addLocations,

@@ -10,6 +10,14 @@ import { Geolocation } from "@capacitor/geolocation";
 import { Camera as CapCamera, CameraResultType, CameraSource } from "@capacitor/camera";
 import { supabase } from "@/integrations/supabase/client";
 
+const PHOTO_BUCKET = "field-photos";
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365;
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  return "Could not attach photo";
+}
+
 export default function MobileCheckout() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
@@ -20,8 +28,6 @@ export default function MobileCheckout() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-
-  const PHOTO_BUCKET = "field-photos";
 
   const capturePhoto = async () => {
     try {
@@ -39,16 +45,21 @@ export default function MobileCheckout() {
         upsert: true,
       });
       if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(fileName);
-      setPhotoUrl(data.publicUrl);
+      const signedUrlResponse = await supabase.storage.from(PHOTO_BUCKET).createSignedUrl(fileName, SIGNED_URL_TTL_SECONDS);
+      if (signedUrlResponse.error) {
+        const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(fileName);
+        setPhotoUrl(data.publicUrl);
+      } else {
+        setPhotoUrl(signedUrlResponse.data.signedUrl);
+      }
       setPhotoPreview(`data:image/jpeg;base64,${photo.base64String}`);
       toast({ title: "Photo attached", description: "Checkout photo ready" });
-    } catch (e: any) {
-      const msg = e?.message || "Could not attach photo";
+    } catch (error) {
+      const msg = getErrorMessage(error);
       if (msg.toLowerCase().includes("bucket") && msg.toLowerCase().includes("not found")) {
         toast({
           title: "Storage bucket missing",
-          description: `Create a public bucket named "${PHOTO_BUCKET}" in Supabase Storage or update the bucket name in MobileCheckout.tsx.`,
+          description: `Create an authenticated bucket named "${PHOTO_BUCKET}" in Supabase Storage or update the bucket name in MobileCheckout.tsx.`,
           variant: "destructive",
         });
       } else {
