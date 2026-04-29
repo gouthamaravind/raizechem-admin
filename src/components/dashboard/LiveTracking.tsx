@@ -204,11 +204,6 @@ export function LiveTracking() {
             <MapPin className="h-4 w-4 text-primary" />Live Field Tracking
           </CardTitle>
           <div className="flex items-center gap-2">
-            {useMock && (
-              <Badge variant="outline" className="text-xs text-muted-foreground border-dashed">
-                Demo Data
-              </Badge>
-            )}
             <Badge variant="default" className="text-xs">
               {employees.length} on duty
             </Badge>
