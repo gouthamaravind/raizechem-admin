@@ -109,12 +109,8 @@ export function LiveTracking() {
   });
 
   useEffect(() => {
-    if (activeSessions && activeSessions.length > 0) {
+    if (activeSessions) {
       setEmployees(activeSessions);
-      setUseMock(false);
-    } else if (activeSessions && activeSessions.length === 0) {
-      setEmployees(MOCK_EMPLOYEES);
-      setUseMock(true);
     }
   }, [activeSessions]);
 
