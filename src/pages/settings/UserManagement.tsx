@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Shield, UserPlus } from "lucide-react";
+import { KeyRound, Plus, Shield, Smartphone, UserPlus } from "lucide-react";
 
 const ALL_ROLES = ["admin", "sales", "accounts", "inventory", "warehouse", "fieldops"] as const;
 
@@ -21,6 +21,9 @@ interface UserRow {
   full_name: string;
   created_at: string;
   roles: string[];
+  employee_code?: string | null;
+  phone?: string | null;
+  employee_active?: boolean | null;
 }
 
 interface CoverageRow {
@@ -28,6 +31,12 @@ interface CoverageRow {
   user_id: string;
   pincode: string;
   created_at: string;
+}
+
+interface LookupAssigneeRow {
+  user_id: string;
+  full_name?: string | null;
+  pincode: string;
 }
 
 function invoke(action: string, body: Record<string, unknown> = {}) {
@@ -41,8 +50,17 @@ export default function UserManagement() {
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<UserRow | null>(null);
   const [editRoles, setEditRoles] = useState<string[]>([]);
+  const [passwordUser, setPasswordUser] = useState<UserRow | null>(null);
+  const [newPassword, setNewPassword] = useState("");
 
-  const [form, setForm] = useState({ email: "", password: "", full_name: "", roles: [] as string[] });
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+    phone: "",
+    employee_code: "",
+    roles: [] as string[],
+  });
 
   const { data: users = [], isLoading } = useQuery<UserRow[]>({
     queryKey: ["manage-users"],
@@ -62,7 +80,7 @@ export default function UserManagement() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["manage-users"] });
       toast.success("Employee created");
-      setForm({ email: "", password: "", full_name: "", roles: [] });
+      setForm({ email: "", password: "", full_name: "", phone: "", employee_code: "", roles: [] });
       setOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -116,11 +134,11 @@ export default function UserManagement() {
 
   // Pincode lookup
   const [lookupPin, setLookupPin] = useState("");
-  const { data: lookupAssignees = [], refetch: refetchLookup, isFetching: lookupLoading } = useQuery({
+  const { data: lookupAssignees = [], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
     queryKey: ["pincode-assignees", lookupPin],
     enabled: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("get_pincode_assignees", { p_pincode: lookupPin.trim() });
+      const { data, error } = await supabase.rpc<LookupAssigneeRow[]>("get_pincode_assignees", { p_pincode: lookupPin.trim() });
       if (error) throw error;
       return data || [];
     },
@@ -136,6 +154,20 @@ export default function UserManagement() {
       qc.invalidateQueries({ queryKey: ["manage-users"] });
       toast.success("Roles updated");
       setEditUser(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const passwordMutation = useMutation({
+    mutationFn: async ({ user_id, password }: { user_id: string; password: string }) => {
+      const { data, error } = await invoke("reset_password", { user_id, password });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      toast.success("Password updated");
+      setPasswordUser(null);
+      setNewPassword("");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -174,6 +206,16 @@ export default function UserManagement() {
                   <Label>Password</Label>
                   <Input required type="password" minLength={6} value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 6 characters" />
                 </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Phone</Label>
+                    <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+91 98765 43210" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Employee Code</Label>
+                    <Input value={form.employee_code} onChange={(e) => setForm((f) => ({ ...f, employee_code: e.target.value.toUpperCase() }))} placeholder="Optional, e.g. FIELD01" />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label>Roles</Label>
                   <div className="flex flex-wrap gap-3">
@@ -204,8 +246,9 @@ export default function UserManagement() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
+                    <TableHead>Mobile Profile</TableHead>
                     <TableHead>Roles</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="w-[140px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -213,6 +256,19 @@ export default function UserManagement() {
                     <TableRow key={u.id}>
                       <TableCell className="font-medium">{u.full_name || "—"}</TableCell>
                       <TableCell>{u.email}</TableCell>
+                      <TableCell>
+                        {u.employee_code ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-xs">
+                              <Smartphone className="h-3 w-3 text-primary" />
+                              <span className="font-medium">{u.employee_code}</span>
+                            </div>
+                            {u.phone && <p className="text-xs text-muted-foreground">{u.phone}</p>}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Not a mobile profile</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {u.roles.length === 0 && <span className="text-muted-foreground text-xs">No roles</span>}
@@ -224,9 +280,14 @@ export default function UserManagement() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Button variant="ghost" size="sm" onClick={() => { setEditUser(u); setEditRoles(u.roles); }}>
-                          <Shield className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" onClick={() => { setEditUser(u); setEditRoles(u.roles); }}>
+                            <Shield className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => { setPasswordUser(u); setNewPassword(""); }}>
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -253,6 +314,33 @@ export default function UserManagement() {
               </div>
               <Button className="w-full" disabled={rolesMutation.isPending} onClick={() => editUser && rolesMutation.mutate({ user_id: editUser.id, roles: editRoles })}>
                 {rolesMutation.isPending ? "Saving..." : "Save Roles"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!passwordUser} onOpenChange={(v) => { if (!v) { setPasswordUser(null); setNewPassword(""); } }}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Password — {passwordUser?.full_name || passwordUser?.email}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>New Password</Label>
+                <Input
+                  type="password"
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Minimum 6 characters"
+                />
+              </div>
+              <Button
+                className="w-full"
+                disabled={!passwordUser || newPassword.length < 6 || passwordMutation.isPending}
+                onClick={() => passwordUser && passwordMutation.mutate({ user_id: passwordUser.id, password: newPassword })}
+              >
+                {passwordMutation.isPending ? "Updating..." : "Update Password"}
               </Button>
             </div>
           </DialogContent>
@@ -348,7 +436,7 @@ export default function UserManagement() {
             </div>
             {lookupAssignees.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {lookupAssignees.map((a: any) => (
+                {lookupAssignees.map((a) => (
                   <Badge key={a.user_id} variant="secondary" className="flex items-center gap-2 text-xs">
                     <Shield className="h-3 w-3" /> {a.full_name || a.user_id} · {a.pincode}
                   </Badge>

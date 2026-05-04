@@ -81,6 +81,9 @@ import MobilePayments from "./pages/mobile/MobilePayments";
 import MobileNewPayment from "./pages/mobile/MobileNewPayment";
 import { MobileGuard } from "./components/mobile/MobileGuard";
 import Features from "./pages/Features";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import UserPolicy from "./pages/legal/UserPolicy";
+import TermsOfUse from "./pages/legal/TermsOfUse";
 
 const MAINTENANCE_MODE = false;
 
@@ -105,6 +108,9 @@ const App = () => {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/features" element={<Features />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/user-policy" element={<UserPolicy />} />
+              <Route path="/terms-of-use" element={<TermsOfUse />} />
               <Route path="/dashboard" element={<P><Dashboard /></P>} />
               <Route path="/masters/dealers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealers /></RoleGuard></P>} />
               <Route path="/masters/suppliers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Suppliers /></RoleGuard></P>} />

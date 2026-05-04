@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useBranch } from "@/hooks/useBranch";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Pencil, Download, Copy, RefreshCw, ShieldCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, Plus, Pencil, Download, Copy, RefreshCw, ShieldCheck, AlertTriangle, Loader2, UserPlus, X } from "lucide-react";
 import { useDealerOverdue } from "@/hooks/useDealerOverdue";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -49,6 +50,32 @@ const emptyForm = {
 
 type FormErrors = Partial<Record<keyof typeof emptyForm, string>>;
 
+type FieldEmployee = {
+  user_id: string;
+  name: string;
+  employee_code?: string | null;
+};
+
+type DealerAssignment = {
+  id: string;
+  dealer_id: string;
+  user_id: string;
+  created_at: string;
+  employee?: {
+    name?: string | null;
+    employee_code?: string | null;
+  } | null;
+  profile?: {
+    full_name?: string | null;
+  } | null;
+};
+
+function invokeAdmin(action: string, body: Record<string, unknown> = {}) {
+  return supabase.functions.invoke("manage-users", {
+    body: { action, ...body },
+  });
+}
+
 function validateGSTIN(gstin: string): boolean {
   if (!gstin) return true;
   return /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin);
@@ -81,7 +108,11 @@ export default function Dealers() {
   const [gstVerifiedAt, setGstVerifiedAt] = useState<string | null>(null);
   const qc = useQueryClient();
   const { branchId } = useBranch();
+  const { hasRole } = useAuth();
   const { isOverdue, getOverdue } = useDealerOverdue();
+  const canManageAssignments = hasRole("admin");
+  const [assignmentDealer, setAssignmentDealer] = useState<{ id: string; name: string } | null>(null);
+  const [selectedFieldUserId, setSelectedFieldUserId] = useState("");
 
   const { data: dealers = [], isLoading } = useQuery({
     queryKey: ["dealers", branchId],
@@ -112,7 +143,64 @@ export default function Dealers() {
     },
   });
 
+  const { data: fieldEmployees = [] } = useQuery<FieldEmployee[]>({
+    queryKey: ["fieldops-employees"],
+    enabled: canManageAssignments,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employee_profiles")
+        .select("user_id, name, employee_code")
+        .eq("is_active", true)
+        .eq("role", "fieldops")
+        .order("name");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: dealerAssignments = [] } = useQuery<DealerAssignment[]>({
+    queryKey: ["dealer-assignments"],
+    enabled: canManageAssignments,
+    queryFn: async () => {
+      const { data, error } = await invokeAdmin("list_dealer_assignments");
+      if (error) throw error;
+      return (data || []) as DealerAssignment[];
+    },
+  });
+
+  const assignDealerMutation = useMutation({
+    mutationFn: async ({ dealer_id, user_id }: { dealer_id: string; user_id: string }) => {
+      const { data, error } = await invokeAdmin("assign_dealer", { dealer_id, user_id });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dealer-assignments"] });
+      toast.success("Dealer assigned");
+      setSelectedFieldUserId("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const unassignDealerMutation = useMutation({
+    mutationFn: async (assignmentId: string) => {
+      const { data, error } = await invokeAdmin("unassign_dealer", { assignment_id: assignmentId });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["dealer-assignments"] });
+      toast.success("Assignment removed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const priceLevelMap = Object.fromEntries(priceLevels.map((pl: any) => [pl.id, pl.name]));
+  const assignmentsByDealer = dealerAssignments.reduce<Record<string, DealerAssignment[]>>((acc, assignment) => {
+    if (!acc[assignment.dealer_id]) acc[assignment.dealer_id] = [];
+    acc[assignment.dealer_id].push(assignment);
+    return acc;
+  }, {});
 
   const validate = (): boolean => {
     const e: FormErrors = {};
@@ -459,7 +547,7 @@ export default function Dealers() {
                   <TableHeader><TableRow>
                      <TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Contact</TableHead>
                      <TableHead>City / State</TableHead><TableHead>Price Level</TableHead><TableHead>Credit Limit</TableHead>
-                     <TableHead>Terms</TableHead><TableHead>Status</TableHead><TableHead className="w-10"></TableHead>
+                     <TableHead>Terms</TableHead><TableHead>Assigned Reps</TableHead><TableHead>Status</TableHead><TableHead className="w-10"></TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {filtered.map((d: any) => (
@@ -490,8 +578,35 @@ export default function Dealers() {
                          <TableCell>{d.price_level_id ? <Badge variant="outline">{priceLevelMap[d.price_level_id] || "—"}</Badge> : <span className="text-muted-foreground text-xs">Default</span>}</TableCell>
                         <TableCell>₹{(d.credit_limit || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell className="text-sm">{d.payment_terms_days || 30}d</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {(assignmentsByDealer[d.id] || []).length > 0 ? (
+                              (assignmentsByDealer[d.id] || []).map((assignment) => (
+                                <Badge key={assignment.id} variant="outline" className="text-xs">
+                                  {assignment.employee?.name || assignment.profile?.full_name || assignment.user_id}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Unassigned</span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell><Badge variant={d.status === "active" ? "default" : "secondary"}>{d.status}</Badge></TableCell>
-                        <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {canManageAssignments && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => { setAssignmentDealer({ id: d.id, name: d.name }); setSelectedFieldUserId(""); }}
+                              >
+                                <UserPlus className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -500,6 +615,62 @@ export default function Dealers() {
             )}
           </CardContent>
         </Card>
+
+        <Dialog open={!!assignmentDealer} onOpenChange={(v) => { if (!v) { setAssignmentDealer(null); setSelectedFieldUserId(""); } }}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Assign Field Reps — {assignmentDealer?.name}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex gap-2">
+                <Select value={selectedFieldUserId} onValueChange={setSelectedFieldUserId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select field employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fieldEmployees.map((employee) => (
+                      <SelectItem key={employee.user_id} value={employee.user_id}>
+                        {employee.name}{employee.employee_code ? ` · ${employee.employee_code}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => assignmentDealer && selectedFieldUserId && assignDealerMutation.mutate({ dealer_id: assignmentDealer.id, user_id: selectedFieldUserId })}
+                  disabled={!assignmentDealer || !selectedFieldUserId || assignDealerMutation.isPending}
+                >
+                  {assignDealerMutation.isPending ? "Assigning..." : "Assign"}
+                </Button>
+              </div>
+
+              <div className="space-y-2">
+                {(assignmentDealer ? assignmentsByDealer[assignmentDealer.id] || [] : []).length > 0 ? (
+                  (assignmentDealer ? assignmentsByDealer[assignmentDealer.id] || [] : []).map((assignment) => (
+                    <div key={assignment.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium">{assignment.employee?.name || assignment.profile?.full_name || assignment.user_id}</p>
+                        {assignment.employee?.employee_code && (
+                          <p className="text-xs text-muted-foreground">{assignment.employee.employee_code}</p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => unassignDealerMutation.mutate(assignment.id)}
+                        disabled={unassignDealerMutation.isPending}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Remove
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground">No field reps assigned to this dealer yet.</p>
+                )}
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

@@ -23,8 +23,13 @@ type PincodeRow = {
   pincode: string;
 };
 
+type DealerAssignmentRow = {
+  dealer_id: string;
+};
+
 const DEALERS_CACHE_KEY = "fieldops_cached_dealers";
 const PRODUCTS_CACHE_KEY = "fieldops_cached_products";
+const DEALER_ASSIGNMENTS_TABLE = "dealer_assignments" as never;
 
 function readCache<T>(key: string): T[] {
   try {
@@ -67,16 +72,23 @@ export function useFieldCatalog() {
           : Promise.resolve({ data: [] as PincodeRow[], error: null }),
       ]);
 
+      const assignmentRes = isFieldopsUser
+        ? await supabase.from(DEALER_ASSIGNMENTS_TABLE).select("dealer_id").eq("user_id", user!.id)
+        : { data: [] as DealerAssignmentRow[], error: null };
+
       const dealers = (dealersRes.data || []) as Dealer[];
       const products = (productsRes.data || []) as Product[];
       const assignedPincodes = ((pincodesRes.data || []) as PincodeRow[])
         .map((row) => row.pincode)
         .filter(Boolean);
+      const assignedDealerIds = ((assignmentRes.data || []) as DealerAssignmentRow[])
+        .map((row) => row.dealer_id)
+        .filter(Boolean);
 
       writeCache(DEALERS_CACHE_KEY, dealers);
       writeCache(PRODUCTS_CACHE_KEY, products);
 
-      return { dealers, products, assignedPincodes };
+      return { dealers, products, assignedPincodes, assignedDealerIds };
     },
     staleTime: 60_000,
     retry: 1,
@@ -86,22 +98,28 @@ export function useFieldCatalog() {
   const cachedProducts = readCache<Product>(PRODUCTS_CACHE_KEY);
 
   const assignedPincodes = data?.assignedPincodes || [];
+  const assignedDealerIds = data?.assignedDealerIds || [];
 
   const dealers = useMemo(() => {
     const source = (data?.dealers?.length ? data.dealers : cachedDealers) || [];
-    if (!isFieldopsUser || assignedPincodes.length === 0) return source;
+    if (!isFieldopsUser) return source;
+    if (assignedDealerIds.length > 0) {
+      return source.filter((dealer) => assignedDealerIds.includes(dealer.id));
+    }
+    if (assignedPincodes.length === 0) return source;
     return source.filter((dealer) => dealer.pincode && assignedPincodes.includes(dealer.pincode));
-  }, [assignedPincodes, cachedDealers, data?.dealers, isFieldopsUser]);
+  }, [assignedDealerIds, assignedPincodes, cachedDealers, data?.dealers, isFieldopsUser]);
 
   const products = data?.products?.length ? data.products : cachedProducts;
 
   return {
     dealers,
     products,
+    assignedDealerIds,
     assignedPincodes,
     isLoading,
     isFetching,
     refetch,
-    hasCoverageFilter: isFieldopsUser && assignedPincodes.length > 0,
+    hasCoverageFilter: isFieldopsUser && (assignedDealerIds.length > 0 || assignedPincodes.length > 0),
   };
 }
