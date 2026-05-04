@@ -4,7 +4,7 @@ import {
   ShoppingCart, FileText, RotateCcw, BookOpen, CreditCard, Banknote, Building2,
   BarChart3, TrendingDown, ClipboardList, PackageSearch, UserCog, Receipt,
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
-  ScrollText, Radio, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
+  ScrollText, Radio, MapPin, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
   ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine, ArrowLeftRight,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
