@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MapPin, Play, Square, Navigation, Settings, ShieldCheck } from "lucide-react";
+import { MapPin, Play, Square, Navigation, Settings, ShieldCheck, Activity, BatteryCharging } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useBackgroundTracking } from "@/hooks/useBackgroundTracking";
 import { useDutyTimer } from "@/hooks/useDutyTimer";
@@ -152,18 +152,38 @@ export default function MobileDuty() {
     <MobileLayout title="Duty">
       <div className="space-y-6">
         <SyncBadge count={pendingSync.length} />
-        {isTracking && <p className="text-xs text-muted-foreground">Background tracking active • queued points: {queue.length}</p>}
+        {isTracking && (
+          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-sm">
+            <Activity className="h-3.5 w-3.5 text-primary" />
+            <span>Background tracking active</span>
+            <span className="rounded-full bg-accent px-2 py-0.5">queued: {queue.length}</span>
+          </div>
+        )}
 
         {activeSession ? (
           <div className="space-y-6">
             {/* Timer Display */}
-            <div className="bg-card rounded-2xl p-6 border border-border text-center shadow-sm">
-              <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">On Duty</p>
-              <p className="text-4xl font-mono font-bold text-foreground">{elapsed}</p>
-              <p className="text-sm text-primary mt-2 font-medium">{liveKm} km traveled</p>
+            <div className="rounded-[1.9rem] border border-border bg-card p-6 text-center shadow-sm">
+              <div className="mb-4 flex items-center justify-center gap-2">
+                <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary-foreground">
+                  On Duty
+                </span>
+              </div>
+              <p className="text-4xl font-mono font-bold tracking-tight text-foreground">{elapsed}</p>
+              <p className="mt-2 text-sm font-medium text-primary">{liveKm} km traveled</p>
               <div className="mt-2 flex items-center justify-center gap-1 text-xs text-muted-foreground">
                 <MapPin className="h-3 w-3" />
                 <span>Tracking: {TRACKING_LABELS[trackingMode]}</span>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-left">
+                <div className="rounded-2xl border border-border bg-background px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Queue</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{queue.length}</p>
+                </div>
+                <div className="rounded-2xl border border-border bg-background px-4 py-3">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Mode</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{trackingMode}</p>
+                </div>
               </div>
             </div>
 
@@ -176,7 +196,7 @@ export default function MobileDuty() {
                 className="gap-1"
               >
                 <Settings className="h-4 w-4" />
-                Tracking Settings
+                Tune Tracking
               </Button>
             </div>
 
@@ -202,17 +222,20 @@ export default function MobileDuty() {
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center py-12 space-y-6">
-            <div className="w-24 h-24 rounded-full bg-accent flex items-center justify-center">
-              <MapPin className="h-12 w-12 text-primary" />
+            <div className="flex h-24 w-24 items-center justify-center rounded-[2rem] border border-border bg-card shadow-lg shadow-primary/10">
+              <img src="/raizechem-field-logo.png" alt="RaizeChem" className="h-16 w-16 object-contain" />
             </div>
             <div className="text-center space-y-1">
-              <h2 className="text-xl font-bold text-foreground">Ready to Start?</h2>
-              <p className="text-sm text-muted-foreground">Begin tracking your field activity</p>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">Ready to start duty?</h2>
+              <p className="text-sm text-muted-foreground">Begin GPS-backed field activity tracking for today.</p>
             </div>
 
             {/* Pre-start tracking mode */}
-            <div className="w-full space-y-2">
-              <Label className="text-sm text-muted-foreground">Tracking Mode</Label>
+            <div className="w-full space-y-3 rounded-[1.5rem] border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <BatteryCharging className="h-4 w-4 text-primary" />
+                <span>Tracking Mode</span>
+              </div>
               <Select value={trackingMode} onValueChange={(v) => setTrackingMode(v as TrackingMode)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -221,6 +244,9 @@ export default function MobileDuty() {
                   <SelectItem value="high">{TRACKING_LABELS.high}</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Choose a balanced mode for routine visits, or high accuracy for route-heavy days.
+              </p>
             </div>
 
             <Button
@@ -228,7 +254,7 @@ export default function MobileDuty() {
               className="w-full h-14 text-lg gap-2"
               disabled={loading}
             >
-              <Play className="h-6 w-6" />
+              <Play className="h-5 w-5" />
               Start Duty
             </Button>
           </div>

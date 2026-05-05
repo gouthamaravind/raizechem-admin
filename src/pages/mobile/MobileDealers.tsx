@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { Input } from "@/components/ui/input";
-import { Search, ChevronRight, MapPin, Phone, RefreshCw } from "lucide-react";
+import { Search, ChevronRight, MapPin, Phone, RefreshCw, Building2 } from "lucide-react";
 import { useFieldCatalog } from "@/hooks/useFieldCatalog";
 import { SyncBadge } from "@/components/mobile/SyncBadge";
 import { useFieldOps } from "@/hooks/useFieldOps";
@@ -21,7 +21,22 @@ export default function MobileDealers() {
 
   return (
     <MobileLayout title="Dealers">
-      <div className="space-y-3">
+      <div className="space-y-4">
+        <section className="rounded-[1.75rem] border border-border bg-card px-5 py-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-[0.28em] text-primary">Assigned Network</p>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">Dealer access for your route</h2>
+              <p className="text-sm text-muted-foreground">
+                Browse your active dealers, check in quickly, and stay ready for field visits.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-accent p-3 text-primary">
+              <Building2 className="h-5 w-5" />
+            </div>
+          </div>
+        </section>
+
         <div className="flex items-center justify-between gap-2">
           <SyncBadge count={pendingSync.length} />
           <button
@@ -35,7 +50,7 @@ export default function MobileDealers() {
         </div>
 
         {hasCoverageFilter && (
-          <div className="rounded-xl border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+          <div className="rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground">
             Showing dealers for assigned pincodes: {assignedPincodes.join(", ")}
           </div>
         )}
@@ -61,10 +76,15 @@ export default function MobileDealers() {
             {filtered.map((dealer) => (
               <div
                 key={dealer.id}
-                className="bg-card rounded-xl p-4 border border-border flex items-center justify-between"
+                className="flex items-center justify-between rounded-2xl border border-border bg-card p-4 shadow-sm"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-foreground truncate">{dealer.name}</p>
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="rounded-xl bg-accent p-2 text-primary">
+                      <Building2 className="h-4 w-4" />
+                    </div>
+                    <p className="truncate font-semibold text-foreground">{dealer.name}</p>
+                  </div>
                   <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                     {dealer.city && (
                       <span className="flex items-center gap-1">
@@ -83,7 +103,7 @@ export default function MobileDealers() {
                 <div className="flex gap-2">
                   <Link
                     to={`/m/visits/checkin?dealer=${dealer.id}&name=${encodeURIComponent(dealer.name)}`}
-                    className="bg-primary text-primary-foreground px-3 py-2 rounded-lg text-xs font-medium"
+                    className="rounded-xl bg-primary px-3 py-2 text-xs font-medium text-primary-foreground"
                   >
                     Check In
                   </Link>

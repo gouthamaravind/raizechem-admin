@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { SyncBadge } from "@/components/mobile/SyncBadge";
 import { useFieldOps } from "@/hooks/useFieldOps";
-import { MapPin, ShoppingCart, CreditCard, TrendingUp, Clock, RefreshCw } from "lucide-react";
+import { MapPin, ShoppingCart, CreditCard, TrendingUp, Clock, RefreshCw, ArrowUpRight } from "lucide-react";
 
 export default function MobileHome() {
   const { getTodaySummary, pendingSync } = useFieldOps();
@@ -38,7 +38,29 @@ export default function MobileHome() {
 
   return (
     <MobileLayout title="Today's Summary">
-      <div className="space-y-4">
+      <div className="space-y-5">
+        <section className="rounded-[1.75rem] border border-border bg-card px-5 py-5 shadow-sm">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2">
+              <p className="text-xs font-medium uppercase tracking-[0.28em] text-primary">Daily Snapshot</p>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                {summary?.active_session ? "You are on duty" : "Ready for field work"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Track visits, orders, collections, and movement from one place.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-accent p-3 text-primary">
+              <ArrowUpRight className="h-5 w-5" />
+            </div>
+          </div>
+          {summary?.active_session && (
+            <div className="mt-4 inline-flex rounded-full border border-border bg-background px-3 py-1 text-xs text-muted-foreground">
+              Started at {new Date(summary.active_session.start_time).toLocaleTimeString()}
+            </div>
+          )}
+        </section>
+
         <div className="flex items-center justify-between gap-2">
           <SyncBadge count={pendingSync.length} />
           <button
@@ -57,27 +79,29 @@ export default function MobileHome() {
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((card) => (
-              <div key={card} className="h-24 rounded-xl border border-border bg-card animate-pulse" />
+              <div key={card} className="h-28 rounded-2xl border border-border bg-card animate-pulse" />
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {cards.map((card) => (
-              <div key={card.label} className="bg-card rounded-xl p-4 border border-border shadow-sm">
-                <div className="flex items-center gap-2 mb-2">
-                  <card.icon className={`h-5 w-5 ${card.color}`} />
-                  <span className="text-xs text-muted-foreground font-medium">{card.label}</span>
+              <div key={card.label} className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">{card.label}</span>
+                  <div className="rounded-xl bg-accent p-2">
+                    <card.icon className={`h-4 w-4 ${card.color}`} />
+                  </div>
                 </div>
-                <p className={`text-xl font-bold ${card.color}`}>{card.value}</p>
+                <p className={`text-2xl font-bold tracking-tight ${card.color}`}>{card.value}</p>
               </div>
             ))}
           </div>
         )}
 
         {summary?.active_session && (
-          <div className="bg-accent rounded-xl p-4 border border-border">
-            <p className="text-sm font-medium text-accent-foreground">Active Session</p>
-            <p className="text-xs text-muted-foreground mt-1">
+          <div className="rounded-2xl border border-border bg-gradient-to-r from-card to-accent p-4">
+            <p className="text-sm font-medium text-foreground">Active Session</p>
+            <p className="mt-1 text-xs text-muted-foreground">
               Started: {new Date(summary.active_session.start_time).toLocaleTimeString()}
             </p>
           </div>
