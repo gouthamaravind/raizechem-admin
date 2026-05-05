@@ -1,0 +1,84 @@
+name: Build Android App Bundle
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Detect Android path
+        id: detect_android
+        run: |
+          chmod +x ./scripts/detect-android-path.sh
+          ANDROID_DIR=$(./scripts/detect-android-path.sh)
+          echo "ANDROID_DIR=$ANDROID_DIR" >> $GITHUB_ENV
+
+      - name: Decode upload keystore
+        run: |
+          mkdir -p "$ANDROID_DIR"
+          echo "$UPLOAD_KEYSTORE_BASE64" | base64 -d > "$ANDROID_DIR/upload.keystore"
+        env:
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+
+      - name: Prepare signing config for Gradle
+        run: |
+          bash raizechem-admin/raizechem-admin/android/build-signing-prepare.sh
+        shell: bash
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java (JDK)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: |
+          cd raizechem-admin/raizechem-admin
+          npm ci
+
+      - name: Build web assets
+        run: |
+          cd raizechem-admin/raizechem-admin
+          npm run build
+
+      - name: Add Android platform
+        run: |
+          cd raizechem-admin/raizechem-admin
+          npx cap add android || true
+          npx cap sync android
+
+      - name: Build AAB (Release)
+        run: |
+          cd raizechem-admin/raizechem-admin
+          cd "$ANDROID_DIR" && ./gradlew clean bundleRelease
+        env:
+          # signing envs provided via repo secrets
+          # Example:
+          # UPLOAD_KEYSTORE_PASSWORD
+          # UPLOAD_KEY_ALIAS
+          # UPLOAD_KEY_PASSWORD
+
+      - name: Persist artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-release-aab
+          path: raizechem-admin/raizechem-admin/android/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Create PR for Android release (ci/android-release)
+        if: ${{ always() }}
+        run: |
+          chmod +x raizechem-admin/raizechem-admin/scripts/create-pr-android-release.sh
+          bash raizechem-admin/raizechem-admin/scripts/create-pr-android-release.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
