@@ -1,0 +1,8 @@
+signingConfigs {
+  release {
+    storeFile file("upload.keystore")
+    storePassword System.getenv("UPLOAD_KEYSTORE_PASSWORD")
+    keyAlias System.getenv("UPLOAD_KEY_ALIAS")
+    keyPassword System.getenv("UPLOAD_KEY_PASSWORD")
+  }
+}
