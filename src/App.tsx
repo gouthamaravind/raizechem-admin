@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { BranchProvider } from "@/hooks/useBranch";
 import { MaintenanceMode } from "@/components/MaintenanceMode";
+import { Capacitor } from "@capacitor/core";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGuard } from "@/components/RoleGuard";
@@ -89,13 +90,20 @@ const MAINTENANCE_MODE = false;
 
 const queryClient = new QueryClient();
 
-const P = ({ children }: { children: React.ReactNode }) => <ProtectedRoute>{children}</ProtectedRoute>;
+const P = ({ children }: { children: React.ReactNode }) => {
+  const isNative = Capacitor.isNativePlatform();
+  if (isNative) return <Navigate to="/m/home" replace />;
+  return <ProtectedRoute>{children}</ProtectedRoute>;
+};
 const M = ({ children }: { children: React.ReactNode }) => <MobileGuard>{children}</MobileGuard>;
 
 const App = () => {
   if (MAINTENANCE_MODE) {
     return <MaintenanceMode />;
   }
+
+  const isNative = Capacitor.isNativePlatform();
+  const defaultRedirect = isNative ? "/m/home" : "/dashboard";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -181,8 +189,8 @@ const App = () => {
               <Route path="/m/orders/new" element={<M><MobileNewOrder /></M>} />
               <Route path="/m/payments" element={<M><MobilePayments /></M>} />
               <Route path="/m/payments/new" element={<M><MobileNewPayment /></M>} />
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<Navigate to={defaultRedirect} replace />} />
+              <Route path="*" element={<Navigate to={defaultRedirect} replace />} />
             </Routes>
           </BrowserRouter>
         </TooltipProvider>

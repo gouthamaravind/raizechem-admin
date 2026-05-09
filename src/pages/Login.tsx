@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
 
 const ALLOWED_DOMAIN = "raizechem.in";
 
@@ -16,8 +17,11 @@ export default function Login() {
   const { signIn, session } = useAuth();
   const navigate = useNavigate();
 
+  const isNative = Capacitor.isNativePlatform();
+  const defaultRedirect = isNative ? "/m/home" : "/dashboard";
+
   if (session) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={defaultRedirect} replace />;
   }
 
   const validateDomain = (email: string) => {
@@ -37,7 +41,7 @@ export default function Login() {
       if (error) {
         toast.error(error.message);
       } else {
-        navigate("/dashboard", { replace: true });
+        navigate(defaultRedirect, { replace: true });
       }
     } catch (err) {
       toast.error("An unexpected error occurred. Please try again.");
