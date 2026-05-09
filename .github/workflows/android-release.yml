@@ -34,6 +34,11 @@ jobs:
           npx cap add android || true
           npx cap sync android
 
+      - name: Generate Android Assets
+        run: |
+          npx @capacitor/assets generate --android
+          npx cap copy android
+
       - name: Prepare signing
         run: |
           # Create keystore from base64 secret
