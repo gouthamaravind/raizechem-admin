@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Arguments
+VERSION_NAME="${1:-1.0.0}"
+VERSION_CODE="${2:-1}"
+
 # Path to the app's build.gradle
 BUILD_FILE="android/app/build.gradle"
 
@@ -9,11 +13,17 @@ if [ ! -f "$BUILD_FILE" ]; then
     exit 1
 fi
 
+echo "Patching version info: Name=$VERSION_NAME, Code=$VERSION_CODE"
+# Patch versionCode and versionName
+# Matches: versionCode 1  -> versionCode <VERSION_CODE>
+# Matches: versionName "1.0" -> versionName "<VERSION_NAME>"
+sed -i "s/versionCode [0-9]*/versionCode $VERSION_CODE/" "$BUILD_FILE"
+sed -i "s/versionName \".*\"/versionName \"$VERSION_NAME\"/" "$BUILD_FILE"
+
 # Ensure the gradle directory exists
 mkdir -p android/app/gradle
 
 # Copy the signing.gradle template
-# Assumes the script is run from root and signing.gradle is in scripts/
 if [ -f "scripts/signing.gradle" ]; then
     cp scripts/signing.gradle android/app/gradle/signing.gradle
 else

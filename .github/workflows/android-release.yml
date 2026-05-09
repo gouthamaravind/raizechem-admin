@@ -41,12 +41,15 @@ jobs:
 
       - name: Prepare signing
         run: |
+          # Extract version from package.json
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          
           # Create keystore from base64 secret
           echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload.keystore
           
-          # Patch build.gradle and copy signing.gradle
+          # Patch build.gradle, copy signing.gradle, and update versions
           chmod +x scripts/build-signing-prepare.sh
-          ./scripts/build-signing-prepare.sh
+          ./scripts/build-signing-prepare.sh "$PACKAGE_VERSION" "${{ github.run_number }}"
         env:
           UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
 
