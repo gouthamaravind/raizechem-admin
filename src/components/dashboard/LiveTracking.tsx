@@ -164,9 +164,9 @@ export function LiveTracking() {
   const { data: visitPoints = [] } = useQuery({
     queryKey: ["recent-visits", sinceIso],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc<RecentVisitRow[]>("get_recent_visits", { p_since: sinceIso });
+      const { data, error } = await (supabase.rpc as any)("get_recent_visits", { p_since: sinceIso });
       if (error) throw error;
-      const rows = data || [];
+      const rows = (data as RecentVisitRow[]) || [];
       const points: VisitPoint[] = [];
       rows.forEach((v) => {
         const checkin = v.checkin?.latlng;
