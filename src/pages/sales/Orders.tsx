@@ -79,6 +79,7 @@ export default function Orders() {
         p_notes: notes || null,
         p_created_by: user?.id,
         p_items: p_items,
+        p_branch_id: branchId || null,
       });
       if (error) throw error;
       return data;
