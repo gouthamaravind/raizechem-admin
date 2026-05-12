@@ -22,8 +22,8 @@ describe("useLocationCapture", () => {
   });
 
   afterEach(() => {
-    // @ts-expect-error restore
-    global.navigator = originalNavigator;
+    // restore
+    (global as any).navigator = originalNavigator;
   });
 
   it("falls back to browser geolocation when Capacitor fails", async () => {
