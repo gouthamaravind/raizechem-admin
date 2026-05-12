@@ -92,14 +92,16 @@ export default function PincodeCoverage() {
 
   const { data: lookup = [], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
     queryKey: ["pincode-assignees", lookupPin],
+  const { data: lookup = [] as LookupAssigneeRow[], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
+    queryKey: ["pincode-assignees", lookupPin],
     enabled: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc<LookupAssigneeRow[]>(
+      const { data, error } = await (supabase.rpc as any)(
         "get_pincode_assignees",
         { p_pincode: lookupPin.trim() }
       );
       if (error) throw error;
-      return data || [];
+      return ((data as LookupAssigneeRow[]) || []);
     },
   });
 
