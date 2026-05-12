@@ -134,13 +134,13 @@ export default function UserManagement() {
 
   // Pincode lookup
   const [lookupPin, setLookupPin] = useState("");
-  const { data: lookupAssignees = [], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
+  const { data: lookupAssignees = [] as LookupAssigneeRow[], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
     queryKey: ["pincode-assignees", lookupPin],
     enabled: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc<LookupAssigneeRow[]>("get_pincode_assignees", { p_pincode: lookupPin.trim() });
+      const { data, error } = await (supabase.rpc as any)("get_pincode_assignees", { p_pincode: lookupPin.trim() });
       if (error) throw error;
-      return data || [];
+      return ((data as LookupAssigneeRow[]) || []);
     },
   });
 

@@ -30,7 +30,7 @@ export default function MobileCheckin() {
       toast({ title: "Check-in failed", description: error, variant: "destructive" });
     } else {
       toast({ title: "Checked In", description: `Visit to ${dealerName} started` });
-      navigate(`/m/visits/checkout?visit=${data.visit.id}&name=${encodeURIComponent(dealerName)}`);
+      navigate(`/m/visits/checkout?visit=${(data as any)?.visit?.id}&name=${encodeURIComponent(dealerName)}`);
     }
   };
 

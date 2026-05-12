@@ -45,15 +45,15 @@ export default function PincodeCoverage() {
     },
   });
 
-  const { data: coverages = [], isLoading } = useQuery<CoverageRow[]>({
+  const { data: coverages = [] as CoverageRow[], isLoading } = useQuery<CoverageRow[]>({
     queryKey: ["employee-pincodes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employee_pincodes")
-        .select("id, user_id, pincode, created_at, profiles(full_name), employee_profiles(name)")
+        .select("id, user_id, pincode, created_at")
         .order("pincode", { ascending: true });
       if (error) throw error;
-      return data || [];
+      return (data as CoverageRow[]) || [];
     },
   });
 
@@ -90,16 +90,16 @@ export default function PincodeCoverage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { data: lookup = [], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
+  const { data: lookup = [] as LookupAssigneeRow[], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
     queryKey: ["pincode-assignees", lookupPin],
     enabled: false,
     queryFn: async () => {
-      const { data, error } = await supabase.rpc<LookupAssigneeRow[]>(
+      const { data, error } = await (supabase.rpc as any)(
         "get_pincode_assignees",
         { p_pincode: lookupPin.trim() }
       );
       if (error) throw error;
-      return data || [];
+      return ((data as LookupAssigneeRow[]) || []);
     },
   });
 

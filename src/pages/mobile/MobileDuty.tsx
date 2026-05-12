@@ -50,11 +50,12 @@ export default function MobileDuty() {
 
   const loadSummary = useCallback(async () => {
     const { data } = await getTodaySummary();
-    if (data) {
-      setActiveSession(data.active_session || null);
-      setLiveKm(data.live_km || 0);
-      if (data.active_session?.tracking_mode) {
-        setTrackingMode(data.active_session.tracking_mode as TrackingMode);
+    const d = data as any;
+    if (d) {
+      setActiveSession(d.active_session || null);
+      setLiveKm(d.live_km || 0);
+      if (d.active_session?.tracking_mode) {
+        setTrackingMode(d.active_session.tracking_mode as TrackingMode);
       }
     }
     setPageLoading(false);
@@ -80,14 +81,14 @@ export default function MobileDuty() {
       const loc = await getLocation();
       const { data, error } = await startDuty(loc.lat, loc.lng, trackingMode);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession(data.session);
-      startTracking(data.session.id, trackingMode);
+      setActiveSession((data as any).session);
+      startTracking((data as any).session.id, trackingMode);
       toast({ title: "Duty Started", description: `Tracking: ${TRACKING_LABELS[trackingMode]}` });
     } catch {
       const { data, error } = await startDuty(undefined, undefined, trackingMode);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession(data.session);
-      startTracking(data.session.id, trackingMode);
+      setActiveSession((data as any).session);
+      startTracking((data as any).session.id, trackingMode);
       toast({ title: "Duty Started", description: "Location unavailable" });
     }
   };

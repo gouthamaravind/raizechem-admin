@@ -3686,15 +3686,26 @@ export type Database = {
             }
             Returns: Json
           }
-      create_order_atomic: {
-        Args: {
-          p_created_by?: string
-          p_dealer_id: string
-          p_items?: Json
-          p_notes?: string
-        }
-        Returns: Json
-      }
+      create_order_atomic:
+        | {
+            Args: {
+              p_created_by?: string
+              p_dealer_id: string
+              p_items?: Json
+              p_notes?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_branch_id?: string
+              p_created_by?: string
+              p_dealer_id: string
+              p_items?: Json
+              p_notes?: string
+            }
+            Returns: Json
+          }
       create_po_atomic: {
         Args: {
           p_created_by?: string

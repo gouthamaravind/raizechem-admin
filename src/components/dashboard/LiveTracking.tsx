@@ -129,9 +129,9 @@ export function LiveTracking() {
   const { data: activeSessions, isLoading } = useQuery({
     queryKey: ["live-tracking-sessions"],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc<ActiveDutyRow[]>("get_active_duty_locations");
+      const { data, error } = await (supabase.rpc as any)("get_active_duty_locations");
       if (error) throw error;
-      return (data || []).map((row) => {
+      return ((data as ActiveDutyRow[]) || []).map((row) => {
         const last = row.last_point || {};
         const elapsed = Math.max(0, Math.round((Date.now() - new Date(row.start_time).getTime()) / 60000));
         return {
@@ -164,9 +164,9 @@ export function LiveTracking() {
   const { data: visitPoints = [] } = useQuery({
     queryKey: ["recent-visits", sinceIso],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc<RecentVisitRow[]>("get_recent_visits", { p_since: sinceIso });
+      const { data, error } = await (supabase.rpc as any)("get_recent_visits", { p_since: sinceIso });
       if (error) throw error;
-      const rows = data || [];
+      const rows = (data as RecentVisitRow[]) || [];
       const points: VisitPoint[] = [];
       rows.forEach((v) => {
         const checkin = v.checkin?.latlng;
