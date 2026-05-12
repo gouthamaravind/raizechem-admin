@@ -65,7 +65,7 @@ export default function MobileDealers() {
           />
         </div>
 
-        {loading ? (
+        {isLoading ? (
           <div className="space-y-2 py-2">
             {[1, 2, 3].map((item) => (
               <div key={item} className="h-20 rounded-xl border border-border bg-card animate-pulse" />
