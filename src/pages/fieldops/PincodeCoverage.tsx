@@ -90,8 +90,6 @@ export default function PincodeCoverage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const { data: lookup = [], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
-    queryKey: ["pincode-assignees", lookupPin],
   const { data: lookup = [] as LookupAssigneeRow[], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
     queryKey: ["pincode-assignees", lookupPin],
     enabled: false,
