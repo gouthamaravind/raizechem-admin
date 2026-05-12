@@ -45,15 +45,15 @@ export default function PincodeCoverage() {
     },
   });
 
-  const { data: coverages = [], isLoading } = useQuery<CoverageRow[]>({
+  const { data: coverages = [] as CoverageRow[], isLoading } = useQuery<CoverageRow[]>({
     queryKey: ["employee-pincodes"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("employee_pincodes")
-        .select("id, user_id, pincode, created_at, profiles(full_name), employee_profiles(name)")
+        .select("id, user_id, pincode, created_at")
         .order("pincode", { ascending: true });
       if (error) throw error;
-      return data || [];
+      return (data as CoverageRow[]) || [];
     },
   });
 
