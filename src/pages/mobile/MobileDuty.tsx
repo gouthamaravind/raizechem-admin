@@ -50,11 +50,12 @@ export default function MobileDuty() {
 
   const loadSummary = useCallback(async () => {
     const { data } = await getTodaySummary();
-    if (data) {
-      setActiveSession(data.active_session || null);
-      setLiveKm(data.live_km || 0);
-      if (data.active_session?.tracking_mode) {
-        setTrackingMode(data.active_session.tracking_mode as TrackingMode);
+    const d = data as any;
+    if (d) {
+      setActiveSession(d.active_session || null);
+      setLiveKm(d.live_km || 0);
+      if (d.active_session?.tracking_mode) {
+        setTrackingMode(d.active_session.tracking_mode as TrackingMode);
       }
     }
     setPageLoading(false);
