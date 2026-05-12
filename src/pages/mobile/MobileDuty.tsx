@@ -81,14 +81,14 @@ export default function MobileDuty() {
       const loc = await getLocation();
       const { data, error } = await startDuty(loc.lat, loc.lng, trackingMode);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession(data.session);
-      startTracking(data.session.id, trackingMode);
+      setActiveSession((data as any).session);
+      startTracking((data as any).session.id, trackingMode);
       toast({ title: "Duty Started", description: `Tracking: ${TRACKING_LABELS[trackingMode]}` });
     } catch {
       const { data, error } = await startDuty(undefined, undefined, trackingMode);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession(data.session);
-      startTracking(data.session.id, trackingMode);
+      setActiveSession((data as any).session);
+      startTracking((data as any).session.id, trackingMode);
       toast({ title: "Duty Started", description: "Location unavailable" });
     }
   };
