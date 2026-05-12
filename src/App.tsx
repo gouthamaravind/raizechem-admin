@@ -56,6 +56,17 @@ import ProfitAndLoss from "./pages/reports/ProfitAndLoss";
 import BalanceSheet from "./pages/reports/BalanceSheet";
 import StockSummary from "./pages/reports/StockSummary";
 import Gstr2bReconciliation from "./pages/reports/Gstr2bReconciliation";
+import ReportsHub from "./pages/reports/Hub";
+import PaymentRegister from "./pages/reports/PaymentRegister";
+import ReceiptRegister from "./pages/reports/ReceiptRegister";
+import ContraRegister from "./pages/reports/ContraRegister";
+import JournalRegister from "./pages/reports/JournalRegister";
+import CreditNoteRegister from "./pages/reports/CreditNoteRegister";
+import DebitNoteRegister from "./pages/reports/DebitNoteRegister";
+import CashBankBook from "./pages/reports/CashBankBook";
+import GroupSummary from "./pages/reports/GroupSummary";
+import GroupVouchers from "./pages/reports/GroupVouchers";
+import VoucherClarification from "./pages/reports/VoucherClarification";
 import HrEmployees from "./pages/hr/Employees";
 import SalaryComponents from "./pages/hr/SalaryComponents";
 import HrPayroll from "./pages/hr/Payroll";
@@ -166,6 +177,17 @@ const App = () => {
               <Route path="/reports/balance-sheet" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><BalanceSheet /></RoleGuard></P>} />
               <Route path="/reports/stock-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><StockSummary /></RoleGuard></P>} />
               <Route path="/reports/gstr2b-recon" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><Gstr2bReconciliation /></RoleGuard></P>} />
+              <Route path="/reports" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><ReportsHub /></RoleGuard></P>} />
+              <Route path="/reports/payment-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><PaymentRegister /></RoleGuard></P>} />
+              <Route path="/reports/receipt-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><ReceiptRegister /></RoleGuard></P>} />
+              <Route path="/reports/contra-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><ContraRegister /></RoleGuard></P>} />
+              <Route path="/reports/journal-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><JournalRegister /></RoleGuard></P>} />
+              <Route path="/reports/credit-note-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><CreditNoteRegister /></RoleGuard></P>} />
+              <Route path="/reports/debit-note-register" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><DebitNoteRegister /></RoleGuard></P>} />
+              <Route path="/reports/cash-bank-book" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><CashBankBook /></RoleGuard></P>} />
+              <Route path="/reports/group-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GroupSummary /></RoleGuard></P>} />
+              <Route path="/reports/group-vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GroupVouchers /></RoleGuard></P>} />
+              <Route path="/reports/voucher-clarification" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><VoucherClarification /></RoleGuard></P>} />
               <Route path="/hr/employees" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrEmployees /></RoleGuard></P>} />
               <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
               <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
