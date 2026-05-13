@@ -113,6 +113,7 @@ const navGroups = [
       { title: "Price Matrix", url: "/reports/price-matrix", icon: Grid3X3 },
       { title: "GSTR-2B Recon", url: "/reports/gstr2b-recon", icon: FileBarChart },
       { title: "Voucher Clarification", url: "/reports/voucher-clarification", icon: AlertTriangle },
+      { title: "Cancelled Vouchers", url: "/reports/cancelled-vouchers", icon: Ban },
     ],
   },
   {
