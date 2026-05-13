@@ -77,20 +77,7 @@ export default function Daybook() {
         debit: 0, credit: Number(p.amount || 0), status: "active",
       }));
 
-      // Supplier payments
-      let spQ = supabase
-        .from("supplier_payments")
-        .select("payment_date, amount, payment_mode, reference_number, suppliers(name)")
-        .gte("payment_date", dateFrom).lte("payment_date", dateTo);
-      if (branchId) spQ = spQ.eq("branch_id", branchId);
-      const { data: sps } = await spQ;
-      (sps || []).forEach((p: any) => out.push({
-        date: p.payment_date, type: "Payment", number: p.reference_number || "—",
-        party: p.suppliers?.name || "—", narration: p.payment_mode || "Payment",
-        debit: Number(p.amount || 0), credit: 0, status: "active",
-      }));
-
-      // Vouchers (journal/contra/etc.)
+      // Vouchers (journal/contra/etc., includes supplier payment vouchers)
       const { data: vchs } = await supabase
         .from("vouchers")
         .select("voucher_number, voucher_date, voucher_type, total_amount, narration, status")
