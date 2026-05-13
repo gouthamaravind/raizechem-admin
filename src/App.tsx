@@ -24,6 +24,8 @@ import Alerts from "./pages/inventory/Alerts";
 import BOM from "./pages/inventory/BOM";
 import WarehousesPage from "./pages/inventory/Warehouses";
 import StockTransfersPage from "./pages/inventory/StockTransfers";
+import PricingMatrixPage from "./pages/inventory/PricingMatrix";
+import BulkPricingUpdate from "./pages/inventory/BulkPricingUpdate";
 import Orders from "./pages/sales/Orders";
 import Invoices from "./pages/sales/Invoices";
 import InvoicePrint from "./pages/sales/InvoicePrint";
