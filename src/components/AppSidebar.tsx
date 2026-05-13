@@ -83,6 +83,7 @@ const navGroups = [
       { title: "Supplier Payments", url: "/finance/supplier-payments", icon: Banknote },
       { title: "Advance Receipts", url: "/finance/advances", icon: Wallet },
       { title: "Vouchers", url: "/finance/vouchers", icon: ScrollText },
+      { title: "Daybook", url: "/finance/daybook", icon: Notebook },
     ],
   },
   {
