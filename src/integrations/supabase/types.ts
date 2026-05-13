@@ -195,6 +195,7 @@ export type Database = {
         Row: {
           bom_name: string
           branch_id: string | null
+          computed_cost: number
           created_at: string
           created_by: string | null
           id: string
@@ -202,10 +203,12 @@ export type Database = {
           notes: string | null
           product_id: string
           updated_at: string
+          version: number
         }
         Insert: {
           bom_name: string
           branch_id?: string | null
+          computed_cost?: number
           created_at?: string
           created_by?: string | null
           id?: string
@@ -213,10 +216,12 @@ export type Database = {
           notes?: string | null
           product_id: string
           updated_at?: string
+          version?: number
         }
         Update: {
           bom_name?: string
           branch_id?: string | null
+          computed_cost?: number
           created_at?: string
           created_by?: string | null
           id?: string
@@ -224,6 +229,7 @@ export type Database = {
           notes?: string | null
           product_id?: string
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -248,8 +254,13 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
+          packing_rate: number
+          purchase_rate: number
           qty: number
           raw_material_id: string
+          scheme_1: number
+          scheme_2: number
+          scheme_3: number
           unit: string | null
         }
         Insert: {
@@ -257,8 +268,13 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          packing_rate?: number
+          purchase_rate?: number
           qty?: number
           raw_material_id: string
+          scheme_1?: number
+          scheme_2?: number
+          scheme_3?: number
           unit?: string | null
         }
         Update: {
@@ -266,8 +282,13 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
+          packing_rate?: number
+          purchase_rate?: number
           qty?: number
           raw_material_id?: string
+          scheme_1?: number
+          scheme_2?: number
+          scheme_3?: number
           unit?: string | null
         }
         Relationships: [
@@ -2578,6 +2599,78 @@ export type Database = {
           },
         ]
       }
+      product_pricing_matrix: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          ex_gst_price: number
+          gst_rate: number
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
+          margin_pct: number
+          mrp: number
+          notes: string | null
+          packing_price: number
+          product_id: string
+          purchase_price: number
+          scheme_1: number
+          scheme_2: number
+          scheme_3: number
+          slab_label: string
+          slab_max: number | null
+          slab_min: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          ex_gst_price?: number
+          gst_rate?: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          margin_pct?: number
+          mrp?: number
+          notes?: string | null
+          packing_price?: number
+          product_id: string
+          purchase_price?: number
+          scheme_1?: number
+          scheme_2?: number
+          scheme_3?: number
+          slab_label: string
+          slab_max?: number | null
+          slab_min?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          ex_gst_price?: number
+          gst_rate?: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          margin_pct?: number
+          mrp?: number
+          notes?: string | null
+          packing_price?: number
+          product_id?: string
+          purchase_price?: number
+          scheme_1?: number
+          scheme_2?: number
+          scheme_3?: number
+          slab_label?: string
+          slab_max?: number | null
+          slab_min?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           branch_id: string | null
@@ -3608,6 +3701,10 @@ export type Database = {
       approve_field_order: {
         Args: { _field_order_id: string; _order_number: string }
         Returns: string
+      }
+      bulk_update_pricing_matrix: {
+        Args: { p_updates: Json; p_user_id: string }
+        Returns: Json
       }
       compute_incentive: {
         Args: { _session_id: string; _total_km: number }
