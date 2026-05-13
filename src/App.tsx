@@ -195,6 +195,7 @@ const App = () => {
               <Route path="/reports/group-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GroupSummary /></RoleGuard></P>} />
               <Route path="/reports/group-vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GroupVouchers /></RoleGuard></P>} />
               <Route path="/reports/voucher-clarification" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><VoucherClarification /></RoleGuard></P>} />
+              <Route path="/reports/cancelled-vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><CancelledVouchers /></RoleGuard></P>} />
               <Route path="/hr/employees" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrEmployees /></RoleGuard></P>} />
               <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
               <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />
