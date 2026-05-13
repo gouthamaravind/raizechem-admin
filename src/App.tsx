@@ -43,6 +43,7 @@ import SupplierOutstanding from "./pages/finance/SupplierOutstanding";
 import SupplierPayments from "./pages/finance/SupplierPayments";
 import Advances from "./pages/finance/Advances";
 import Vouchers from "./pages/finance/Vouchers";
+import Daybook from "./pages/finance/Daybook";
 import CompanySettings from "./pages/settings/CompanySettings";
 import UserManagement from "./pages/settings/UserManagement";
 import FinancialYears from "./pages/settings/FinancialYears";
