@@ -165,6 +165,7 @@ const App = () => {
               <Route path="/finance/supplier-payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierPayments /></RoleGuard></P>} />
               <Route path="/finance/advances" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Advances /></RoleGuard></P>} />
               <Route path="/finance/vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Vouchers /></RoleGuard></P>} />
+              <Route path="/finance/daybook" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Daybook /></RoleGuard></P>} />
               <Route path="/settings/company" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><CompanySettings /></RoleGuard></P>} />
               <Route path="/settings/users" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><UserManagement /></RoleGuard></P>} />
               <Route path="/settings/financial-years" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><FinancialYears /></RoleGuard></P>} />
