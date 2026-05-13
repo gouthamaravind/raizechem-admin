@@ -27,15 +27,15 @@ export default function BulkPricingUpdate() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [edits, setEdits] = useState<Record<string, Edit>>({});
 
-  const { data: rows = [], isLoading, refetch } = useQuery({
+  const { data: rows = [] as Row[], isLoading, refetch } = useQuery<Row[]>({
     queryKey: ["bulk-pricing"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_pricing_matrix" as any)
+      const { data, error } = await (supabase
+        .from("product_pricing_matrix" as any) as any)
         .select("*, products(name)")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return data || [];
+      return (data || []) as Row[];
     },
   });
 
