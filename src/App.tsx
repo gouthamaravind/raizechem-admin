@@ -67,6 +67,7 @@ import JournalRegister from "./pages/reports/JournalRegister";
 import CreditNoteRegister from "./pages/reports/CreditNoteRegister";
 import DebitNoteRegister from "./pages/reports/DebitNoteRegister";
 import CashBankBook from "./pages/reports/CashBankBook";
+import CancelledVouchers from "./pages/reports/CancelledVouchers";
 import GroupSummary from "./pages/reports/GroupSummary";
 import GroupVouchers from "./pages/reports/GroupVouchers";
 import VoucherClarification from "./pages/reports/VoucherClarification";
