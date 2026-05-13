@@ -48,6 +48,8 @@ const navGroups = [
       { title: "Stock Transfers", url: "/inventory/stock-transfers", icon: Truck },
       { title: "Alerts", url: "/inventory/alerts", icon: AlertTriangle },
       { title: "Bill of Materials", url: "/inventory/bom", icon: Combine },
+      { title: "Pricing Matrix", url: "/inventory/pricing-matrix", icon: Grid3X3 },
+      { title: "HQ Bulk Pricing", url: "/inventory/bulk-pricing", icon: Calculator },
     ],
   },
   {
