@@ -8,6 +8,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download, FileSpreadsheet } from "lucide-react";
+import { exportToXlsx } from "@/lib/xlsx-export";
+import { exportTablePdf, safeFileSlug } from "@/lib/pdf-export";
 
 export default function SupplierLedger() {
   const [supplierId, setSupplierId] = useState("all");
@@ -90,12 +94,74 @@ export default function SupplierLedger() {
     }
   };
 
+  const selectedSupplier = suppliers.find((s: any) => s.id === supplierId) as any;
+  const supplierSlug = selectedSupplier ? safeFileSlug(selectedSupplier.name) : "all_suppliers";
+  const periodLabel = fyId !== "all" && selectedFy ? selectedFy.fy_code
+    : (dateFrom || dateTo) ? `${dateFrom || "start"}_to_${dateTo || "today"}` : "all_time";
+
+  const buildExportRows = () => {
+    const data: any[] = [];
+    if (hasOpeningBalance) {
+      data.push({
+        date: selectedFy?.start_date, supplier: "—", type: "Opening Balance",
+        description: "Opening balance carried forward",
+        debit: obDebit || "", credit: obCredit || "",
+        balance: `${Math.abs(obNet).toLocaleString("en-IN")} ${obNet < 0 ? "Cr" : obNet > 0 ? "Dr" : ""}`,
+      });
+    }
+    withBalance.forEach((e: any) => data.push({
+      date: e.entry_date, supplier: e.suppliers?.name || "", type: e.entry_type,
+      description: e.description || "",
+      debit: Number(e.debit) > 0 ? Number(e.debit) : "",
+      credit: Number(e.credit) > 0 ? Number(e.credit) : "",
+      balance: `${Math.abs(e.balance).toLocaleString("en-IN")} ${e.balance < 0 ? "Cr" : e.balance > 0 ? "Dr" : ""}`,
+    }));
+    return data;
+  };
+
+  const handleExportXlsx = () => {
+    exportToXlsx(`${supplierSlug}_supplier_ledger_${periodLabel}.xlsx`, buildExportRows(), [
+      { key: "date", label: "Date" }, { key: "supplier", label: "Supplier" },
+      { key: "type", label: "Type" }, { key: "description", label: "Description" },
+      { key: "debit", label: "Debit" }, { key: "credit", label: "Credit" },
+      { key: "balance", label: "Balance" },
+    ]);
+  };
+
+  const handleExportPdf = () => {
+    const data = buildExportRows();
+    exportTablePdf({
+      title: selectedSupplier ? `${selectedSupplier.name} — Supplier Ledger` : "Supplier Ledger",
+      subtitle: `Period: ${periodLabel}`,
+      filename: `${supplierSlug}.pdf`,
+      columns: ["Date", "Supplier", "Type", "Description", "Debit", "Credit", "Balance"],
+      rows: data.map((r) => [
+        r.date, r.supplier, r.type, r.description,
+        r.debit ? `₹${Number(r.debit).toLocaleString("en-IN")}` : "",
+        r.credit ? `₹${Number(r.credit).toLocaleString("en-IN")}` : "",
+        r.balance,
+      ]),
+    });
+  };
+
+  const noData = withBalance.length === 0 && !hasOpeningBalance;
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Supplier Ledger</h1>
-          <p className="text-muted-foreground">Supplier-wise financial ledger</p>
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Supplier Ledger</h1>
+            <p className="text-muted-foreground">Supplier-wise financial ledger</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportXlsx} disabled={noData}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={noData}>
+              <Download className="h-4 w-4 mr-2" /> PDF
+            </Button>
+          </div>
         </div>
         <Card>
           <CardHeader className="pb-3">

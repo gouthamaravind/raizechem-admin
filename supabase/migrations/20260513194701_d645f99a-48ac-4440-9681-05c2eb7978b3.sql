@@ -1,0 +1,1 @@
+ALTER TABLE public.vouchers ADD COLUMN IF NOT EXISTS is_unique_lock boolean NOT NULL DEFAULT false;

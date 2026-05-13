@@ -43,6 +43,7 @@ import SupplierOutstanding from "./pages/finance/SupplierOutstanding";
 import SupplierPayments from "./pages/finance/SupplierPayments";
 import Advances from "./pages/finance/Advances";
 import Vouchers from "./pages/finance/Vouchers";
+import Daybook from "./pages/finance/Daybook";
 import CompanySettings from "./pages/settings/CompanySettings";
 import UserManagement from "./pages/settings/UserManagement";
 import FinancialYears from "./pages/settings/FinancialYears";
@@ -66,6 +67,7 @@ import JournalRegister from "./pages/reports/JournalRegister";
 import CreditNoteRegister from "./pages/reports/CreditNoteRegister";
 import DebitNoteRegister from "./pages/reports/DebitNoteRegister";
 import CashBankBook from "./pages/reports/CashBankBook";
+import CancelledVouchers from "./pages/reports/CancelledVouchers";
 import GroupSummary from "./pages/reports/GroupSummary";
 import GroupVouchers from "./pages/reports/GroupVouchers";
 import VoucherClarification from "./pages/reports/VoucherClarification";
@@ -163,6 +165,7 @@ const App = () => {
               <Route path="/finance/supplier-payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><SupplierPayments /></RoleGuard></P>} />
               <Route path="/finance/advances" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Advances /></RoleGuard></P>} />
               <Route path="/finance/vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Vouchers /></RoleGuard></P>} />
+              <Route path="/finance/daybook" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.finance}><Daybook /></RoleGuard></P>} />
               <Route path="/settings/company" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><CompanySettings /></RoleGuard></P>} />
               <Route path="/settings/users" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><UserManagement /></RoleGuard></P>} />
               <Route path="/settings/financial-years" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.settings}><FinancialYears /></RoleGuard></P>} />
@@ -192,6 +195,7 @@ const App = () => {
               <Route path="/reports/group-summary" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GroupSummary /></RoleGuard></P>} />
               <Route path="/reports/group-vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><GroupVouchers /></RoleGuard></P>} />
               <Route path="/reports/voucher-clarification" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><VoucherClarification /></RoleGuard></P>} />
+              <Route path="/reports/cancelled-vouchers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.reports}><CancelledVouchers /></RoleGuard></P>} />
               <Route path="/hr/employees" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrEmployees /></RoleGuard></P>} />
               <Route path="/hr/salary-components" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><SalaryComponents /></RoleGuard></P>} />
               <Route path="/hr/payroll" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.hr}><HrPayroll /></RoleGuard></P>} />

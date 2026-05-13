@@ -6,7 +6,7 @@ import {
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
   ScrollText, Radio, MapPin, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
   ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine, ArrowLeftRight,
-  LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus,
+  LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus, Notebook, Ban,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -83,6 +83,7 @@ const navGroups = [
       { title: "Supplier Payments", url: "/finance/supplier-payments", icon: Banknote },
       { title: "Advance Receipts", url: "/finance/advances", icon: Wallet },
       { title: "Vouchers", url: "/finance/vouchers", icon: ScrollText },
+      { title: "Daybook", url: "/finance/daybook", icon: Notebook },
     ],
   },
   {
@@ -112,6 +113,7 @@ const navGroups = [
       { title: "Price Matrix", url: "/reports/price-matrix", icon: Grid3X3 },
       { title: "GSTR-2B Recon", url: "/reports/gstr2b-recon", icon: FileBarChart },
       { title: "Voucher Clarification", url: "/reports/voucher-clarification", icon: AlertTriangle },
+      { title: "Cancelled Vouchers", url: "/reports/cancelled-vouchers", icon: Ban },
     ],
   },
   {

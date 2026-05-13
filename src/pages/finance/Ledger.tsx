@@ -11,6 +11,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Download, FileSpreadsheet } from "lucide-react";
+import { exportToXlsx } from "@/lib/xlsx-export";
+import { exportTablePdf, safeFileSlug } from "@/lib/pdf-export";
 
 export default function Ledger() {
   const { branchId } = useBranch();
@@ -94,10 +98,78 @@ export default function Ledger() {
     }
   };
 
+  const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
+  const dealerNameSlug = selectedDealer ? safeFileSlug(selectedDealer.name) : "all_dealers";
+  const periodLabel = fyId !== "all" && selectedFy ? selectedFy.fy_code
+    : (dateFrom || dateTo) ? `${dateFrom || "start"}_to_${dateTo || "today"}` : "all_time";
+
+  const buildExportRows = () => {
+    const data: any[] = [];
+    if (hasOpeningBalance) {
+      data.push({
+        date: selectedFy?.start_date,
+        dealer: "—",
+        type: "Opening Balance",
+        description: "Opening balance carried forward",
+        debit: obDebit || "",
+        credit: obCredit || "",
+        balance: `${Math.abs(obNet).toLocaleString("en-IN")} ${obNet > 0 ? "Dr" : obNet < 0 ? "Cr" : ""}`,
+      });
+    }
+    withBalance.forEach((e: any) => data.push({
+      date: e.entry_date,
+      dealer: e.dealers?.name || "",
+      type: e.entry_type,
+      description: e.description || "",
+      debit: Number(e.debit) > 0 ? Number(e.debit) : "",
+      credit: Number(e.credit) > 0 ? Number(e.credit) : "",
+      balance: `${Math.abs(e.balance).toLocaleString("en-IN")} ${e.balance > 0 ? "Dr" : e.balance < 0 ? "Cr" : ""}`,
+    }));
+    return data;
+  };
+
+  const handleExportXlsx = () => {
+    exportToXlsx(`${dealerNameSlug}_ledger_${periodLabel}.xlsx`, buildExportRows(), [
+      { key: "date", label: "Date" },
+      { key: "dealer", label: "Dealer" },
+      { key: "type", label: "Type" },
+      { key: "description", label: "Description" },
+      { key: "debit", label: "Debit" },
+      { key: "credit", label: "Credit" },
+      { key: "balance", label: "Balance" },
+    ]);
+  };
+
+  const handleExportPdf = () => {
+    const data = buildExportRows();
+    exportTablePdf({
+      title: selectedDealer ? `${selectedDealer.name} — Ledger` : "Dealer Ledger",
+      subtitle: `Period: ${periodLabel}`,
+      filename: `${dealerNameSlug}.pdf`,
+      columns: ["Date", "Dealer", "Type", "Description", "Debit", "Credit", "Balance"],
+      rows: data.map((r) => [
+        r.date, r.dealer, r.type, r.description,
+        r.debit ? `₹${Number(r.debit).toLocaleString("en-IN")}` : "",
+        r.credit ? `₹${Number(r.credit).toLocaleString("en-IN")}` : "",
+        r.balance,
+      ]),
+    });
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div><h1 className="text-2xl font-bold tracking-tight">Ledger</h1><p className="text-muted-foreground">Dealer-wise financial ledger</p></div>
+        <div className="flex items-end justify-between flex-wrap gap-3">
+          <div><h1 className="text-2xl font-bold tracking-tight">Ledger</h1><p className="text-muted-foreground">Dealer-wise financial ledger</p></div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportXlsx} disabled={!withBalance.length && !hasOpeningBalance}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={!withBalance.length && !hasOpeningBalance}>
+              <Download className="h-4 w-4 mr-2" /> PDF
+            </Button>
+          </div>
+        </div>
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-4 flex-wrap">
