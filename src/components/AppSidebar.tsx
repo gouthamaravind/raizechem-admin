@@ -6,7 +6,7 @@ import {
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
   ScrollText, Radio, MapPin, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
   ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine, ArrowLeftRight,
-  LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus,
+  LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus, Notebook, Ban,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
