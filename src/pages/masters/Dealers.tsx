@@ -262,6 +262,7 @@ export default function Dealers() {
       shipping_city: d.shipping_city || "", shipping_state: d.shipping_state || "",
       shipping_pincode: d.shipping_pincode || "", price_level_id: d.price_level_id || "",
       preferred_transporter_id: d.preferred_transporter_id || "",
+      division: d.division || "",
       security_deposit_amount: Number(d.security_deposit_amount) || 0,
       sd_received_date: d.sd_received_date || "",
       sd_mode: d.sd_mode || "",
