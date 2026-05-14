@@ -1,8 +1,7 @@
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-const OVERDUE_THRESHOLD_DAYS = 120;
 const EMPTY_MAP = new Map<string, OverdueDealer>();
 
 export interface OverdueDealer {
@@ -13,11 +12,30 @@ export interface OverdueDealer {
 }
 
 /**
- * Returns a map of dealer_id → overdue info for dealers with any invoice overdue > 120 days.
+ * Returns a map of dealer_id → overdue info for dealers with any invoice
+ * overdue beyond the configured credit-block threshold (default 120 days,
+ * plus optional grace days). Threshold is read from company_settings.
  */
 export function useDealerOverdue() {
+  const { data: policy } = useQuery({
+    queryKey: ["credit-policy"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("company_settings")
+        .select("credit_block_overdue_days, credit_grace_days")
+        .limit(1)
+        .single();
+      if (error) throw error;
+      return data as { credit_block_overdue_days: number; credit_grace_days: number };
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const threshold =
+    (policy?.credit_block_overdue_days ?? 120) + (policy?.credit_grace_days ?? 0);
+
   const { data: overdueMap, isLoading } = useQuery({
-    queryKey: ["dealer-overdue-120"],
+    queryKey: ["dealer-overdue", threshold],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("invoices")
@@ -35,7 +53,7 @@ export function useDealerOverdue() {
 
         const dueDate = inv.due_date ? new Date(inv.due_date) : new Date(inv.invoice_date);
         const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-        if (daysOverdue <= OVERDUE_THRESHOLD_DAYS) return;
+        if (daysOverdue <= threshold) return;
 
         const existing = map.get(inv.dealer_id);
         if (existing) {
@@ -62,5 +80,5 @@ export function useDealerOverdue() {
   const isOverdue = useCallback((dealerId: string) => safeMap.has(dealerId), [safeMap]);
   const getOverdue = useCallback((dealerId: string) => safeMap.get(dealerId), [safeMap]);
 
-  return { overdueMap: safeMap, isOverdue, getOverdue, isLoading };
+  return { overdueMap: safeMap, isOverdue, getOverdue, isLoading, threshold };
 }
