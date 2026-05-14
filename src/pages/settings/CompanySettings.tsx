@@ -21,6 +21,7 @@ export default function CompanySettings() {
     phone: "", email: "", bank_name: "", bank_account: "", bank_ifsc: "",
     invoice_series: "RC", logo_url: "", invoice_template: "standard",
     prorata_sameday_pct: "24", prorata_90day_pct: "12",
+    credit_block_overdue_days: "120", credit_grace_days: "0",
   });
 
   const { data: settings, isLoading } = useQuery({
@@ -45,6 +46,8 @@ export default function CompanySettings() {
         logo_url: settings.logo_url || "", invoice_template: (settings as any).invoice_template || "standard",
         prorata_sameday_pct: String((settings as any).prorata_sameday_pct ?? 24),
         prorata_90day_pct: String((settings as any).prorata_90day_pct ?? 12),
+        credit_block_overdue_days: String((settings as any).credit_block_overdue_days ?? 120),
+        credit_grace_days: String((settings as any).credit_grace_days ?? 0),
       });
     }
   }, [settings]);
@@ -52,11 +55,13 @@ export default function CompanySettings() {
   const mutation = useMutation({
     mutationFn: async () => {
       if (!settings) throw new Error("No settings found");
-      const { prorata_sameday_pct, prorata_90day_pct, ...rest } = form;
+      const { prorata_sameday_pct, prorata_90day_pct, credit_block_overdue_days, credit_grace_days, ...rest } = form;
       const payload = {
         ...rest,
         prorata_sameday_pct: Number(prorata_sameday_pct),
         prorata_90day_pct: Number(prorata_90day_pct),
+        credit_block_overdue_days: Number(credit_block_overdue_days),
+        credit_grace_days: Number(credit_grace_days),
       };
       const { error } = await supabase.from("company_settings").update(payload as any).eq("id", settings.id);
       if (error) throw error;
@@ -329,6 +334,34 @@ export default function CompanySettings() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-3">Set to 0 to disable. Credit is auto-applied as a ledger adjustment when payments are recorded.</p>
+            </CardContent>
+          </Card>
+
+          {/* Credit Control Policy */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Landmark className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Credit Control Policy</CardTitle>
+                  <CardDescription>Threshold for blocking new sales orders to dealers with overdue invoices</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Block After Overdue Days</Label>
+                  <Input type="number" min={0} max={365} value={form.credit_block_overdue_days} onChange={(e) => set("credit_block_overdue_days", e.target.value)} placeholder="120" />
+                  <p className="text-xs text-muted-foreground">Sales blocked when any invoice is overdue beyond this many days</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Grace Days (Buffer)</Label>
+                  <Input type="number" min={0} max={60} value={form.credit_grace_days} onChange={(e) => set("credit_grace_days", e.target.value)} placeholder="0" />
+                  <p className="text-xs text-muted-foreground">Extra days added before block kicks in</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Effective threshold: <strong>{Number(form.credit_block_overdue_days) + Number(form.credit_grace_days)} days</strong> overdue triggers block.</p>
             </CardContent>
           </Card>
 

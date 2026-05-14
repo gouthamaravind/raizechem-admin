@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Pencil, Download, Copy, RefreshCw, ShieldCheck, AlertTriangle, Loader2, UserPlus, X } from "lucide-react";
+import { Search, Plus, Pencil, Download, Copy, RefreshCw, ShieldCheck, AlertTriangle, Loader2, UserPlus, X, Eye } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useDealerOverdue } from "@/hooks/useDealerOverdue";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
@@ -604,6 +605,9 @@ export default function Dealers() {
                                 <UserPlus className="h-3.5 w-3.5" />
                               </Button>
                             )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="View 360° profile">
+                              <Link to={`/masters/dealers/${d.id}`}><Eye className="h-3.5 w-3.5" /></Link>
+                            </Button>
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-3.5 w-3.5" /></Button>
                           </div>
                         </TableCell>

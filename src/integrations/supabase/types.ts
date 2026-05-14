@@ -597,6 +597,8 @@ export type Database = {
           city: string | null
           company_name: string
           created_at: string
+          credit_block_overdue_days: number
+          credit_grace_days: number
           email: string | null
           gst_number: string | null
           id: string
@@ -633,6 +635,8 @@ export type Database = {
           city?: string | null
           company_name?: string
           created_at?: string
+          credit_block_overdue_days?: number
+          credit_grace_days?: number
           email?: string | null
           gst_number?: string | null
           id?: string
@@ -669,6 +673,8 @@ export type Database = {
           city?: string | null
           company_name?: string
           created_at?: string
+          credit_block_overdue_days?: number
+          credit_grace_days?: number
           email?: string | null
           gst_number?: string | null
           id?: string

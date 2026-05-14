@@ -14,6 +14,7 @@ import { MODULE_ACCESS } from "@/types/roles";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Dealers from "./pages/masters/Dealers";
+import Dealer360 from "./pages/masters/Dealer360";
 import Products from "./pages/masters/Products";
 import Suppliers from "./pages/masters/Suppliers";
 import PriceLevels from "./pages/masters/PriceLevels";
@@ -137,6 +138,7 @@ const App = () => {
               <Route path="/terms-of-use" element={<TermsOfUse />} />
               <Route path="/dashboard" element={<P><Dashboard /></P>} />
               <Route path="/masters/dealers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealers /></RoleGuard></P>} />
+              <Route path="/masters/dealers/:id" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealer360 /></RoleGuard></P>} />
               <Route path="/masters/suppliers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Suppliers /></RoleGuard></P>} />
               <Route path="/masters/products" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Products /></RoleGuard></P>} />
               <Route path="/masters/price-levels" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><PriceLevels /></RoleGuard></P>} />
