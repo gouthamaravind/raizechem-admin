@@ -6,7 +6,7 @@ import {
   Truck, FileInput, Undo2, CalendarDays, Landmark, UserCheck, Calculator, Wallet, FileBarChart,
   ScrollText, Radio, MapPin, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
   ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine, ArrowLeftRight,
-  LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus, Notebook, Ban,
+  LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus, Notebook, Ban, ShieldCheck,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -25,7 +25,10 @@ const navGroups = [
   {
     label: "",
     module: "dashboard",
-    items: [{ title: "Dashboard", url: "/dashboard", icon: LayoutDashboard }],
+    items: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+      { title: "Approvals", url: "/approvals", icon: ShieldCheck },
+    ],
   },
   {
     label: "Masters",
