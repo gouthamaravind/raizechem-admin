@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,8 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, FileText, MapPin, Phone, Mail, Building2, AlertTriangle, ShieldCheck, IndianRupee } from "lucide-react";
+import { ArrowLeft, FileText, MapPin, Phone, Mail, Building2, AlertTriangle, ShieldCheck, IndianRupee, Loader2, FileDown } from "lucide-react";
 import { useDealerOverdue } from "@/hooks/useDealerOverdue";
+import { toast } from "@/hooks/use-toast";
+import { exportTablePdf, safeFileSlug } from "@/lib/pdf-export";
 
 const fmtINR = (n: number) =>
   new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(n || 0);
@@ -18,6 +20,8 @@ const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString("en-I
 export default function Dealer360() {
   const { id } = useParams<{ id: string }>();
   const { getOverdue, threshold } = useDealerOverdue();
+  const [sendingReminder, setSendingReminder] = useState(false);
+  const [downloadingStmt, setDownloadingStmt] = useState(false);
 
   const { data: dealer, isLoading } = useQuery({
     queryKey: ["dealer-360", id],
