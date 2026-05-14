@@ -651,7 +651,10 @@ export default function Dealers() {
                           </span>
                         </TableCell>
                         <TableCell className="text-sm">{d.contact_person || "—"}</TableCell>
-                         <TableCell className="text-sm">{[d.city, d.state].filter(Boolean).join(", ") || "—"}</TableCell>
+                         <TableCell className="text-sm">
+                           <div>{[d.city, d.state].filter(Boolean).join(", ") || "—"}</div>
+                           {d.division && <Badge variant="secondary" className="text-[10px] mt-0.5">{d.division}</Badge>}
+                         </TableCell>
                          <TableCell>{d.price_level_id ? <Badge variant="outline">{priceLevelMap[d.price_level_id] || "—"}</Badge> : <span className="text-muted-foreground text-xs">Default</span>}</TableCell>
                         <TableCell>₹{(d.credit_limit || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell className="text-sm">{d.payment_terms_days || 30}d</TableCell>
