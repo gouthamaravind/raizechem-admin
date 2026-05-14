@@ -52,6 +52,7 @@ const emptyForm = {
   shipping_address_line1: "", shipping_address_line2: "", shipping_city: "",
   shipping_state: "", shipping_pincode: "", price_level_id: "",
   preferred_transporter_id: "",
+  division: "",
   security_deposit_amount: 0, sd_received_date: "", sd_mode: "",
 };
 
