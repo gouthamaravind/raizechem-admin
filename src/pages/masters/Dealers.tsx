@@ -345,7 +345,7 @@ export default function Dealers() {
       { key: "name", label: "Name" }, { key: "gst_number", label: "GSTIN" },
       { key: "contact_person", label: "Contact Person" }, { key: "phone", label: "Phone" },
       { key: "email", label: "Email" }, { key: "city", label: "City" },
-      { key: "state", label: "State" }, { key: "state_code", label: "State Code" },
+      { key: "state", label: "State" }, { key: "state_code", label: "State Code" }, { key: "division", label: "Division" },
       { key: "credit_limit", label: "Credit Limit" }, { key: "payment_terms_days", label: "Payment Terms (Days)" },
       { key: "status", label: "Status" },
     ]);
