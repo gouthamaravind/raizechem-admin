@@ -464,14 +464,32 @@ export default function Vouchers() {
                           <TableCell className="font-medium">₹{Number(v.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{v.narration || "—"}</TableCell>
                           <TableCell>
-                            <Badge variant={v.status === "void" ? "destructive" : "default"} className="capitalize">{v.status}</Badge>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant={v.status === "void" ? "destructive" : "default"} className="capitalize">{v.status}</Badge>
+                              {v.is_unique_lock && (
+                                <Badge variant="secondary" className="gap-1"><Lock className="h-3 w-3" />Locked</Badge>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell>
-                            {v.status === "active" && (
-                              <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setVoidTarget({ id: v.id, num: v.voucher_number })}>
-                                Void
-                              </Button>
-                            )}
+                            <div className="flex items-center gap-1">
+                              {v.status === "active" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  title={v.is_unique_lock ? "Unlock (Unique Alter)" : "Lock against alteration"}
+                                  onClick={() => lockMutation.mutate({ id: v.id, lock: !v.is_unique_lock })}
+                                  disabled={lockMutation.isPending}
+                                >
+                                  {v.is_unique_lock ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                                </Button>
+                              )}
+                              {v.status === "active" && !v.is_unique_lock && (
+                                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setVoidTarget({ id: v.id, num: v.voucher_number })}>
+                                  Void
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
