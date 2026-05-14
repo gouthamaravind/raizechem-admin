@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AlertCircle, FileDown, Loader2, Lock } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
-import { exportToPdf } from "@/lib/pdf-export";
+import { exportTablePdf } from "@/lib/pdf-export";
 
 const fmt = (n: number) =>
   "₹" + (Number(n) || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
@@ -33,7 +33,7 @@ export default function DealerClosure() {
   const { data: dealers = [] } = useQuery({
     queryKey: ["closure-dealers", branchId],
     queryFn: async () => {
-      let q = supabase.from("dealers").select("id,name,gst_number,closure_status,security_deposit_amount,sd_balance").order("name");
+      let q = supabase.from("dealers").select("id,name,gst_number,closure_status,closed_at,security_deposit_amount,sd_balance").order("name");
       if (branchId) q = q.eq("branch_id", branchId);
       const { data, error } = await q;
       if (error) throw error;
@@ -97,15 +97,16 @@ export default function DealerClosure() {
 
   const downloadStatement = (row: any) => {
     const rows = [
-      { item: "Total Outstanding", amount: fmt(row.total_outstanding) },
-      { item: "Less: Advance Balance", amount: fmt(row.advance_balance) },
-      { item: "Less: Security Deposit Applied", amount: fmt(row.sd_applied) },
-      { item: "Net Settlement", amount: fmt(row.net_settlement) },
+      ["Total Outstanding", fmt(row.total_outstanding)],
+      ["Less: Advance Balance", fmt(row.advance_balance)],
+      ["Less: Security Deposit Applied", fmt(row.sd_applied)],
+      ["Net Settlement", fmt(row.net_settlement)],
     ];
-    exportToPdf(`closure-${dealer?.name?.replace(/\s+/g, "_")}-${row.closure_date}.pdf`, {
+    exportTablePdf({
       title: "Dealership Closure Statement",
       subtitle: `${dealer?.name} — Closed on ${row.closure_date}`,
-      columns: [{ key: "item", label: "Item" }, { key: "amount", label: "Amount" }],
+      filename: `closure-${(dealer?.name || "dealer").replace(/\s+/g, "_")}-${row.closure_date}.pdf`,
+      columns: ["Item", "Amount"],
       rows,
     });
   };
