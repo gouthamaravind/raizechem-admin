@@ -994,6 +994,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           credit_limit: number | null
+          division: string | null
           email: string | null
           gst_address: Json | null
           gst_last_verified_at: string | null
@@ -1037,6 +1038,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credit_limit?: number | null
+          division?: string | null
           email?: string | null
           gst_address?: Json | null
           gst_last_verified_at?: string | null
@@ -1080,6 +1082,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           credit_limit?: number | null
+          division?: string | null
           email?: string | null
           gst_address?: Json | null
           gst_last_verified_at?: string | null
@@ -1422,6 +1425,27 @@ export type Database = {
           id?: string
           token?: string
           used_at?: string | null
+        }
+        Relationships: []
+      }
+      employee_divisions: {
+        Row: {
+          created_at: string
+          division: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          division: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          division?: string
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }
