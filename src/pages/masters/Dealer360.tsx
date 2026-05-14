@@ -126,6 +126,95 @@ export default function Dealer360() {
   const creditLimit = Number(dealer?.credit_limit || 0);
   const creditUsedPct = creditLimit > 0 ? Math.min(100, (stats.totalOutstanding / creditLimit) * 100) : 0;
 
+  const sendReminder = async () => {
+    if (!dealer?.email) {
+      toast({ title: "No email on file", description: "Add an email to this dealer first.", variant: "destructive" });
+      return;
+    }
+    const items = invoices
+      .map((i: any) => {
+        const out = Math.max(0, Number(i.total_amount) - Number(i.amount_paid));
+        const due = i.due_date ? new Date(i.due_date) : new Date(i.invoice_date);
+        const days = Math.floor((Date.now() - due.getTime()) / 86400000);
+        return { invoice_number: i.invoice_number, invoice_date: i.invoice_date, due_date: i.due_date, outstanding: out, days_overdue: days };
+      })
+      .filter((x) => x.outstanding > 0.01);
+    if (items.length === 0) {
+      toast({ title: "Nothing to remind", description: "No outstanding invoices." });
+      return;
+    }
+    setSendingReminder(true);
+    try {
+      const maxDays = items.reduce((m, i) => Math.max(m, i.days_overdue), 0);
+      const tier = maxDays > 90 ? "critical" : maxDays > 30 ? "warning" : "early";
+      const total = items.reduce((s, i) => s + i.outstanding, 0);
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "dealer-overdue-reminder",
+          recipientEmail: dealer.email,
+          idempotencyKey: `reminder-${id}-${new Date().toISOString().slice(0, 10)}`,
+          templateData: {
+            dealerName: dealer.name, contactPerson: dealer.contact_person,
+            totalOutstanding: total, maxDaysOverdue: maxDays, invoices: items.slice(0, 25),
+          },
+        },
+      });
+      if (error) throw error;
+      await supabase.from("reminder_log").insert({
+        dealer_id: id!, channel: "email", status: "sent", recipient: dealer.email,
+        total_outstanding: total, max_days_overdue: maxDays, invoice_count: items.length, tier,
+      });
+      toast({ title: "Reminder queued", description: `Email queued to ${dealer.email}` });
+    } catch (e: any) {
+      await supabase.from("reminder_log").insert({
+        dealer_id: id!, channel: "email", status: "failed",
+        error_message: (e?.message ?? "unknown").slice(0, 500),
+      });
+      toast({ title: "Reminder failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+    } finally {
+      setSendingReminder(false);
+    }
+  };
+
+  const downloadStatement = async () => {
+    if (!dealer) return;
+    setDownloadingStmt(true);
+    try {
+      const { data: ledger, error } = await supabase
+        .from("ledger_entries")
+        .select("entry_date, entry_type, description, debit, credit, reference_number")
+        .eq("dealer_id", id!)
+        .order("entry_date", { ascending: true })
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      let bal = 0;
+      const rows = (ledger || []).map((e: any) => {
+        bal += Number(e.debit) - Number(e.credit);
+        return [
+          fmtDate(e.entry_date),
+          e.entry_type,
+          e.reference_number || "—",
+          e.description || "—",
+          Number(e.debit) ? fmtINR(Number(e.debit)) : "—",
+          Number(e.credit) ? fmtINR(Number(e.credit)) : "—",
+          fmtINR(bal),
+        ];
+      });
+      exportTablePdf({
+        title: "Account Statement",
+        subtitle: `${dealer.name} — as of ${new Date().toLocaleDateString("en-IN")}`,
+        filename: `statement-${safeFileSlug(dealer.name)}-${new Date().toISOString().slice(0, 10)}.pdf`,
+        columns: ["Date", "Type", "Ref", "Description", "Debit", "Credit", "Balance"],
+        rows,
+        footerSummary: [{ label: "Closing Balance", value: fmtINR(bal) }],
+      });
+    } catch (e: any) {
+      toast({ title: "Statement failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+    } finally {
+      setDownloadingStmt(false);
+    }
+  };
+
   if (isLoading || !dealer) {
     return (
       <DashboardLayout>
@@ -154,9 +243,19 @@ export default function Dealer360() {
                     Credit Blocked ({overdue?.maxDaysOverdue}d)
                   </Badge>
                 )}
-              </div>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={sendReminder} disabled={sendingReminder}>
+              {sendingReminder ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Mail className="h-4 w-4 mr-2" />}
+              Remind Please
+            </Button>
+            <Button size="sm" variant="outline" onClick={downloadStatement} disabled={downloadingStmt}>
+              {downloadingStmt ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
+              Account Statement
+            </Button>
+          </div>
+        </div>
         </div>
 
         {/* Stat cards */}
