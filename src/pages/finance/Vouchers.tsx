@@ -13,7 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, BookOpen, X, AlertCircle } from "lucide-react";
+import { Plus, BookOpen, X, AlertCircle, Lock, Unlock } from "lucide-react";
 import { format } from "date-fns";
 import { ReceiptProRata, type ProRataAllocation } from "@/components/finance/ReceiptProRata";
 
