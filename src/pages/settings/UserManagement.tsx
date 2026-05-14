@@ -133,6 +133,47 @@ export default function UserManagement() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Division coverage (employee_divisions)
+  type DivisionRow = { id: string; user_id: string; division: string; created_at: string };
+  const { data: divCoverages = [], isLoading: divLoading } = useQuery<DivisionRow[]>({
+    queryKey: ["employee-divisions"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("employee_divisions")
+        .select("id, user_id, division, created_at")
+        .order("division", { ascending: true });
+      if (error) throw error;
+      return data || [];
+    },
+  });
+  const [divForm, setDivForm] = useState<{ user_id: string; division: string }>({ user_id: "", division: "" });
+  const addDiv = useMutation({
+    mutationFn: async () => {
+      if (!divForm.user_id || !divForm.division) throw new Error("Select employee and division");
+      const { error } = await (supabase as any).from("employee_divisions").insert({
+        user_id: divForm.user_id, division: divForm.division,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employee-divisions"] });
+      toast.success("Division assigned");
+      setDivForm({ user_id: "", division: "" });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const deleteDiv = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any).from("employee_divisions").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employee-divisions"] });
+      toast.success("Removed");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // Pincode lookup
   const [lookupPin, setLookupPin] = useState("");
   const { data: lookupAssignees = [] as LookupAssigneeRow[], refetch: refetchLookup, isFetching: lookupLoading } = useQuery<LookupAssigneeRow[]>({
