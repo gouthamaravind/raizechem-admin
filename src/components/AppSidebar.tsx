@@ -7,6 +7,7 @@ import {
   ScrollText, Radio, MapPin, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
   ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine, ArrowLeftRight,
   LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus, Notebook, Ban, ShieldCheck,
+  Lock as LockIcon,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -87,6 +88,7 @@ const navGroups = [
       { title: "Advance Receipts", url: "/finance/advances", icon: Wallet },
       { title: "Vouchers", url: "/finance/vouchers", icon: ScrollText },
       { title: "Daybook", url: "/finance/daybook", icon: Notebook },
+      { title: "Dealer Closure", url: "/finance/dealer-closure", icon: LockIcon },
     ],
   },
   {

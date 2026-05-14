@@ -47,6 +47,7 @@ const emptyForm = {
   shipping_address_line1: "", shipping_address_line2: "", shipping_city: "",
   shipping_state: "", shipping_pincode: "", price_level_id: "",
   preferred_transporter_id: "",
+  security_deposit_amount: 0, sd_received_date: "", sd_mode: "",
 };
 
 type FormErrors = Partial<Record<keyof typeof emptyForm, string>>;
@@ -255,6 +256,9 @@ export default function Dealers() {
       shipping_city: d.shipping_city || "", shipping_state: d.shipping_state || "",
       shipping_pincode: d.shipping_pincode || "", price_level_id: d.price_level_id || "",
       preferred_transporter_id: d.preferred_transporter_id || "",
+      security_deposit_amount: Number(d.security_deposit_amount) || 0,
+      sd_received_date: d.sd_received_date || "",
+      sd_mode: d.sd_mode || "",
     });
     setErrors({});
     setGstWarning(d.gst_status && d.gst_status !== "Active" ? `GST Status: ${d.gst_status}` : null);
@@ -312,6 +316,10 @@ export default function Dealers() {
     const submitData: any = { ...form };
     if (!submitData.price_level_id) submitData.price_level_id = null;
     if (!submitData.preferred_transporter_id) submitData.preferred_transporter_id = null;
+    if (!submitData.sd_received_date) submitData.sd_received_date = null;
+    if (!submitData.sd_mode) submitData.sd_mode = null;
+    // Initialize sd_balance to security_deposit_amount on create; preserve on edit
+    if (!editId) submitData.sd_balance = submitData.security_deposit_amount;
     if (sameAsBilling) {
       submitData.shipping_address_line1 = form.address_line1;
       submitData.shipping_address_line2 = form.address_line2;
@@ -522,6 +530,35 @@ export default function Dealers() {
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-muted-foreground">Default transport partner for this dealer</p>
+                        </div>
+                      </div>
+                    </fieldset>
+
+                    <fieldset className="space-y-3 border rounded-lg p-4">
+                      <legend className="text-sm font-semibold px-2">Security Deposit</legend>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <Label>SD Amount (₹)</Label>
+                          <Input type="number" min={0} value={form.security_deposit_amount}
+                            onChange={(e) => set("security_deposit_amount", Number(e.target.value))} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Received Date</Label>
+                          <Input type="date" value={form.sd_received_date}
+                            onChange={(e) => set("sd_received_date", e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Mode</Label>
+                          <Select value={form.sd_mode || "none"} onValueChange={(v) => set("sd_mode", v === "none" ? "" : v)}>
+                            <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">— None —</SelectItem>
+                              <SelectItem value="cash">Cash</SelectItem>
+                              <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                              <SelectItem value="cheque">Cheque</SelectItem>
+                              <SelectItem value="upi">UPI</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     </fieldset>

@@ -587,6 +587,62 @@ export type Database = {
         }
         Relationships: []
       }
+      closure_statements: {
+        Row: {
+          advance_balance: number
+          closure_date: string
+          created_at: string
+          created_by: string | null
+          dealer_id: string
+          id: string
+          net_settlement: number
+          notes: string | null
+          prorata_credit: number
+          sd_applied: number
+          sd_balance: number
+          snapshot: Json | null
+          total_outstanding: number
+        }
+        Insert: {
+          advance_balance?: number
+          closure_date?: string
+          created_at?: string
+          created_by?: string | null
+          dealer_id: string
+          id?: string
+          net_settlement?: number
+          notes?: string | null
+          prorata_credit?: number
+          sd_applied?: number
+          sd_balance?: number
+          snapshot?: Json | null
+          total_outstanding?: number
+        }
+        Update: {
+          advance_balance?: number
+          closure_date?: string
+          created_at?: string
+          created_by?: string | null
+          dealer_id?: string
+          id?: string
+          net_settlement?: number
+          notes?: string | null
+          prorata_credit?: number
+          sd_applied?: number
+          sd_balance?: number
+          snapshot?: Json | null
+          total_outstanding?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closure_statements_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_settings: {
         Row: {
           address_line1: string | null
@@ -931,6 +987,9 @@ export type Database = {
           address_line2: string | null
           branch_id: string | null
           city: string | null
+          closed_at: string | null
+          closure_notes: string | null
+          closure_status: string
           contact_person: string | null
           created_at: string
           created_by: string | null
@@ -952,6 +1011,10 @@ export type Database = {
           pincode: string | null
           preferred_transporter_id: string | null
           price_level_id: string | null
+          sd_balance: number
+          sd_mode: string | null
+          sd_received_date: string | null
+          security_deposit_amount: number
           shipping_address_line1: string | null
           shipping_address_line2: string | null
           shipping_city: string | null
@@ -967,6 +1030,9 @@ export type Database = {
           address_line2?: string | null
           branch_id?: string | null
           city?: string | null
+          closed_at?: string | null
+          closure_notes?: string | null
+          closure_status?: string
           contact_person?: string | null
           created_at?: string
           created_by?: string | null
@@ -988,6 +1054,10 @@ export type Database = {
           pincode?: string | null
           preferred_transporter_id?: string | null
           price_level_id?: string | null
+          sd_balance?: number
+          sd_mode?: string | null
+          sd_received_date?: string | null
+          security_deposit_amount?: number
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
           shipping_city?: string | null
@@ -1003,6 +1073,9 @@ export type Database = {
           address_line2?: string | null
           branch_id?: string | null
           city?: string | null
+          closed_at?: string | null
+          closure_notes?: string | null
+          closure_status?: string
           contact_person?: string | null
           created_at?: string
           created_by?: string | null
@@ -1024,6 +1097,10 @@ export type Database = {
           pincode?: string | null
           preferred_transporter_id?: string | null
           price_level_id?: string | null
+          sd_balance?: number
+          sd_mode?: string | null
+          sd_received_date?: string | null
+          security_deposit_amount?: number
           shipping_address_line1?: string | null
           shipping_address_line2?: string | null
           shipping_city?: string | null
@@ -3934,6 +4011,16 @@ export type Database = {
       }
       bulk_update_pricing_matrix: {
         Args: { p_updates: Json; p_user_id: string }
+        Returns: Json
+      }
+      close_dealer_atomic: {
+        Args: {
+          p_apply_sd: boolean
+          p_closure_date: string
+          p_dealer_id: string
+          p_notes: string
+          p_user_id: string
+        }
         Returns: Json
       }
       compute_incentive: {
