@@ -155,6 +155,57 @@ export type Database = {
         }
         Relationships: []
       }
+      approval_requests: {
+        Row: {
+          approver_role: string
+          branch_id: string | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_notes: string | null
+          entity_id: string
+          entity_ref: string | null
+          entity_type: string
+          id: string
+          notes: string | null
+          requested_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          approver_role?: string
+          branch_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          entity_id: string
+          entity_ref?: string | null
+          entity_type: string
+          id?: string
+          notes?: string | null
+          requested_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          approver_role?: string
+          branch_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_notes?: string | null
+          entity_id?: string
+          entity_ref?: string | null
+          entity_type?: string
+          id?: string
+          notes?: string | null
+          requested_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -807,6 +858,7 @@ export type Database = {
       }
       dealer_visits: {
         Row: {
+          activity_type: string
           checkin_latlng: Json | null
           checkin_time: string
           checkout_latlng: Json | null
@@ -815,11 +867,13 @@ export type Database = {
           dealer_id: string
           duty_session_id: string | null
           id: string
+          is_photo_verified: boolean
           notes: string | null
           photo_url: string | null
           user_id: string
         }
         Insert: {
+          activity_type?: string
           checkin_latlng?: Json | null
           checkin_time?: string
           checkout_latlng?: Json | null
@@ -828,11 +882,13 @@ export type Database = {
           dealer_id: string
           duty_session_id?: string | null
           id?: string
+          is_photo_verified?: boolean
           notes?: string | null
           photo_url?: string | null
           user_id: string
         }
         Update: {
+          activity_type?: string
           checkin_latlng?: Json | null
           checkin_time?: string
           checkout_latlng?: Json | null
@@ -841,6 +897,7 @@ export type Database = {
           dealer_id?: string
           duty_session_id?: string | null
           id?: string
+          is_photo_verified?: boolean
           notes?: string | null
           photo_url?: string | null
           user_id?: string

@@ -83,9 +83,11 @@ export default function FieldOpsVisits() {
                     <TableRow>
                       {isAdminOrAccounts && <TableHead>Employee</TableHead>}
                       <TableHead>Dealer</TableHead>
+                      <TableHead>Activity</TableHead>
                       <TableHead>Check-in</TableHead>
                       <TableHead>Check-out</TableHead>
                       <TableHead>Duration</TableHead>
+                      <TableHead>Photo</TableHead>
                       <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -94,9 +96,21 @@ export default function FieldOpsVisits() {
                       <TableRow key={v.id}>
                         {isAdminOrAccounts && <TableCell className="font-medium">{empMap.get(v.user_id) || v.user_id.slice(0,8)}</TableCell>}
                         <TableCell className="font-medium">{(v.dealers as any)?.name || "—"}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize">{v.activity_type || "visit"}</Badge>
+                        </TableCell>
                         <TableCell>{format(new Date(v.checkin_time), "hh:mm a")}</TableCell>
                         <TableCell>{v.checkout_time ? format(new Date(v.checkout_time), "hh:mm a") : <Badge variant="default">Active</Badge>}</TableCell>
                         <TableCell>{formatDuration(v.checkin_time, v.checkout_time)}</TableCell>
+                        <TableCell>
+                          {v.is_photo_verified ? (
+                            <Badge variant="secondary">Verified</Badge>
+                          ) : v.photo_url ? (
+                            <Badge variant="outline">Attached</Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-sm max-w-[200px] truncate">{v.notes || "—"}</TableCell>
                       </TableRow>
                     ))}
