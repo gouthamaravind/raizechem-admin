@@ -460,6 +460,80 @@ export default function UserManagement() {
           </CardContent>
         </Card>
 
+        {/* Division Coverage */}
+        <Card>
+          <CardHeader><CardTitle>Division Coverage</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <div className="space-y-1">
+                <Label>Employee</Label>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={divForm.user_id}
+                  onChange={(e) => setDivForm((f) => ({ ...f, user_id: e.target.value }))}
+                >
+                  <option value="">Select employee</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Division</Label>
+                <select
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                  value={divForm.division}
+                  onChange={(e) => setDivForm((f) => ({ ...f, division: e.target.value }))}
+                >
+                  <option value="">Select division</option>
+                  {DIVISIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div className="flex items-end">
+                <Button className="w-full" onClick={() => addDiv.mutate()} disabled={addDiv.isPending}>
+                  {addDiv.isPending ? "Assigning..." : "Assign Division"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Division</TableHead>
+                    <TableHead>Assigned</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {divLoading ? (
+                    <TableRow><TableCell colSpan={4}>Loading...</TableCell></TableRow>
+                  ) : divCoverages.length === 0 ? (
+                    <TableRow><TableCell colSpan={4} className="text-muted-foreground text-sm">No divisions assigned yet</TableCell></TableRow>
+                  ) : (
+                    divCoverages.map((c) => {
+                      const user = users.find((u) => u.id === c.user_id);
+                      return (
+                        <TableRow key={c.id}>
+                          <TableCell>{user?.full_name || user?.email || c.user_id}</TableCell>
+                          <TableCell><Badge variant="secondary">{c.division}</Badge></TableCell>
+                          <TableCell className="text-muted-foreground text-xs">{new Date(c.created_at).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="sm" onClick={() => deleteDiv.mutate(c.id)} disabled={deleteDiv.isPending}>
+                              Remove
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Pincode Lookup */}
         <Card>
           <CardHeader><CardTitle>Find Assignee by Pincode</CardTitle></CardHeader>
