@@ -87,6 +87,7 @@ const navGroups = [
       { title: "Advance Receipts", url: "/finance/advances", icon: Wallet },
       { title: "Vouchers", url: "/finance/vouchers", icon: ScrollText },
       { title: "Daybook", url: "/finance/daybook", icon: Notebook },
+      { title: "Dealer Closure", url: "/finance/dealer-closure", icon: Lock },
     ],
   },
   {
