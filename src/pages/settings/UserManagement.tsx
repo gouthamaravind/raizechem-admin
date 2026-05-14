@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 import { KeyRound, Plus, Shield, Smartphone, UserPlus } from "lucide-react";
+import { DIVISIONS } from "@/lib/divisions";
 
 const ALL_ROLES = ["admin", "sales", "accounts", "inventory", "warehouse", "fieldops"] as const;
 
