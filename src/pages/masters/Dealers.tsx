@@ -246,7 +246,7 @@ export default function Dealers() {
 
   const filtered = dealers.filter((d: any) => {
     const s = search.toLowerCase();
-    const match = d.name?.toLowerCase().includes(s) || d.city?.toLowerCase().includes(s) || d.gst_number?.toLowerCase().includes(s) || d.contact_person?.toLowerCase().includes(s);
+    const match = d.name?.toLowerCase().includes(s) || d.city?.toLowerCase().includes(s) || d.gst_number?.toLowerCase().includes(s) || d.contact_person?.toLowerCase().includes(s) || d.division?.toLowerCase().includes(s);
     return match && (statusFilter === "all" || d.status === statusFilter);
   });
 
