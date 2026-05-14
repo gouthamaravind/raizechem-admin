@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -6,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download } from "lucide-react";
+import { Download, Mail, Loader2 } from "lucide-react";
 import { exportToCsv } from "@/lib/csv-export";
+import { toast } from "@/hooks/use-toast";
 
 export default function Outstanding() {
   const { branchId } = useBranch();
