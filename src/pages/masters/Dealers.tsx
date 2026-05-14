@@ -19,6 +19,11 @@ import { useDealerOverdue } from "@/hooks/useDealerOverdue";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
+import { DIVISIONS } from "@/lib/divisions";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const INDIAN_STATES = [
   { code: "01", name: "Jammu & Kashmir" }, { code: "02", name: "Himachal Pradesh" },
@@ -47,6 +52,7 @@ const emptyForm = {
   shipping_address_line1: "", shipping_address_line2: "", shipping_city: "",
   shipping_state: "", shipping_pincode: "", price_level_id: "",
   preferred_transporter_id: "",
+  division: "",
   security_deposit_amount: 0, sd_received_date: "", sd_mode: "",
 };
 
@@ -240,7 +246,7 @@ export default function Dealers() {
 
   const filtered = dealers.filter((d: any) => {
     const s = search.toLowerCase();
-    const match = d.name?.toLowerCase().includes(s) || d.city?.toLowerCase().includes(s) || d.gst_number?.toLowerCase().includes(s) || d.contact_person?.toLowerCase().includes(s);
+    const match = d.name?.toLowerCase().includes(s) || d.city?.toLowerCase().includes(s) || d.gst_number?.toLowerCase().includes(s) || d.contact_person?.toLowerCase().includes(s) || d.division?.toLowerCase().includes(s);
     return match && (statusFilter === "all" || d.status === statusFilter);
   });
 
@@ -256,6 +262,7 @@ export default function Dealers() {
       shipping_city: d.shipping_city || "", shipping_state: d.shipping_state || "",
       shipping_pincode: d.shipping_pincode || "", price_level_id: d.price_level_id || "",
       preferred_transporter_id: d.preferred_transporter_id || "",
+      division: d.division || "",
       security_deposit_amount: Number(d.security_deposit_amount) || 0,
       sd_received_date: d.sd_received_date || "",
       sd_mode: d.sd_mode || "",
@@ -338,7 +345,7 @@ export default function Dealers() {
       { key: "name", label: "Name" }, { key: "gst_number", label: "GSTIN" },
       { key: "contact_person", label: "Contact Person" }, { key: "phone", label: "Phone" },
       { key: "email", label: "Email" }, { key: "city", label: "City" },
-      { key: "state", label: "State" }, { key: "state_code", label: "State Code" },
+      { key: "state", label: "State" }, { key: "state_code", label: "State Code" }, { key: "division", label: "Division" },
       { key: "credit_limit", label: "Credit Limit" }, { key: "payment_terms_days", label: "Payment Terms (Days)" },
       { key: "status", label: "Status" },
     ]);
@@ -531,6 +538,38 @@ export default function Dealers() {
                           </Select>
                           <p className="text-xs text-muted-foreground">Default transport partner for this dealer</p>
                         </div>
+                        <div className="space-y-1 col-span-2">
+                          <Label>Division / Territory</Label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button type="button" variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                {form.division || "Select division..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Search division..." />
+                                <CommandList>
+                                  <CommandEmpty>No division found.</CommandEmpty>
+                                  <CommandGroup>
+                                    <CommandItem value="" onSelect={() => set("division", "")}>
+                                      <Check className={cn("mr-2 h-4 w-4", !form.division ? "opacity-100" : "opacity-0")} />
+                                      — None —
+                                    </CommandItem>
+                                    {DIVISIONS.map((d) => (
+                                      <CommandItem key={d} value={d} onSelect={() => set("division", d)}>
+                                        <Check className={cn("mr-2 h-4 w-4", form.division === d ? "opacity-100" : "opacity-0")} />
+                                        {d}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                          <p className="text-xs text-muted-foreground">Sales territory used for field-ops routing</p>
+                        </div>
                       </div>
                     </fieldset>
 
@@ -612,7 +651,10 @@ export default function Dealers() {
                           </span>
                         </TableCell>
                         <TableCell className="text-sm">{d.contact_person || "—"}</TableCell>
-                         <TableCell className="text-sm">{[d.city, d.state].filter(Boolean).join(", ") || "—"}</TableCell>
+                         <TableCell className="text-sm">
+                           <div>{[d.city, d.state].filter(Boolean).join(", ") || "—"}</div>
+                           {d.division && <Badge variant="secondary" className="text-[10px] mt-0.5">{d.division}</Badge>}
+                         </TableCell>
                          <TableCell>{d.price_level_id ? <Badge variant="outline">{priceLevelMap[d.price_level_id] || "—"}</Badge> : <span className="text-muted-foreground text-xs">Default</span>}</TableCell>
                         <TableCell>₹{(d.credit_limit || 0).toLocaleString("en-IN")}</TableCell>
                         <TableCell className="text-sm">{d.payment_terms_days || 30}d</TableCell>
