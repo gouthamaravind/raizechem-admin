@@ -92,7 +92,7 @@ export default function MobileCheckout() {
       <div className="space-y-6 max-w-md mx-auto">
         <div className="bg-card rounded-2xl p-6 border border-border text-center">
           <h2 className="text-lg font-bold text-foreground">{dealerName}</h2>
-          <p className="text-sm text-muted-foreground">Ready to check out?</p>
+          <p className="text-sm text-muted-foreground">A photo is required to complete check-out.</p>
         </div>
 
         <Input
@@ -108,11 +108,21 @@ export default function MobileCheckout() {
           )}
           <Button type="button" variant="secondary" className="w-full h-12 gap-2" onClick={capturePhoto} disabled={uploading}>
             <Camera className="h-4 w-4" />
-            {uploading ? "Uploading..." : photoUrl ? "Retake Photo" : "Add Checkout Photo"}
+            {uploading ? "Uploading..." : photoUrl ? "Retake Photo" : "Add Checkout Photo *"}
           </Button>
+          {!photoUrl && (
+            <p className="text-xs text-muted-foreground text-center">
+              Photo verification is mandatory before check-out.
+            </p>
+          )}
         </div>
 
-        <Button onClick={handleCheckout} variant="destructive" className="w-full h-14 text-base gap-2" disabled={loading}>
+        <Button
+          onClick={handleCheckout}
+          variant="destructive"
+          className="w-full h-14 text-base gap-2"
+          disabled={loading || !photoUrl}
+        >
           <LogOut className="h-5 w-5" />
           Check Out
         </Button>
