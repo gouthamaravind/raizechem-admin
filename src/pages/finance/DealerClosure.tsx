@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AlertCircle, FileDown, Loader2, Lock } from "lucide-react";
+import { AlertCircle, FileDown, Loader2, Lock as LockIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "@/hooks/use-toast";
 import { exportTablePdf } from "@/lib/pdf-export";
@@ -152,7 +152,7 @@ export default function DealerClosure() {
           <>
             {isClosed && (
               <Alert variant="destructive">
-                <Lock className="h-4 w-4" />
+                <LockIcon className="h-4 w-4" />
                 <AlertTitle>This dealer is already closed</AlertTitle>
                 <AlertDescription>Closed on {dealer?.closed_at ?? "—"}. View past statements below.</AlertDescription>
               </Alert>
