@@ -238,6 +238,21 @@ export default function Vouchers() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const lockMutation = useMutation({
+    mutationFn: async ({ id, lock }: { id: string; lock: boolean }) => {
+      const { error } = await supabase
+        .from("vouchers")
+        .update({ is_unique_lock: lock } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["vouchers"] });
+      toast.success(vars.lock ? "Voucher locked (Unique Alter)" : "Voucher unlocked");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const resetForm = () => {
     setOpen(false);
     setVoucherType("journal");
