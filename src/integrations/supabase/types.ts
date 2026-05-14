@@ -3182,6 +3182,59 @@ export type Database = {
           },
         ]
       }
+      reminder_log: {
+        Row: {
+          channel: string
+          dealer_id: string
+          error_message: string | null
+          id: string
+          invoice_count: number | null
+          max_days_overdue: number | null
+          recipient: string | null
+          sent_at: string
+          status: string
+          tier: string | null
+          total_outstanding: number | null
+          triggered_by: string | null
+        }
+        Insert: {
+          channel?: string
+          dealer_id: string
+          error_message?: string | null
+          id?: string
+          invoice_count?: number | null
+          max_days_overdue?: number | null
+          recipient?: string | null
+          sent_at?: string
+          status?: string
+          tier?: string | null
+          total_outstanding?: number | null
+          triggered_by?: string | null
+        }
+        Update: {
+          channel?: string
+          dealer_id?: string
+          error_message?: string | null
+          id?: string
+          invoice_count?: number | null
+          max_days_overdue?: number | null
+          recipient?: string | null
+          sent_at?: string
+          status?: string
+          tier?: string | null
+          total_outstanding?: number | null
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminder_log_dealer_id_fkey"
+            columns: ["dealer_id"]
+            isOneToOne: false
+            referencedRelation: "dealers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salary_components: {
         Row: {
           created_at: string

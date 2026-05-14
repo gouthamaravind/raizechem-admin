@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
@@ -6,11 +7,76 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Download } from "lucide-react";
+import { Download, Mail, Loader2 } from "lucide-react";
 import { exportToCsv } from "@/lib/csv-export";
+import { toast } from "@/hooks/use-toast";
 
 export default function Outstanding() {
   const { branchId } = useBranch();
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  const sendReminder = async (dealerId: string, dealerName: string, items: any[], total: number) => {
+    setSendingId(dealerId);
+    try {
+      const { data: dealer, error: dErr } = await supabase
+        .from("dealers")
+        .select("email, contact_person")
+        .eq("id", dealerId)
+        .maybeSingle();
+      if (dErr) throw dErr;
+      if (!dealer?.email) {
+        toast({ title: "No email on file", description: `Add an email to ${dealerName} first.`, variant: "destructive" });
+        return;
+      }
+      const maxDays = items.reduce((m, i) => Math.max(m, i.daysOverdue), 0);
+      const tier = maxDays > 90 ? "critical" : maxDays > 30 ? "warning" : "early";
+      const invoices = items.map((i: any) => ({
+        invoice_number: i.invoice_number,
+        invoice_date: i.invoice_date,
+        due_date: i.due_date,
+        outstanding: i.outstanding,
+        days_overdue: i.daysOverdue,
+      }));
+
+      const { error: sendErr } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "dealer-overdue-reminder",
+          recipientEmail: dealer.email,
+          idempotencyKey: `reminder-${dealerId}-${new Date().toISOString().slice(0,10)}`,
+          templateData: {
+            dealerName,
+            contactPerson: dealer.contact_person,
+            totalOutstanding: total,
+            maxDaysOverdue: maxDays,
+            invoices,
+          },
+        },
+      });
+      if (sendErr) throw sendErr;
+
+      await supabase.from("reminder_log").insert({
+        dealer_id: dealerId,
+        channel: "email",
+        status: "sent",
+        recipient: dealer.email,
+        total_outstanding: total,
+        max_days_overdue: maxDays,
+        invoice_count: items.length,
+        tier,
+      });
+
+      toast({ title: "Reminder queued", description: `Email queued to ${dealer.email}` });
+    } catch (e: any) {
+      await supabase.from("reminder_log").insert({
+        dealer_id: dealerId, channel: "email", status: "failed",
+        total_outstanding: total, error_message: e?.message?.slice(0, 500) ?? "unknown",
+      });
+      toast({ title: "Reminder failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+    } finally {
+      setSendingId(null);
+    }
+  };
+
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ["outstanding-invoices", branchId],
     queryFn: async () => {
@@ -69,9 +135,17 @@ export default function Outstanding() {
           Array.from(dealerMap.entries()).map(([dealerId, dealer]) => (
             <Card key={dealerId}>
               <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between">
+                <CardTitle className="flex items-center justify-between gap-3">
                   <span>{dealer.name}</span>
-                  <span className="text-destructive">₹{dealer.total.toLocaleString("en-IN")}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-destructive">₹{dealer.total.toLocaleString("en-IN")}</span>
+                    <Button size="sm" variant="outline" disabled={sendingId === dealerId}
+                      onClick={() => sendReminder(dealerId, dealer.name, dealer.items, dealer.total)}>
+                      {sendingId === dealerId
+                        ? <Loader2 className="h-4 w-4 animate-spin" />
+                        : <><Mail className="h-4 w-4 mr-2" />Remind Please</>}
+                    </Button>
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent>

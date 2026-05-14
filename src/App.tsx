@@ -102,6 +102,7 @@ import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import UserPolicy from "./pages/legal/UserPolicy";
 import TermsOfUse from "./pages/legal/TermsOfUse";
 import Approvals from "./pages/approvals/Approvals";
+import Unsubscribe from "./pages/Unsubscribe";
 
 const MAINTENANCE_MODE = false;
 
@@ -136,6 +137,7 @@ const App = () => {
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/user-policy" element={<UserPolicy />} />
               <Route path="/terms-of-use" element={<TermsOfUse />} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
               <Route path="/dashboard" element={<P><Dashboard /></P>} />
               <Route path="/masters/dealers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealers /></RoleGuard></P>} />
               <Route path="/masters/dealers/:id" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.masters}><Dealer360 /></RoleGuard></P>} />
