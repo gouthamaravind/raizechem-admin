@@ -258,7 +258,10 @@ export default function PurchaseInvoices() {
                       <TableCell>₹{Number(inv.igst_total).toFixed(2)}</TableCell>
                       <TableCell className="font-semibold">₹{Number(inv.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={inv.status === "void" ? "destructive" : inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge></TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-1">
+                        {isAdmin && inv.status !== "void" && (
+                          <AlterButton onClick={() => setAlterTarget({ id: inv.id, label: inv.pi_number })} />
+                        )}
                         {canVoid && inv.status !== "void" && (
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: inv.id, label: inv.pi_number })}><Ban className="h-4 w-4" /></Button>
                         )}
