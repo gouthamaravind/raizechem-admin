@@ -164,6 +164,9 @@ export default function Advances() {
                           <TableCell><Badge variant={statusVariant(a.status)}>{a.status}</Badge></TableCell>
                           <TableCell className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => setAllocViewId(a.id)} title="View allocations"><Eye className="h-4 w-4" /></Button>
+                            {isAdmin && a.status !== "VOID" && (
+                              <AlterButton onClick={() => setAlterTarget({ id: a.id, label: a.receipt_number })} />
+                            )}
                             {canManage && a.status !== "VOID" && (
                               <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: a.id, label: a.receipt_number })}><Ban className="h-4 w-4" /></Button>
                             )}
