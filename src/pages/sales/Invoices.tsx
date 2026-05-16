@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Trash2, Download, Printer, Ban } from "lucide-react";
+import { Search, Plus, Trash2, Download, Printer, Ban, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { calculateGST } from "@/lib/gst";
