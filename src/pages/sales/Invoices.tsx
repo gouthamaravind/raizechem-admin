@@ -22,6 +22,8 @@ import { exportToCsv } from "@/lib/csv-export";
 import { calculateGST } from "@/lib/gst";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number };
 
