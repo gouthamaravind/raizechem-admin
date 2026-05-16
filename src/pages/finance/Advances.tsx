@@ -192,6 +192,31 @@ export default function Advances() {
         isPending={false}
         title={`Advance ${voidTarget?.label || ""}`}
       />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Advance ${alterTarget?.label || ""}`}
+        onConfirm={async (reason) => {
+          if (!alterTarget) return;
+          const { data: a } = await supabase.from("advance_receipts" as any).select("*").eq("id", alterTarget.id).single();
+          if (!a) { toast.error("Advance not found"); setAlterTarget(null); return; }
+          setAlteringFrom({
+            id: alterTarget.id,
+            receipt_number: alterTarget.label,
+            reason,
+            initial: {
+              dealer_id: (a as any).dealer_id,
+              amount: Number((a as any).gross_amount),
+              payment_mode: (a as any).payment_mode,
+              reference_number: (a as any).reference_number || "",
+              notes: (a as any).notes || "",
+            },
+          });
+          setAlterTarget(null);
+          setDialogOpen(true);
+        }}
+      />
     </DashboardLayout>
   );
 }
