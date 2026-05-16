@@ -18,13 +18,17 @@ import { Search, Plus, Ban, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 export default function Payments() {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
   const [allocViewId, setAllocViewId] = useState<string | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; label: string; reason: string } | null>(null);
 
   const voidMutation = useVoidTransaction({
     table: "payments",
