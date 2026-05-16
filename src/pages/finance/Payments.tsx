@@ -318,6 +318,18 @@ export default function Payments() {
         isPending={voidMutation.isPending}
         title={`Payment ${voidTarget?.label || ""}`}
       />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Payment ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, label: alterTarget.label, reason });
+          startAlter(alterTarget.id);
+          setAlterTarget(null);
+        }}
+      />
     </DashboardLayout>
   );
 }
