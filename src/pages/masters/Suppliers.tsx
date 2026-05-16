@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, Download } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
@@ -172,9 +173,9 @@ export default function Suppliers() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Supplier</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Supplier" : "Add Supplier"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Supplier" : "Create Supplier"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <fieldset className="space-y-3">
                     <legend className="text-sm font-semibold text-foreground">Basic Information</legend>
@@ -241,7 +242,7 @@ export default function Suppliers() {
                   </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Supplier" : "Add Supplier"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>
@@ -272,7 +273,7 @@ export default function Suppliers() {
                       <TableCell>{s.state || "—"} <span className="text-xs text-muted-foreground">{s.state_code ? `(${s.state_code})` : ""}</span></TableCell>
                       <TableCell>{s.phone || "—"}</TableCell>
                       <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                      <TableCell><AlterButton onClick={() => openEdit(s)} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

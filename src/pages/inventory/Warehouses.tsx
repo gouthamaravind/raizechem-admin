@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Warehouse, MapPin, Trash2, Edit } from "lucide-react";
+import { Plus, Warehouse, MapPin, Trash2 } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 
 interface WarehouseRow {
   id: string;
@@ -124,12 +125,12 @@ export default function Warehouses() {
           <Dialog open={whOpen} onOpenChange={setWhOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => { setForm(emptyWarehouse); setEditId(null); }}>
-                <Plus className="h-4 w-4 mr-2" />Add Warehouse
+                <Plus className="h-4 w-4 mr-2" />Create
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editId ? "Edit" : "Add"} Warehouse</DialogTitle>
+                <DialogTitle>{editId ? "Alter" : "Create"} Warehouse</DialogTitle>
               </DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); whMutation.mutate(); }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -161,7 +162,7 @@ export default function Warehouses() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={whMutation.isPending}>
-                  {whMutation.isPending ? "Saving..." : editId ? "Update" : "Create"}
+                  {whMutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                 </Button>
               </form>
             </DialogContent>
@@ -209,13 +210,11 @@ export default function Warehouses() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => {
+                            <AlterButton onClick={() => {
                               setForm({ name: wh.name, code: wh.code, address_line1: wh.address_line1 || "", city: wh.city || "", state: wh.state || "", pincode: wh.pincode || "" });
                               setEditId(wh.id);
                               setWhOpen(true);
-                            }}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            }} />
                           </TableCell>
                         </TableRow>
                       ))}

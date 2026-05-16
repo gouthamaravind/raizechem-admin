@@ -131,7 +131,7 @@ export default function BOM() {
             <p className="text-muted-foreground">Define raw material, packing & scheme costs per finished product</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New BOM</Button></DialogTrigger>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
             <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader><DialogTitle>Create Bill of Materials</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createBOM.mutate(); }} className="space-y-4">

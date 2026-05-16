@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Plus, Pencil, Trash2 } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 
 export default function OpeningBalances() {
@@ -146,9 +147,9 @@ export default function OpeningBalances() {
             <p className="text-muted-foreground">Set opening balances for dealers and suppliers per financial year</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) resetForm(); else setDialogOpen(true); }}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Balance</Button></DialogTrigger>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editId ? "Edit" : "Add"} Opening Balance</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editId ? "Alter" : "Create"} Opening Balance</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Entity Type</Label>
@@ -185,7 +186,7 @@ export default function OpeningBalances() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? "Saving..." : editId ? "Update" : "Add Balance"}
+                  {saveMutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                 </Button>
               </form>
             </DialogContent>
@@ -238,7 +239,7 @@ export default function OpeningBalances() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
+                            <AlterButton onClick={() => openEdit(b)} />
                             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteMutation.mutate(b.id)}><Trash2 className="h-4 w-4" /></Button>
                           </div>
                         </TableCell>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, Plus, Pencil, Download } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
@@ -120,9 +121,9 @@ export default function Employees() {
               { key: "pan", label: "PAN" }, { key: "phone", label: "Phone" }, { key: "status", label: "Status" },
             ])}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Employee</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Employee" : "Add Employee"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Employee" : "Create Employee"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2 space-y-2"><Label>Name *</Label><Input required value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
@@ -183,7 +184,7 @@ export default function Employees() {
                   )}
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Employee" : "Add Employee"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>
@@ -211,7 +212,7 @@ export default function Employees() {
                       <TableCell className="text-right">₹{Number(emp.basic_salary || 0).toLocaleString("en-IN")}</TableCell>
                       <TableCell className="font-mono text-sm">{emp.pan || "—"}</TableCell>
                       <TableCell><Badge variant={emp.status === "active" ? "default" : "secondary"}>{emp.status}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(emp)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                      <TableCell><AlterButton onClick={() => openEdit(emp)} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

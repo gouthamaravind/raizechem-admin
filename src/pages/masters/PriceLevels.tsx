@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Tags, Trash2 } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 
 export default function PriceLevels() {
@@ -106,7 +107,7 @@ export default function PriceLevels() {
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm({ name: "", description: "", is_default: false, sort_order: 0 }); } }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Level</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editId ? "Edit Price Level" : "Add Price Level"}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editId ? "Alter Price Level" : "Create Price Level"}</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1">
                   <Label>Name <span className="text-destructive">*</span></Label>
@@ -153,7 +154,7 @@ export default function PriceLevels() {
                       <TableCell>{l.sort_order}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(l)}><Pencil className="h-3.5 w-3.5" /></Button>
+                          <AlterButton onClick={() => openEdit(l)} />
                           {!l.is_default && <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { if (confirm("Delete this price level?")) deleteMutation.mutate(l.id); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
                         </div>
                       </TableCell>

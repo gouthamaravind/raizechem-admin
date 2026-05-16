@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Plus, Pencil, Download, Copy, RefreshCw, ShieldCheck, AlertTriangle, Loader2, UserPlus, X, Eye } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { Link } from "react-router-dom";
 import { useDealerOverdue } from "@/hooks/useDealerOverdue";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -378,9 +379,9 @@ export default function Dealers() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setSameAsBilling(false); setGstWarning(null); setGstVerifiedAt(null); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Dealer</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Dealer" : "Add Dealer"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Dealer" : "Create Dealer"}</DialogTitle></DialogHeader>
 
                 {/* GST Warning Banner */}
                 {gstWarning && (
@@ -603,7 +604,7 @@ export default function Dealers() {
                     </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Dealer" : "Add Dealer"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>
@@ -687,7 +688,7 @@ export default function Dealers() {
                             <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="View 360° profile">
                               <Link to={`/masters/dealers/${d.id}`}><Eye className="h-3.5 w-3.5" /></Link>
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(d)}><Pencil className="h-3.5 w-3.5" /></Button>
+                            <AlterButton onClick={() => openEdit(d)} />
                           </div>
                         </TableCell>
                       </TableRow>

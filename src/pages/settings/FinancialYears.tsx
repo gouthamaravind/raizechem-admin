@@ -131,7 +131,7 @@ export default function FinancialYears() {
             <p className="text-muted-foreground">Manage financial years and year-end closing</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New FY</Button></DialogTrigger>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Create Financial Year</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createFY.mutate(); }} className="space-y-4">

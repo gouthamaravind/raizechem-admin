@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Search, Plus, Pencil, Download, Tags } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -218,9 +219,9 @@ export default function Products() {
               { key: "min_stock_alert_qty", label: "Min Alert Qty" },
             ])}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setFormLevelPrices({}); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Product</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Product" : "Add Product"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Product" : "Create Product"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Product Info */}
                   <fieldset className="space-y-3">
@@ -324,7 +325,7 @@ export default function Products() {
                   </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Product" : "Add Product"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>
@@ -399,7 +400,7 @@ export default function Products() {
                          <TableCell>{p.category ? <Badge variant="secondary">{p.category}</Badge> : "—"}</TableCell>
                          <TableCell><Switch checked={p.is_active} onCheckedChange={(v) => toggleActive.mutate({ id: p.id, is_active: v })} /></TableCell>
                          <TableCell>
-                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                           <AlterButton onClick={() => openEdit(p)} />
                          </TableCell>
                        </TableRow>
                      );})}

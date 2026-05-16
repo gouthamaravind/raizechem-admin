@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 
 const emptyForm = { name: "", type: "earning", is_percentage: false, value: 0, description: "" };
@@ -70,9 +71,9 @@ export default function SalaryComponents() {
             <p className="text-muted-foreground">Configure earnings and deductions for payroll</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); } }}>
-            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Component</Button></DialogTrigger>
+            <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editId ? "Edit Component" : "Add Component"}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editId ? "Alter Component" : "Create Component"}</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); mutation.mutate(editId ? { ...form, id: editId } : form); }} className="space-y-4">
                 <div className="space-y-2"><Label>Name *</Label><Input required value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. HRA, PF, ESI" /></div>
                 <div className="space-y-2">
@@ -95,7 +96,7 @@ export default function SalaryComponents() {
                 </div>
                 <div className="space-y-2"><Label>Description</Label><Input value={form.description} onChange={(e) => set("description", e.target.value)} /></div>
                 <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                  {mutation.isPending ? "Saving..." : editId ? "Update" : "Add Component"}
+                  {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                 </Button>
               </form>
             </DialogContent>
@@ -114,7 +115,7 @@ export default function SalaryComponents() {
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">{c.name}</TableCell>
                         <TableCell className="text-right">{c.is_percentage ? `${c.value}%` : `₹${Number(c.value).toLocaleString("en-IN")}`}</TableCell>
-                        <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                        <TableCell><AlterButton onClick={() => openEdit(c)} /></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -134,7 +135,7 @@ export default function SalaryComponents() {
                       <TableRow key={c.id}>
                         <TableCell className="font-medium">{c.name}</TableCell>
                         <TableCell className="text-right">{c.is_percentage ? `${c.value}%` : `₹${Number(c.value).toLocaleString("en-IN")}`}</TableCell>
-                        <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(c)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                        <TableCell><AlterButton onClick={() => openEdit(c)} /></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
