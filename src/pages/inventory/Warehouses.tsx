@@ -210,13 +210,11 @@ export default function Warehouses() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => {
+                            <AlterButton onClick={() => {
                               setForm({ name: wh.name, code: wh.code, address_line1: wh.address_line1 || "", city: wh.city || "", state: wh.state || "", pincode: wh.pincode || "" });
                               setEditId(wh.id);
                               setWhOpen(true);
-                            }}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
+                            }} />
                           </TableCell>
                         </TableRow>
                       ))}
