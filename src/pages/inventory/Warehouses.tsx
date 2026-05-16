@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Warehouse, MapPin, Trash2, Edit } from "lucide-react";
+import { Plus, Warehouse, MapPin, Trash2 } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 
 interface WarehouseRow {
   id: string;
