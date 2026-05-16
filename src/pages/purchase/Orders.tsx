@@ -136,11 +136,11 @@ export default function PurchaseOrders() {
           <div><h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1><p className="text-muted-foreground">Manage purchase orders to suppliers</p></div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportToCsv("purchase-orders.csv", filtered.map((o: any) => ({ po_number: o.po_number, supplier: o.suppliers?.name, date: o.po_date, status: o.status, total: o.total_amount })), [{ key: "po_number", label: "PO #" }, { key: "supplier", label: "Supplier" }, { key: "date", label: "Date" }, { key: "status", label: "Status" }, { key: "total", label: "Total" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New PO</Button></DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setAlterId(null); setAlterReason(""); } }}>
+              <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Purchase Order</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); createOrder.mutate(); }} className="space-y-4">
+                <DialogHeader><DialogTitle>{alterId ? "Alter Purchase Order" : "Create Purchase Order"}</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); saveOrder.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Supplier *</Label>
@@ -148,6 +148,12 @@ export default function PurchaseOrders() {
                     </div>
                     <div className="space-y-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                   </div>
+                  {alterId && (
+                    <div className="space-y-2">
+                      <Label>Alter reason *</Label>
+                      <Input value={alterReason} onChange={(e) => setAlterReason(e.target.value)} placeholder="Why is this PO being altered?" required />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Line Items</Label>
                     {items.map((item, i) => (
@@ -165,7 +171,7 @@ export default function PurchaseOrders() {
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
                   <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + i.qty * i.rate, 0).toLocaleString("en-IN")}</div>
-                  <Button type="submit" className="w-full" disabled={createOrder.isPending}>{createOrder.isPending ? "Creating..." : "Create PO"}</Button>
+                  <Button type="submit" className="w-full" disabled={saveOrder.isPending}>{saveOrder.isPending ? "Saving..." : alterId ? "Alter PO" : "Create PO"}</Button>
                 </form>
               </DialogContent>
             </Dialog>
