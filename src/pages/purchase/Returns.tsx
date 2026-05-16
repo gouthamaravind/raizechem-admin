@@ -206,7 +206,10 @@ export default function PurchaseReturns() {
                       <TableCell>₹{Number(dn.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={dn.status === "void" ? "destructive" : "default"}>{dn.status || "active"}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{dn.reason || "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-1">
+                        {isAdmin && dn.status !== "void" && (
+                          <AlterButton onClick={() => setAlterTarget({ id: dn.id, label: dn.debit_note_number })} />
+                        )}
                         {canVoid && dn.status !== "void" && (
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: dn.id, label: dn.debit_note_number })}><Ban className="h-4 w-4" /></Button>
                         )}
