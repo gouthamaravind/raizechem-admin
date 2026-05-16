@@ -232,6 +232,18 @@ export default function Returns() {
         isPending={voidMutation.isPending}
         title={`Credit Note ${voidTarget?.label || ""}`}
       />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Credit Note ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, number: alterTarget.label, reason });
+          startAlter(alterTarget.id);
+          setAlterTarget(null);
+        }}
+      />
     </DashboardLayout>
   );
 }
