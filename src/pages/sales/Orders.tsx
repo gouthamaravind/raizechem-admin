@@ -20,16 +20,19 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
+import { AlterButton } from "@/components/tally/AlterButton";
 
 type LineItem = { product_id: string; qty: number; rate: number; discount_pct: number; discount_amount: number };
 
 export default function Orders() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alterId, setAlterId] = useState<string | null>(null);
+  const [alterReason, setAlterReason] = useState("");
   const [dealerId, setDealerId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
