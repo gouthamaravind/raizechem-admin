@@ -232,6 +232,9 @@ export default function Payments() {
                         <TableCell><Badge variant={p.status === "void" ? "destructive" : "default"}>{p.status || "active"}</Badge></TableCell>
                         <TableCell className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setAllocViewId(p.id)} title="View allocations"><Eye className="h-4 w-4" /></Button>
+                          {isAdmin && p.status !== "void" && (
+                            <AlterButton onClick={() => setAlterTarget({ id: p.id, label: `₹${Number(p.amount).toLocaleString("en-IN")}` })} />
+                          )}
                           {canVoid && p.status !== "void" && (
                             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: p.id, label: `₹${Number(p.amount).toLocaleString("en-IN")}` })}><Ban className="h-4 w-4" /></Button>
                           )}
