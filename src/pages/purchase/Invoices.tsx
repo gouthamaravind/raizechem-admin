@@ -93,6 +93,16 @@ export default function PurchaseInvoices() {
       const validItems = computedItems.filter((i) => i.product_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
+      // ALTER: void original first to restore stock + ledger before new doc consumes them
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_purchase_invoice_atomic" as any, {
+          p_pi_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original PI: " + vErr.message);
+      }
+
       const rpcItems = validItems.map((i) => ({
         product_id: i.product_id, batch_no: i.batch_no,
         mfg_date: i.mfg_date || null, exp_date: i.exp_date || null,
@@ -101,7 +111,7 @@ export default function PurchaseInvoices() {
         igst_amount: i.igst, total_amount: i.totalWithGst,
       }));
 
-      const { error } = await supabase.rpc("create_purchase_invoice_atomic" as any, {
+      const { data, error } = await supabase.rpc("create_purchase_invoice_atomic" as any, {
         p_supplier_id: supplierId,
         p_pi_number: piNumber,
         p_pi_date: piDate,
@@ -114,17 +124,51 @@ export default function PurchaseInvoices() {
         p_items: rpcItems,
       });
       if (error) throw error;
+
+      if (alteringFrom && data) {
+        const newPiId = (data as any).pi_id || (data as any).purchase_invoice_id;
+        const newPiNumber = (data as any).pi_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "purchase_invoices",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: { alter_reason: alteringFrom.reason, replaced_by_id: newPiId, replaced_by_number: newPiNumber, strategy: "void+create" },
+        });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-invoices"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["supplier-ledger"] });
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); setSupplierId(""); setPiNumber("");
       setItems([{ product_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", batch_no: "", mfg_date: "", exp_date: "" }]);
-      toast.success("Purchase invoice created — stock added automatically");
+      setAlteringFrom(null);
+      toast.success(wasAlter ? "Purchase invoice altered — original voided, replacement created" : "Purchase invoice created — stock added automatically");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startAlter = async (piId: string) => {
+    const { data: pi } = await supabase.from("purchase_invoices").select("*").eq("id", piId).single();
+    if (!pi) { toast.error("Purchase invoice not found"); return; }
+    const { data: piItems } = await supabase.from("purchase_invoice_items").select("*, product_batches(batch_no, mfg_date, exp_date)").eq("purchase_invoice_id", piId);
+    setSupplierId(pi.supplier_id);
+    setPiNumber(pi.pi_number + "-R");
+    setPiDate(new Date().toISOString().split("T")[0]);
+    setItems((piItems || []).map((it: any) => ({
+      product_id: it.product_id,
+      qty: Number(it.qty),
+      rate: Number(it.rate),
+      gst_rate: Number(it.gst_rate ?? 18),
+      hsn_code: it.hsn_code || "",
+      batch_no: it.product_batches?.batch_no || "",
+      mfg_date: it.product_batches?.mfg_date || "",
+      exp_date: it.product_batches?.exp_date || "",
+    })));
+    setDialogOpen(true);
+  };
 
   const addItem = () => setItems([...items, { product_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", batch_no: "", mfg_date: "", exp_date: "" }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
