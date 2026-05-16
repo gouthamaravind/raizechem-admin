@@ -88,11 +88,17 @@ export default function Advances() {
             <p className="text-muted-foreground">Tally-style advance collections from dealers</p>
           </div>
           {canManage && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setAlteringFrom(null); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Advance</Button></DialogTrigger>
               <DialogContent className="max-w-lg">
-                <DialogHeader><DialogTitle>Create Advance Receipt</DialogTitle></DialogHeader>
-                <AdvanceCreateForm dealers={dealers} onSuccess={() => setDialogOpen(false)} />
+                <DialogHeader><DialogTitle>{alteringFrom ? `Alter Advance ${alteringFrom.receipt_number} → new` : "Create Advance Receipt"}</DialogTitle></DialogHeader>
+                <AdvanceCreateForm
+                  key={alteringFrom?.id || "new"}
+                  dealers={dealers}
+                  alteringFrom={alteringFrom ? { id: alteringFrom.id, receipt_number: alteringFrom.receipt_number, reason: alteringFrom.reason } : null}
+                  initial={alteringFrom?.initial || null}
+                  onSuccess={() => { setDialogOpen(false); setAlteringFrom(null); }}
+                />
               </DialogContent>
             </Dialog>
           )}
