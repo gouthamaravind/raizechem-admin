@@ -243,6 +243,7 @@ export default function Orders() {
                             </>
                           )}
                           {o.status === "dispatched" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "delivered" })}>Delivered</Button>}
+                          {o.status !== "cancelled" && <AlterButton onClick={() => openAlter(o)} />}
                         </div>
                       </TableCell>
                     </TableRow>
