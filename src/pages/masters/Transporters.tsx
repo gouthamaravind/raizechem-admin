@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, ShieldCheck, RefreshCw, Loader2, Truck } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -305,7 +306,7 @@ export default function Transporters() {
                         <TableCell className="text-sm">{[t.city, t.state].filter(Boolean).join(", ") || "—"}</TableCell>
                         <TableCell className="text-sm">{t.vehicle_types || "—"}</TableCell>
                         <TableCell><Badge variant={t.status === "active" ? "default" : "secondary"}>{t.status}</Badge></TableCell>
-                        <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(t)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                        <TableCell><AlterButton onClick={() => openEdit(t)} /></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

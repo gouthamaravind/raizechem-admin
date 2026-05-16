@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Search, Plus, Pencil, Download, Tags } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -399,7 +400,7 @@ export default function Products() {
                          <TableCell>{p.category ? <Badge variant="secondary">{p.category}</Badge> : "—"}</TableCell>
                          <TableCell><Switch checked={p.is_active} onCheckedChange={(v) => toggleActive.mutate({ id: p.id, is_active: v })} /></TableCell>
                          <TableCell>
-                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="h-3.5 w-3.5" /></Button>
+                           <AlterButton onClick={() => openEdit(p)} />
                          </TableCell>
                        </TableRow>
                      );})}

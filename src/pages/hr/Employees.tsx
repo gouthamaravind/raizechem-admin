@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Search, Plus, Pencil, Download } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
@@ -211,7 +212,7 @@ export default function Employees() {
                       <TableCell className="text-right">₹{Number(emp.basic_salary || 0).toLocaleString("en-IN")}</TableCell>
                       <TableCell className="font-mono text-sm">{emp.pan || "—"}</TableCell>
                       <TableCell><Badge variant={emp.status === "active" ? "default" : "secondary"}>{emp.status}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(emp)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                      <TableCell><AlterButton onClick={() => openEdit(emp)} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

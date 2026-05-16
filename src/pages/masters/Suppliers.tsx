@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Search, Plus, Pencil, Download } from "lucide-react";
+import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
@@ -272,7 +273,7 @@ export default function Suppliers() {
                       <TableCell>{s.state || "—"} <span className="text-xs text-muted-foreground">{s.state_code ? `(${s.state_code})` : ""}</span></TableCell>
                       <TableCell>{s.phone || "—"}</TableCell>
                       <TableCell><Badge variant={s.status === "active" ? "default" : "secondary"}>{s.status}</Badge></TableCell>
-                      <TableCell><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(s)}><Pencil className="h-3.5 w-3.5" /></Button></TableCell>
+                      <TableCell><AlterButton onClick={() => openEdit(s)} /></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
