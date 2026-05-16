@@ -162,7 +162,7 @@ export default function Warehouses() {
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={whMutation.isPending}>
-                  {whMutation.isPending ? "Saving..." : editId ? "Update" : "Create"}
+                  {whMutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                 </Button>
               </form>
             </DialogContent>
