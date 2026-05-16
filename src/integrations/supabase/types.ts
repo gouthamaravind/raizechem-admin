@@ -513,6 +513,7 @@ export type Database = {
           next_po_number: number
           next_receipt_voucher_number: number
           next_transfer_number: number
+          next_waybill_number: number
           phone: string | null
           pincode: string | null
           state: string | null
@@ -546,6 +547,7 @@ export type Database = {
           next_po_number?: number
           next_receipt_voucher_number?: number
           next_transfer_number?: number
+          next_waybill_number?: number
           phone?: string | null
           pincode?: string | null
           state?: string | null
@@ -579,6 +581,7 @@ export type Database = {
           next_po_number?: number
           next_receipt_voucher_number?: number
           next_transfer_number?: number
+          next_waybill_number?: number
           phone?: string | null
           pincode?: string | null
           state?: string | null
@@ -4014,6 +4017,134 @@ export type Database = {
           },
         ]
       }
+      waybills: {
+        Row: {
+          branch_id: string
+          cancel_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          cgst_total: number
+          created_at: string
+          distance_km: number | null
+          doc_number: string
+          doc_value: number
+          error_msg: string | null
+          ewb_date: string | null
+          ewb_number: string | null
+          from_gstin: string | null
+          from_state_code: string | null
+          generated_at: string | null
+          generated_by: string | null
+          gsp_request: Json | null
+          gsp_response: Json | null
+          id: string
+          igst_total: number
+          sgst_total: number
+          source_id: string
+          source_number: string
+          source_type: string
+          status: Database["public"]["Enums"]["waybill_status"]
+          taxable_value: number
+          to_gstin: string | null
+          to_state_code: string | null
+          transport_doc_date: string | null
+          transport_doc_no: string | null
+          transport_mode: string | null
+          transporter_gstin: string | null
+          transporter_name: string | null
+          updated_at: string
+          valid_until: string | null
+          vehicle_no: string | null
+          vehicle_type: string | null
+        }
+        Insert: {
+          branch_id: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_total?: number
+          created_at?: string
+          distance_km?: number | null
+          doc_number: string
+          doc_value?: number
+          error_msg?: string | null
+          ewb_date?: string | null
+          ewb_number?: string | null
+          from_gstin?: string | null
+          from_state_code?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          gsp_request?: Json | null
+          gsp_response?: Json | null
+          id?: string
+          igst_total?: number
+          sgst_total?: number
+          source_id: string
+          source_number: string
+          source_type: string
+          status?: Database["public"]["Enums"]["waybill_status"]
+          taxable_value?: number
+          to_gstin?: string | null
+          to_state_code?: string | null
+          transport_doc_date?: string | null
+          transport_doc_no?: string | null
+          transport_mode?: string | null
+          transporter_gstin?: string | null
+          transporter_name?: string | null
+          updated_at?: string
+          valid_until?: string | null
+          vehicle_no?: string | null
+          vehicle_type?: string | null
+        }
+        Update: {
+          branch_id?: string
+          cancel_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          cgst_total?: number
+          created_at?: string
+          distance_km?: number | null
+          doc_number?: string
+          doc_value?: number
+          error_msg?: string | null
+          ewb_date?: string | null
+          ewb_number?: string | null
+          from_gstin?: string | null
+          from_state_code?: string | null
+          generated_at?: string | null
+          generated_by?: string | null
+          gsp_request?: Json | null
+          gsp_response?: Json | null
+          id?: string
+          igst_total?: number
+          sgst_total?: number
+          source_id?: string
+          source_number?: string
+          source_type?: string
+          status?: Database["public"]["Enums"]["waybill_status"]
+          taxable_value?: number
+          to_gstin?: string | null
+          to_state_code?: string | null
+          transport_doc_date?: string | null
+          transport_doc_no?: string | null
+          transport_mode?: string | null
+          transporter_gstin?: string | null
+          transporter_name?: string | null
+          updated_at?: string
+          valid_until?: string | null
+          vehicle_no?: string | null
+          vehicle_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waybills_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -4052,6 +4183,10 @@ export type Database = {
         Returns: number
       }
       compute_session_km: { Args: { _session_id: string }; Returns: number }
+      convert_branch_transfer_to_invoice: {
+        Args: { p_transfer_id: string }
+        Returns: string
+      }
       create_advance_receipt_atomic: {
         Args: {
           p_amount?: number
@@ -4229,6 +4364,7 @@ export type Database = {
         }
         Returns: number
       }
+      next_waybill_number: { Args: { p_branch_id: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
@@ -4314,6 +4450,12 @@ export type Database = {
         | "dispatched"
         | "delivered"
         | "cancelled"
+      waybill_status:
+        | "pending"
+        | "generated"
+        | "cancelled"
+        | "expired"
+        | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4462,6 +4604,13 @@ export const Constants = {
         "dispatched",
         "delivered",
         "cancelled",
+      ],
+      waybill_status: [
+        "pending",
+        "generated",
+        "cancelled",
+        "expired",
+        "failed",
       ],
     },
   },
