@@ -418,6 +418,9 @@ export default function Invoices() {
                         {inv.status !== "void" && (
                           <Button variant="ghost" size="icon" title="Generate E-Way Bill" onClick={() => navigate("/warehouse/waybills", { state: { prefillInvoiceId: inv.id } })}><Truck className="h-4 w-4" /></Button>
                         )}
+                        {isAdmin && inv.status !== "void" && (
+                          <AlterButton onClick={() => setAlterTarget({ id: inv.id, label: inv.invoice_number })} />
+                        )}
                         {canVoid && inv.status !== "void" && (
                           <Button variant="ghost" size="icon" className="text-destructive" title="Void" onClick={() => setVoidTarget({ id: inv.id, label: inv.invoice_number })}><Ban className="h-4 w-4" /></Button>
                         )}
@@ -439,6 +442,18 @@ export default function Invoices() {
         onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
         isPending={voidMutation.isPending}
         title={`Invoice ${voidTarget?.label || ""}`}
+      />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Invoice ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, number: alterTarget.label, reason });
+          startAlter(alterTarget.id, alterTarget.label);
+          setAlterTarget(null);
+        }}
       />
     </DashboardLayout>
   );
