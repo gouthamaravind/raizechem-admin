@@ -44,7 +44,7 @@ export default function PurchaseOrders() {
   const { data: suppliers = [] } = useQuery({ queryKey: ["suppliers-list"], queryFn: async () => { const { data } = await supabase.from("suppliers").select("id, name").eq("status", "active").order("name"); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, purchase_price_default, unit").eq("is_active", true).order("name"); return data || []; } });
 
-  const createOrder = useMutation({
+  const saveOrder = useMutation({
     mutationFn: async () => {
       if (!supplierId || items.length === 0) throw new Error("Select supplier and add items");
       const validItems = items.filter((i) => i.product_id && i.qty > 0);
@@ -55,6 +55,20 @@ export default function PurchaseOrders() {
         qty: i.qty,
         rate: i.rate,
       }));
+
+      if (alterId) {
+        if (!alterReason.trim()) throw new Error("Alter reason is required");
+        const { data, error } = await supabase.rpc("alter_po_atomic" as any, {
+          p_po_id: alterId,
+          p_supplier_id: supplierId,
+          p_notes: notes || null,
+          p_items: p_items,
+          p_altered_by: user?.id,
+          p_reason: alterReason,
+        });
+        if (error) throw error;
+        return data;
+      }
 
       const { data, error } = await supabase.rpc("create_po_atomic" as any, {
         p_supplier_id: supplierId,
@@ -67,11 +81,29 @@ export default function PurchaseOrders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
-      setDialogOpen(false); setSupplierId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0 }]);
-      toast.success("Purchase order created");
+      setDialogOpen(false); setAlterId(null); setAlterReason("");
+      setSupplierId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0 }]);
+      toast.success(alterId ? "PO altered" : "Purchase order created");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const openAlter = async (o: any) => {
+    const { data: rows } = await supabase.from("purchase_order_items").select("*").eq("purchase_order_id", o.id);
+    setAlterId(o.id);
+    setSupplierId(o.supplier_id);
+    setNotes(o.notes || "");
+    setAlterReason("");
+    setItems((rows || []).map((r: any) => ({ product_id: r.product_id, qty: Number(r.qty), rate: Number(r.rate) })));
+    setDialogOpen(true);
+  };
+
+  const openCreate = () => {
+    setAlterId(null); setAlterReason("");
+    setSupplierId(""); setNotes("");
+    setItems([{ product_id: "", qty: 1, rate: 0 }]);
+    setDialogOpen(true);
+  };
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
