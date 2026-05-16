@@ -11,22 +11,34 @@ import { toast } from "sonner";
 interface Props {
   dealers: any[];
   onSuccess: () => void;
+  alteringFrom?: { id: string; receipt_number: string; reason: string } | null;
+  initial?: { dealer_id?: string; amount?: number; payment_mode?: string; reference_number?: string; notes?: string } | null;
 }
 
-export function AdvanceCreateForm({ dealers, onSuccess }: Props) {
+export function AdvanceCreateForm({ dealers, onSuccess, alteringFrom, initial }: Props) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [dealerId, setDealerId] = useState("");
-  const [amount, setAmount] = useState(0);
-  const [mode, setMode] = useState("bank_transfer");
-  const [refNo, setRefNo] = useState("");
-  const [notes, setNotes] = useState("");
+  const [dealerId, setDealerId] = useState(initial?.dealer_id || "");
+  const [amount, setAmount] = useState(initial?.amount || 0);
+  const [mode, setMode] = useState(initial?.payment_mode || "bank_transfer");
+  const [refNo, setRefNo] = useState(initial?.reference_number || "");
+  const [notes, setNotes] = useState(initial?.notes || "");
   const [receiptDate, setReceiptDate] = useState(new Date().toISOString().split("T")[0]);
 
   const create = useMutation({
     mutationFn: async () => {
       if (!dealerId || amount <= 0) throw new Error("Select dealer and enter amount");
-      const { error } = await supabase.rpc("create_advance_receipt_atomic" as any, {
+
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_advance_receipt_atomic" as any, {
+          p_receipt_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original advance: " + vErr.message);
+      }
+
+      const { data, error } = await supabase.rpc("create_advance_receipt_atomic" as any, {
         p_dealer_id: dealerId,
         p_receipt_date: receiptDate,
         p_payment_mode: mode,
@@ -36,11 +48,24 @@ export function AdvanceCreateForm({ dealers, onSuccess }: Props) {
         p_created_by: user?.id,
       });
       if (error) throw error;
+
+      if (alteringFrom && data) {
+        const newId = (data as any).receipt_id || (data as any).advance_receipt_id;
+        const newNumber = (data as any).receipt_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "advance_receipts",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: { alter_reason: alteringFrom.reason, replaced_by_id: newId, replaced_by_number: newNumber, strategy: "void+create" },
+        });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["advance-receipts"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
-      toast.success("Advance receipt created");
+      qc.invalidateQueries({ queryKey: ["dealer-advance-balance"] });
+      toast.success(alteringFrom ? "Advance altered — original voided, replacement created" : "Advance receipt created");
       onSuccess();
     },
     onError: (e: Error) => toast.error(e.message),
