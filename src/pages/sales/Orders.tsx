@@ -20,6 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
+import { AlterButton } from "@/components/tally/AlterButton";
 
 type LineItem = { product_id: string; qty: number; rate: number; discount_pct: number; discount_amount: number };
 
@@ -30,6 +31,8 @@ export default function Orders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alterId, setAlterId] = useState<string | null>(null);
+  const [alterReason, setAlterReason] = useState("");
   const [dealerId, setDealerId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
@@ -56,10 +59,10 @@ export default function Orders() {
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
 
-  const createOrder = useMutation({
+  const saveOrder = useMutation({
     mutationFn: async () => {
       if (!dealerId || items.length === 0) throw new Error("Select dealer and add items");
-      if (isOverdue(dealerId)) {
+      if (!alterId && isOverdue(dealerId)) {
         const info = getOverdue(dealerId);
         throw new Error(`Order blocked: This dealer has ₹${info?.totalOverdue.toLocaleString("en-IN")} overdue by ${info?.maxDaysOverdue} days (>120 days). Collect payment first.`);
       }
@@ -74,6 +77,20 @@ export default function Orders() {
         discount_amount: i.discount_amount,
       }));
 
+      if (alterId) {
+        if (!alterReason.trim()) throw new Error("Alter reason is required");
+        const { data, error } = await supabase.rpc("alter_order_atomic" as any, {
+          p_order_id: alterId,
+          p_dealer_id: dealerId,
+          p_notes: notes || null,
+          p_items: p_items,
+          p_altered_by: user?.id,
+          p_reason: alterReason,
+        });
+        if (error) throw error;
+        return data;
+      }
+
       const { data, error } = await supabase.rpc("create_order_atomic" as any, {
         p_dealer_id: dealerId,
         p_notes: notes || null,
@@ -86,11 +103,32 @@ export default function Orders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
-      setDialogOpen(false); setDealerId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
-      toast.success("Order created");
+      setDialogOpen(false); setAlterId(null); setAlterReason("");
+      setDealerId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+      toast.success(alterId ? "Order altered" : "Order created");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const openAlter = async (o: any) => {
+    const { data: rows } = await supabase.from("order_items").select("*").eq("order_id", o.id);
+    setAlterId(o.id);
+    setDealerId(o.dealer_id);
+    setNotes(o.notes || "");
+    setAlterReason("");
+    setItems((rows || []).map((r: any) => ({
+      product_id: r.product_id, qty: Number(r.qty), rate: Number(r.rate),
+      discount_pct: Number(r.discount_pct || 0), discount_amount: Number(r.discount_amount || 0),
+    })));
+    setDialogOpen(true);
+  };
+
+  const openCreate = () => {
+    setAlterId(null); setAlterReason("");
+    setDealerId(""); setNotes("");
+    setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+    setDialogOpen(true);
+  };
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -124,11 +162,11 @@ export default function Orders() {
           <div><h1 className="text-2xl font-bold tracking-tight">Orders</h1><p className="text-muted-foreground">Manage sales orders</p></div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportToCsv("orders.csv", filtered.map((o: any) => ({ order_number: o.order_number, dealer: o.dealers?.name, date: o.order_date, status: o.status, total: o.total_amount })), [{ key: "order_number", label: "Order #" }, { key: "dealer", label: "Dealer" }, { key: "date", label: "Date" }, { key: "status", label: "Status" }, { key: "total", label: "Total" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Order</Button></DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setAlterId(null); setAlterReason(""); } }}>
+              <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Order</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); createOrder.mutate(); }} className="space-y-4">
+                <DialogHeader><DialogTitle>{alterId ? "Alter Order" : "Create Order"}</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); saveOrder.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Dealer *</Label>
@@ -136,7 +174,13 @@ export default function Orders() {
                     </div>
                     <div className="space-y-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                   </div>
-                  {dealerId && isOverdue(dealerId) && (
+                  {alterId && (
+                    <div className="space-y-2">
+                      <Label>Alter reason *</Label>
+                      <Input value={alterReason} onChange={(e) => setAlterReason(e.target.value)} placeholder="Why is this order being altered?" required />
+                    </div>
+                  )}
+                  {!alterId && dealerId && isOverdue(dealerId) && (
                     <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription>
@@ -163,7 +207,7 @@ export default function Orders() {
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
                   <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + (i.qty * i.rate - i.discount_amount - (i.qty * i.rate * i.discount_pct / 100)), 0).toLocaleString("en-IN")}</div>
-                  <Button type="submit" className="w-full" disabled={createOrder.isPending || isOverdue(dealerId)}>{createOrder.isPending ? "Creating..." : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
+                  <Button type="submit" className="w-full" disabled={saveOrder.isPending || (!alterId && isOverdue(dealerId))}>{saveOrder.isPending ? "Saving..." : alterId ? "Alter Order" : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -199,6 +243,7 @@ export default function Orders() {
                             </>
                           )}
                           {o.status === "dispatched" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "delivered" })}>Delivered</Button>}
+                          {o.status !== "cancelled" && <AlterButton onClick={() => openAlter(o)} />}
                         </div>
                       </TableCell>
                     </TableRow>

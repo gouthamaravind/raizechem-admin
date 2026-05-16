@@ -15,6 +15,7 @@ import { Search, Plus, Trash2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
+import { AlterButton } from "@/components/tally/AlterButton";
 
 type LineItem = { product_id: string; qty: number; rate: number };
 
@@ -25,6 +26,8 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alterId, setAlterId] = useState<string | null>(null);
+  const [alterReason, setAlterReason] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0 }]);
@@ -41,7 +44,7 @@ export default function PurchaseOrders() {
   const { data: suppliers = [] } = useQuery({ queryKey: ["suppliers-list"], queryFn: async () => { const { data } = await supabase.from("suppliers").select("id, name").eq("status", "active").order("name"); return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list"], queryFn: async () => { const { data } = await supabase.from("products").select("id, name, purchase_price_default, unit").eq("is_active", true).order("name"); return data || []; } });
 
-  const createOrder = useMutation({
+  const saveOrder = useMutation({
     mutationFn: async () => {
       if (!supplierId || items.length === 0) throw new Error("Select supplier and add items");
       const validItems = items.filter((i) => i.product_id && i.qty > 0);
@@ -52,6 +55,20 @@ export default function PurchaseOrders() {
         qty: i.qty,
         rate: i.rate,
       }));
+
+      if (alterId) {
+        if (!alterReason.trim()) throw new Error("Alter reason is required");
+        const { data, error } = await supabase.rpc("alter_po_atomic" as any, {
+          p_po_id: alterId,
+          p_supplier_id: supplierId,
+          p_notes: notes || null,
+          p_items: p_items,
+          p_altered_by: user?.id,
+          p_reason: alterReason,
+        });
+        if (error) throw error;
+        return data;
+      }
 
       const { data, error } = await supabase.rpc("create_po_atomic" as any, {
         p_supplier_id: supplierId,
@@ -64,11 +81,29 @@ export default function PurchaseOrders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-orders"] });
-      setDialogOpen(false); setSupplierId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0 }]);
-      toast.success("Purchase order created");
+      setDialogOpen(false); setAlterId(null); setAlterReason("");
+      setSupplierId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0 }]);
+      toast.success(alterId ? "PO altered" : "Purchase order created");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const openAlter = async (o: any) => {
+    const { data: rows } = await supabase.from("purchase_order_items").select("*").eq("purchase_order_id", o.id);
+    setAlterId(o.id);
+    setSupplierId(o.supplier_id);
+    setNotes(o.notes || "");
+    setAlterReason("");
+    setItems((rows || []).map((r: any) => ({ product_id: r.product_id, qty: Number(r.qty), rate: Number(r.rate) })));
+    setDialogOpen(true);
+  };
+
+  const openCreate = () => {
+    setAlterId(null); setAlterReason("");
+    setSupplierId(""); setNotes("");
+    setItems([{ product_id: "", qty: 1, rate: 0 }]);
+    setDialogOpen(true);
+  };
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
@@ -101,11 +136,11 @@ export default function PurchaseOrders() {
           <div><h1 className="text-2xl font-bold tracking-tight">Purchase Orders</h1><p className="text-muted-foreground">Manage purchase orders to suppliers</p></div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportToCsv("purchase-orders.csv", filtered.map((o: any) => ({ po_number: o.po_number, supplier: o.suppliers?.name, date: o.po_date, status: o.status, total: o.total_amount })), [{ key: "po_number", label: "PO #" }, { key: "supplier", label: "Supplier" }, { key: "date", label: "Date" }, { key: "status", label: "Status" }, { key: "total", label: "Total" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New PO</Button></DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setAlterId(null); setAlterReason(""); } }}>
+              <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Purchase Order</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); createOrder.mutate(); }} className="space-y-4">
+                <DialogHeader><DialogTitle>{alterId ? "Alter Purchase Order" : "Create Purchase Order"}</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); saveOrder.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Supplier *</Label>
@@ -113,6 +148,12 @@ export default function PurchaseOrders() {
                     </div>
                     <div className="space-y-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                   </div>
+                  {alterId && (
+                    <div className="space-y-2">
+                      <Label>Alter reason *</Label>
+                      <Input value={alterReason} onChange={(e) => setAlterReason(e.target.value)} placeholder="Why is this PO being altered?" required />
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Line Items</Label>
                     {items.map((item, i) => (
@@ -130,7 +171,7 @@ export default function PurchaseOrders() {
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
                   <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + i.qty * i.rate, 0).toLocaleString("en-IN")}</div>
-                  <Button type="submit" className="w-full" disabled={createOrder.isPending}>{createOrder.isPending ? "Creating..." : "Create PO"}</Button>
+                  <Button type="submit" className="w-full" disabled={saveOrder.isPending}>{saveOrder.isPending ? "Saving..." : alterId ? "Alter PO" : "Create PO"}</Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -164,6 +205,7 @@ export default function PurchaseOrders() {
                               <Button size="sm" variant="default" onClick={() => handleConvertToPI(o)} title="Convert to Purchase Invoice"><FileText className="h-3.5 w-3.5 mr-1" />Invoice</Button>
                             </>
                           )}
+                          {o.status !== "cancelled" && o.status !== "received" && <AlterButton onClick={() => openAlter(o)} />}
                         </div>
                       </TableCell>
                     </TableRow>
