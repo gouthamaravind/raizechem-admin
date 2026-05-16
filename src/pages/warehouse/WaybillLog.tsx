@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useBranch } from "@/hooks/useBranch";
@@ -25,6 +26,7 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
 export default function WaybillLog() {
   const qc = useQueryClient();
   const { branchId } = useBranch();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [openNew, setOpenNew] = useState(false);
   const [sourceType, setSourceType] = useState<"invoice" | "branch_transfer">("invoice");
@@ -33,6 +35,16 @@ export default function WaybillLog() {
   const [vehicleNo, setVehicleNo] = useState("");
   const [distance, setDistance] = useState("");
   const [transporter, setTransporter] = useState("");
+
+  useEffect(() => {
+    const prefill = (location.state as any)?.prefillInvoiceId;
+    if (prefill) {
+      setSourceType("invoice");
+      setSourceId(prefill);
+      setOpenNew(true);
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const { data: waybills = [], isLoading } = useQuery({
     queryKey: ["waybills", branchId],

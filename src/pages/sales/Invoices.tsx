@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Plus, Trash2, Download, Printer, Ban } from "lucide-react";
+import { Search, Plus, Trash2, Download, Printer, Ban, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { calculateGST } from "@/lib/gst";
@@ -355,9 +355,12 @@ export default function Invoices() {
                       <TableCell className="font-semibold">₹{Number(inv.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={inv.status === "void" ? "destructive" : inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge></TableCell>
                       <TableCell className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => navigate(`/sales/invoices/${inv.id}/print`)}><Printer className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" title="Print" onClick={() => navigate(`/sales/invoices/${inv.id}/print`)}><Printer className="h-4 w-4" /></Button>
+                        {inv.status !== "void" && (
+                          <Button variant="ghost" size="icon" title="Generate E-Way Bill" onClick={() => navigate("/warehouse/waybills", { state: { prefillInvoiceId: inv.id } })}><Truck className="h-4 w-4" /></Button>
+                        )}
                         {canVoid && inv.status !== "void" && (
-                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: inv.id, label: inv.invoice_number })}><Ban className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="text-destructive" title="Void" onClick={() => setVoidTarget({ id: inv.id, label: inv.invoice_number })}><Ban className="h-4 w-4" /></Button>
                         )}
                       </TableCell>
                     </TableRow>
