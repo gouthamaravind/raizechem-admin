@@ -162,11 +162,11 @@ export default function Orders() {
           <div><h1 className="text-2xl font-bold tracking-tight">Orders</h1><p className="text-muted-foreground">Manage sales orders</p></div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportToCsv("orders.csv", filtered.map((o: any) => ({ order_number: o.order_number, dealer: o.dealers?.name, date: o.order_date, status: o.status, total: o.total_amount })), [{ key: "order_number", label: "Order #" }, { key: "dealer", label: "Dealer" }, { key: "date", label: "Date" }, { key: "status", label: "Status" }, { key: "total", label: "Total" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Order</Button></DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setAlterId(null); setAlterReason(""); } }}>
+              <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Order</DialogTitle></DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); createOrder.mutate(); }} className="space-y-4">
+                <DialogHeader><DialogTitle>{alterId ? "Alter Order" : "Create Order"}</DialogTitle></DialogHeader>
+                <form onSubmit={(e) => { e.preventDefault(); saveOrder.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Dealer *</Label>
@@ -174,7 +174,13 @@ export default function Orders() {
                     </div>
                     <div className="space-y-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                   </div>
-                  {dealerId && isOverdue(dealerId) && (
+                  {alterId && (
+                    <div className="space-y-2">
+                      <Label>Alter reason *</Label>
+                      <Input value={alterReason} onChange={(e) => setAlterReason(e.target.value)} placeholder="Why is this order being altered?" required />
+                    </div>
+                  )}
+                  {!alterId && dealerId && isOverdue(dealerId) && (
                     <Alert variant="destructive">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription>
@@ -201,7 +207,7 @@ export default function Orders() {
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
                   <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + (i.qty * i.rate - i.discount_amount - (i.qty * i.rate * i.discount_pct / 100)), 0).toLocaleString("en-IN")}</div>
-                  <Button type="submit" className="w-full" disabled={createOrder.isPending || isOverdue(dealerId)}>{createOrder.isPending ? "Creating..." : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
+                  <Button type="submit" className="w-full" disabled={saveOrder.isPending || (!alterId && isOverdue(dealerId))}>{saveOrder.isPending ? "Saving..." : alterId ? "Alter Order" : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
                 </form>
               </DialogContent>
             </Dialog>
