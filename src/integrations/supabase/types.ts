@@ -921,6 +921,30 @@ export type Database = {
           },
         ]
       }
+      dealer_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          dealer_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          dealer_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          dealer_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       dealer_visits: {
         Row: {
           activity_type: string
