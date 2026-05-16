@@ -290,10 +290,10 @@ export default function Invoices() {
           <div><h1 className="text-2xl font-bold tracking-tight">Invoices</h1><p className="text-muted-foreground">GST-compliant invoicing</p></div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportToCsv("invoices.csv", filtered.map((i: any) => ({ invoice_number: i.invoice_number, dealer: i.dealers?.name, date: i.invoice_date, subtotal: i.subtotal, cgst: i.cgst_total, sgst: i.sgst_total, igst: i.igst_total, total: i.total_amount, paid: i.amount_paid, status: i.status })), [{ key: "invoice_number", label: "Invoice #" }, { key: "dealer", label: "Dealer" }, { key: "date", label: "Date" }, { key: "subtotal", label: "Subtotal" }, { key: "cgst", label: "CGST" }, { key: "sgst", label: "SGST" }, { key: "igst", label: "IGST" }, { key: "total", label: "Total" }, { key: "paid", label: "Paid" }, { key: "status", label: "Status" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Invoice</Button></DialogTrigger>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setAlteringFrom(null); }}>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Invoice</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{alteringFrom ? `Alter Invoice ${alteringFrom.number} → new` : "Create Invoice"}</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); createInvoice.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
