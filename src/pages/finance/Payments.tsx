@@ -181,10 +181,10 @@ export default function Payments() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="text-2xl font-bold tracking-tight">Payments</h1><p className="text-muted-foreground">Record payments from dealers with TDS/TCS</p></div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setAlteringFrom(null); }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Record Payment</Button></DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{alteringFrom ? `Alter Payment ${alteringFrom.label} → new` : "Record Payment"}</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createPayment.mutate(); }} className="space-y-4">
                 <div className="space-y-2"><Label>Dealer *</Label><Select value={dealerId} onValueChange={setDealerId}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{dealers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
                 <div className="grid grid-cols-2 gap-4">
