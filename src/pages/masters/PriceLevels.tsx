@@ -106,7 +106,7 @@ export default function PriceLevels() {
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm({ name: "", description: "", is_default: false, sort_order: 0 }); } }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Level</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editId ? "Alter Price Level" : "Create"}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editId ? "Alter Price Level" : "Create Price Level"}</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-1">
                   <Label>Name <span className="text-destructive">*</span></Label>

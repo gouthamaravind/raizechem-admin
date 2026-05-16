@@ -174,7 +174,7 @@ export default function Suppliers() {
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); } }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Alter Supplier" : "Create"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Supplier" : "Create Supplier"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <fieldset className="space-y-3">
                     <legend className="text-sm font-semibold text-foreground">Basic Information</legend>

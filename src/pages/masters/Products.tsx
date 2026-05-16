@@ -220,7 +220,7 @@ export default function Products() {
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setFormLevelPrices({}); } }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Alter Product" : "Create"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Product" : "Create Product"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Product Info */}
                   <fieldset className="space-y-3">

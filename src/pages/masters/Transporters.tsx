@@ -159,7 +159,7 @@ export default function Transporters() {
           <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setGstVerifiedAt(null); } }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>{editId ? "Alter Transporter" : "Create"}</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editId ? "Alter Transporter" : "Create Transporter"}</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-5">
                 <fieldset className="space-y-3">
                   <legend className="text-sm font-semibold text-foreground">Basic Information</legend>
