@@ -142,11 +142,46 @@ export default function Invoices() {
   const roundOff = Math.round(grandTotal) - grandTotal;
   const roundedTotal = Math.round(grandTotal);
 
+  const startAlter = async (invId: string, invNo: string) => {
+    // fetch invoice header
+    const { data: inv } = await supabase.from("invoices").select("*").eq("id", invId).single();
+    if (!inv) { toast.error("Invoice not found"); return; }
+    const { data: invItems } = await supabase.from("invoice_items").select("*").eq("invoice_id", invId);
+    setDealerId(inv.dealer_id);
+    setInvoiceDate(new Date().toISOString().split("T")[0]);
+    setTransportMode(inv.transport_mode || "");
+    setVehicleNo(inv.vehicle_no || "");
+    setDispatchFrom(inv.dispatch_from || "");
+    setDeliveryTo(inv.delivery_to || "");
+    setItems((invItems || []).map((it: any) => ({
+      product_id: it.product_id,
+      batch_id: it.batch_id,
+      qty: Number(it.qty),
+      rate: Number(it.rate),
+      gst_rate: Number(it.gst_rate ?? 18),
+      hsn_code: it.hsn_code || "",
+      discount_pct: Number(it.discount_pct ?? 0),
+      discount_amount: Number(it.discount_amount ?? 0),
+    })));
+    setAdjustAdvance(false); setAdvanceAdjustAmount(0);
+    setDialogOpen(true);
+  };
+
   const createInvoice = useMutation({
     mutationFn: async () => {
       if (!dealerId) throw new Error("Select dealer");
       const validItems = computedItems.filter((i) => i.product_id && i.batch_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item with batch");
+
+      // ALTER: void the original first so its stock & ledger are restored before the new doc consumes them.
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_invoice_atomic" as any, {
+          p_invoice_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original invoice: " + vErr.message);
+      }
 
       const dueDate = selectedDealer?.payment_terms_days
         ? new Date(Date.now() + Number(selectedDealer.payment_terms_days) * 86400000).toISOString().split("T")[0]
@@ -196,6 +231,24 @@ export default function Invoices() {
           if (allocErr) toast.error("Invoice created but advance allocation failed: " + allocErr.message);
         }
       }
+
+      // ALTER: write audit linking old → new
+      if (alteringFrom && data) {
+        const newInvoiceId = (data as any).invoice_id;
+        const newInvoiceNumber = (data as any).invoice_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "invoices",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: {
+            alter_reason: alteringFrom.reason,
+            replaced_by_id: newInvoiceId,
+            replaced_by_number: newInvoiceNumber,
+            strategy: "void+create",
+          },
+        });
+      }
     },
     onSuccess: async () => {
       // If converting from an order, mark it as dispatched
@@ -209,12 +262,14 @@ export default function Invoices() {
       qc.invalidateQueries({ queryKey: ["batches-available"] });
       qc.invalidateQueries({ queryKey: ["advance-receipts"] });
       qc.invalidateQueries({ queryKey: ["dealer-advance-balance"] });
-      
+
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); setDealerId("");
       setItems([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
       setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo("");
       setAdjustAdvance(false); setAdvanceAdjustAmount(0);
-      toast.success("Invoice created with GST and ledger entry");
+      setAlteringFrom(null);
+      toast.success(wasAlter ? "Invoice altered — original voided, replacement created" : "Invoice created with GST and ledger entry");
     },
     onError: (e: Error) => toast.error(e.message),
   });
