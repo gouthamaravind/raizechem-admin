@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import { VoidDialog } from "@/components/VoidDialog";
 import { AdvanceCreateForm } from "@/components/finance/AdvanceCreateForm";
 import { AdvanceAllocationsView } from "@/components/finance/AdvanceAllocationsView";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 export default function Advances() {
   const { hasRole } = useAuth();
