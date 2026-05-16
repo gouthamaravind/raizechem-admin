@@ -205,6 +205,7 @@ export default function PurchaseOrders() {
                               <Button size="sm" variant="default" onClick={() => handleConvertToPI(o)} title="Convert to Purchase Invoice"><FileText className="h-3.5 w-3.5 mr-1" />Invoice</Button>
                             </>
                           )}
+                          {o.status !== "cancelled" && o.status !== "received" && <AlterButton onClick={() => openAlter(o)} />}
                         </div>
                       </TableCell>
                     </TableRow>
