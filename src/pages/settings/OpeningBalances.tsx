@@ -149,7 +149,7 @@ export default function OpeningBalances() {
           <Dialog open={dialogOpen} onOpenChange={(v) => { if (!v) resetForm(); else setDialogOpen(true); }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>{editId ? "Edit" : "Add"} Opening Balance</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{editId ? "Alter" : "Create"} Opening Balance</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); saveMutation.mutate(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Entity Type</Label>
