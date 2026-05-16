@@ -25,7 +25,7 @@ import { AlterButton } from "@/components/tally/AlterButton";
 type LineItem = { product_id: string; qty: number; rate: number; discount_pct: number; discount_amount: number };
 
 export default function Orders() {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
