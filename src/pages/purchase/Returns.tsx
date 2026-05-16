@@ -80,6 +80,15 @@ export default function PurchaseReturns() {
       const validItems = items.filter((i) => i.qty > 0);
       if (!piId || validItems.length === 0) throw new Error("Select invoice and return qty");
 
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_debit_note_atomic" as any, {
+          p_dn_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original debit note: " + vErr.message);
+      }
+
       const computedItems = validItems.map((item) => {
         const amount = item.qty * item.rate;
         const gst = calculateGST(amount, item.gst_rate, supplierStateCode);
@@ -99,17 +108,45 @@ export default function PurchaseReturns() {
         p_items: computedItems,
       });
       if (error) throw error;
+
+      if (alteringFrom && data) {
+        const newDnId = (data as any).debit_note_id || (data as any).dn_id;
+        const newDnNumber = (data as any).debit_note_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "debit_notes",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: { alter_reason: alteringFrom.reason, replaced_by_id: newDnId, replaced_by_number: newDnNumber, strategy: "void+create" },
+        });
+      }
       return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["debit-notes"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["supplier-ledger"] });
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); setPiId(""); setReason(""); setItems([]);
-      toast.success("Debit note created, stock reversed");
+      setAlteringFrom(null);
+      toast.success(wasAlter ? "Debit note altered — original voided, replacement created" : "Debit note created, stock reversed");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startAlter = async (dnId: string) => {
+    const { data: dn } = await supabase.from("debit_notes").select("*").eq("id", dnId).single();
+    if (!dn) { toast.error("Debit note not found"); return; }
+    const { data: dnItems } = await supabase.from("debit_note_items").select("*").eq("debit_note_id", dnId);
+    setPiId(dn.purchase_invoice_id);
+    setReason(dn.reason || "");
+    setItems((dnItems || []).map((it: any) => ({
+      product_id: it.product_id, batch_id: it.batch_id,
+      qty: Number(it.qty), rate: Number(it.rate),
+      gst_rate: Number(it.gst_rate ?? 18), hsn_code: it.hsn_code || "",
+    })));
+    setDialogOpen(true);
+  };
 
   const filtered = debitNotes.filter((dn: any) => {
     const s = search.toLowerCase();
