@@ -158,10 +158,10 @@ export default function PurchaseReturns() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="text-2xl font-bold tracking-tight">Purchase Returns</h1><p className="text-muted-foreground">Process returns and debit notes</p></div>
-          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setPiId(""); setItems([]); setReason(""); } }}>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setPiId(""); setItems([]); setReason(""); setAlteringFrom(null); } }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Return</Button></DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Create Debit Note</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{alteringFrom ? `Alter Debit Note ${alteringFrom.number} → new` : "Create Debit Note"}</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createReturn.mutate(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Purchase Invoice *</Label>
