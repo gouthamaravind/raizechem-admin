@@ -282,6 +282,18 @@ export default function PurchaseInvoices() {
         isPending={voidMutation.isPending}
         title={`Purchase Invoice ${voidTarget?.label || ""}`}
       />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Purchase Invoice ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, number: alterTarget.label, reason });
+          startAlter(alterTarget.id);
+          setAlterTarget(null);
+        }}
+      />
     </DashboardLayout>
   );
 }
