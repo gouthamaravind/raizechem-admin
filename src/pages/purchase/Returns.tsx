@@ -17,15 +17,19 @@ import { toast } from "sonner";
 import { calculateGST } from "@/lib/gst";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 type ReturnItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string };
 
 export default function PurchaseReturns() {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; number: string; reason: string } | null>(null);
 
   const voidMutation = useVoidTransaction({ table: "debit_notes", invalidateKeys: [["debit-notes"]] });
   const canVoid = hasRole("admin") || hasRole("accounts");
@@ -76,6 +80,15 @@ export default function PurchaseReturns() {
       const validItems = items.filter((i) => i.qty > 0);
       if (!piId || validItems.length === 0) throw new Error("Select invoice and return qty");
 
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_debit_note_atomic" as any, {
+          p_dn_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original debit note: " + vErr.message);
+      }
+
       const computedItems = validItems.map((item) => {
         const amount = item.qty * item.rate;
         const gst = calculateGST(amount, item.gst_rate, supplierStateCode);
@@ -95,17 +108,45 @@ export default function PurchaseReturns() {
         p_items: computedItems,
       });
       if (error) throw error;
+
+      if (alteringFrom && data) {
+        const newDnId = (data as any).debit_note_id || (data as any).dn_id;
+        const newDnNumber = (data as any).debit_note_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "debit_notes",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: { alter_reason: alteringFrom.reason, replaced_by_id: newDnId, replaced_by_number: newDnNumber, strategy: "void+create" },
+        });
+      }
       return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["debit-notes"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["supplier-ledger"] });
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); setPiId(""); setReason(""); setItems([]);
-      toast.success("Debit note created, stock reversed");
+      setAlteringFrom(null);
+      toast.success(wasAlter ? "Debit note altered — original voided, replacement created" : "Debit note created, stock reversed");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startAlter = async (dnId: string) => {
+    const { data: dn } = await supabase.from("debit_notes").select("*").eq("id", dnId).single();
+    if (!dn) { toast.error("Debit note not found"); return; }
+    const { data: dnItems } = await supabase.from("debit_note_items").select("*").eq("debit_note_id", dnId);
+    setPiId(dn.purchase_invoice_id);
+    setReason(dn.reason || "");
+    setItems((dnItems || []).map((it: any) => ({
+      product_id: it.product_id, batch_id: it.batch_id,
+      qty: Number(it.qty), rate: Number(it.rate),
+      gst_rate: Number(it.gst_rate ?? 18), hsn_code: it.hsn_code || "",
+    })));
+    setDialogOpen(true);
+  };
 
   const filtered = debitNotes.filter((dn: any) => {
     const s = search.toLowerCase();
@@ -117,10 +158,10 @@ export default function PurchaseReturns() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="text-2xl font-bold tracking-tight">Purchase Returns</h1><p className="text-muted-foreground">Process returns and debit notes</p></div>
-          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setPiId(""); setItems([]); setReason(""); } }}>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setPiId(""); setItems([]); setReason(""); setAlteringFrom(null); } }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Return</Button></DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Create Debit Note</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{alteringFrom ? `Alter Debit Note ${alteringFrom.number} → new` : "Create Debit Note"}</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createReturn.mutate(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Purchase Invoice *</Label>
@@ -165,7 +206,10 @@ export default function PurchaseReturns() {
                       <TableCell>₹{Number(dn.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={dn.status === "void" ? "destructive" : "default"}>{dn.status || "active"}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{dn.reason || "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-1">
+                        {isAdmin && dn.status !== "void" && (
+                          <AlterButton onClick={() => setAlterTarget({ id: dn.id, label: dn.debit_note_number })} />
+                        )}
                         {canVoid && dn.status !== "void" && (
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: dn.id, label: dn.debit_note_number })}><Ban className="h-4 w-4" /></Button>
                         )}
@@ -185,6 +229,18 @@ export default function PurchaseReturns() {
         onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
         isPending={voidMutation.isPending}
         title={`Debit Note ${voidTarget?.label || ""}`}
+      />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Debit Note ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, number: alterTarget.label, reason });
+          startAlter(alterTarget.id);
+          setAlterTarget(null);
+        }}
       />
     </DashboardLayout>
   );

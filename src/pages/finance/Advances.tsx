@@ -18,9 +18,11 @@ import { toast } from "sonner";
 import { VoidDialog } from "@/components/VoidDialog";
 import { AdvanceCreateForm } from "@/components/finance/AdvanceCreateForm";
 import { AdvanceAllocationsView } from "@/components/finance/AdvanceAllocationsView";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 export default function Advances() {
-  const { hasRole } = useAuth();
+  const { hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -28,6 +30,8 @@ export default function Advances() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
   const [allocViewId, setAllocViewId] = useState<string | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; receipt_number: string; reason: string; initial: any } | null>(null);
 
   const canManage = hasRole("admin") || hasRole("accounts");
   const pg = usePagination();
@@ -84,11 +88,17 @@ export default function Advances() {
             <p className="text-muted-foreground">Tally-style advance collections from dealers</p>
           </div>
           {canManage && (
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setAlteringFrom(null); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Advance</Button></DialogTrigger>
               <DialogContent className="max-w-lg">
-                <DialogHeader><DialogTitle>Create Advance Receipt</DialogTitle></DialogHeader>
-                <AdvanceCreateForm dealers={dealers} onSuccess={() => setDialogOpen(false)} />
+                <DialogHeader><DialogTitle>{alteringFrom ? `Alter Advance ${alteringFrom.receipt_number} → new` : "Create Advance Receipt"}</DialogTitle></DialogHeader>
+                <AdvanceCreateForm
+                  key={alteringFrom?.id || "new"}
+                  dealers={dealers}
+                  alteringFrom={alteringFrom ? { id: alteringFrom.id, receipt_number: alteringFrom.receipt_number, reason: alteringFrom.reason } : null}
+                  initial={alteringFrom?.initial || null}
+                  onSuccess={() => { setDialogOpen(false); setAlteringFrom(null); }}
+                />
               </DialogContent>
             </Dialog>
           )}
@@ -154,6 +164,9 @@ export default function Advances() {
                           <TableCell><Badge variant={statusVariant(a.status)}>{a.status}</Badge></TableCell>
                           <TableCell className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => setAllocViewId(a.id)} title="View allocations"><Eye className="h-4 w-4" /></Button>
+                            {isAdmin && a.status !== "VOID" && (
+                              <AlterButton onClick={() => setAlterTarget({ id: a.id, label: a.receipt_number })} />
+                            )}
                             {canManage && a.status !== "VOID" && (
                               <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: a.id, label: a.receipt_number })}><Ban className="h-4 w-4" /></Button>
                             )}
@@ -178,6 +191,31 @@ export default function Advances() {
         onConfirm={voidAdvance}
         isPending={false}
         title={`Advance ${voidTarget?.label || ""}`}
+      />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Advance ${alterTarget?.label || ""}`}
+        onConfirm={async (reason) => {
+          if (!alterTarget) return;
+          const { data: a } = await supabase.from("advance_receipts" as any).select("*").eq("id", alterTarget.id).single();
+          if (!a) { toast.error("Advance not found"); setAlterTarget(null); return; }
+          setAlteringFrom({
+            id: alterTarget.id,
+            receipt_number: alterTarget.label,
+            reason,
+            initial: {
+              dealer_id: (a as any).dealer_id,
+              amount: Number((a as any).gross_amount),
+              payment_mode: (a as any).payment_mode,
+              reference_number: (a as any).reference_number || "",
+              notes: (a as any).notes || "",
+            },
+          });
+          setAlterTarget(null);
+          setDialogOpen(true);
+        }}
       />
     </DashboardLayout>
   );

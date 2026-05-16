@@ -18,13 +18,17 @@ import { Search, Plus, Ban, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 export default function Payments() {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
   const [allocViewId, setAllocViewId] = useState<string | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; label: string; reason: string } | null>(null);
 
   const voidMutation = useVoidTransaction({
     table: "payments",
@@ -80,6 +84,16 @@ export default function Payments() {
     mutationFn: async () => {
       if (!dealerId || amount <= 0) throw new Error("Select dealer and enter amount");
 
+      // ALTER: void original first (reverses allocations + ledger) before recording new payment
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_payment_atomic" as any, {
+          p_payment_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original payment: " + vErr.message);
+      }
+
       const { data: paymentResult, error } = await supabase.rpc("record_payment_atomic" as any, {
         p_dealer_id: dealerId,
         p_payment_date: paymentDate,
@@ -102,6 +116,17 @@ export default function Payments() {
         const { data: proRataDiscount } = await supabase.rpc("apply_prorata_credit" as any, {
           p_payment_id: paymentId,
         });
+
+        if (alteringFrom) {
+          await supabase.from("audit_logs" as any).insert({
+            table_name: "payments",
+            record_id: alteringFrom.id,
+            action: "ALTER",
+            actor_user_id: user?.id,
+            new_data: { alter_reason: alteringFrom.reason, replaced_by_id: paymentId, strategy: "void+create" },
+          });
+        }
+
         return proRataDiscount as number | null;
       }
       return null;
@@ -111,8 +136,12 @@ export default function Payments() {
       qc.invalidateQueries({ queryKey: ["invoices"] });
       qc.invalidateQueries({ queryKey: ["outstanding-invoices"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); resetForm();
-      if (proRataDiscount && proRataDiscount > 0) {
+      setAlteringFrom(null);
+      if (wasAlter) {
+        toast.success("Payment altered — original voided, replacement recorded");
+      } else if (proRataDiscount && proRataDiscount > 0) {
         toast.success(`Payment recorded! Pro rata credit of ₹${Number(proRataDiscount).toLocaleString("en-IN")} applied.`);
       } else {
         toast.success("Payment recorded and applied to invoices");
@@ -120,6 +149,20 @@ export default function Payments() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startAlter = async (paymentId: string) => {
+    const { data: p } = await supabase.from("payments").select("*").eq("id", paymentId).single();
+    if (!p) { toast.error("Payment not found"); return; }
+    setDealerId(p.dealer_id);
+    setAmount(Number(p.amount));
+    setMode(p.payment_mode || "bank_transfer");
+    setRefNo(p.reference_number || "");
+    setNotes(p.notes || "");
+    setPaymentDate(new Date().toISOString().split("T")[0]);
+    setTdsRate(Number(p.tds_rate ?? 0));
+    setTcsRate(Number(p.tcs_rate ?? 0));
+    setDialogOpen(true);
+  };
 
   const resetForm = () => {
     setDealerId(""); setAmount(0); setMode("bank_transfer"); setRefNo(""); setNotes("");
@@ -138,10 +181,10 @@ export default function Payments() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="text-2xl font-bold tracking-tight">Payments</h1><p className="text-muted-foreground">Record payments from dealers with TDS/TCS</p></div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setAlteringFrom(null); }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Record Payment</Button></DialogTrigger>
             <DialogContent className="max-w-lg">
-              <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{alteringFrom ? `Alter Payment ${alteringFrom.label} → new` : "Record Payment"}</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createPayment.mutate(); }} className="space-y-4">
                 <div className="space-y-2"><Label>Dealer *</Label><Select value={dealerId} onValueChange={setDealerId}><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger><SelectContent>{dealers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select></div>
                 <div className="grid grid-cols-2 gap-4">
@@ -189,6 +232,9 @@ export default function Payments() {
                         <TableCell><Badge variant={p.status === "void" ? "destructive" : "default"}>{p.status || "active"}</Badge></TableCell>
                         <TableCell className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setAllocViewId(p.id)} title="View allocations"><Eye className="h-4 w-4" /></Button>
+                          {isAdmin && p.status !== "void" && (
+                            <AlterButton onClick={() => setAlterTarget({ id: p.id, label: `₹${Number(p.amount).toLocaleString("en-IN")}` })} />
+                          )}
                           {canVoid && p.status !== "void" && (
                             <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: p.id, label: `₹${Number(p.amount).toLocaleString("en-IN")}` })}><Ban className="h-4 w-4" /></Button>
                           )}
@@ -271,6 +317,18 @@ export default function Payments() {
         onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
         isPending={voidMutation.isPending}
         title={`Payment ${voidTarget?.label || ""}`}
+      />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Payment ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, label: alterTarget.label, reason });
+          startAlter(alterTarget.id);
+          setAlterTarget(null);
+        }}
       />
     </DashboardLayout>
   );

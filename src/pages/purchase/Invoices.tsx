@@ -18,15 +18,19 @@ import { exportToCsv } from "@/lib/csv-export";
 import { calculateGST } from "@/lib/gst";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 type PIItem = { product_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; batch_no: string; mfg_date: string; exp_date: string };
 
 export default function PurchaseInvoices() {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const location = useLocation();
   const [search, setSearch] = useState("");
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; number: string; reason: string } | null>(null);
 
   const voidMutation = useVoidTransaction({ table: "purchase_invoices", invalidateKeys: [["purchase-invoices"]] });
   const canVoid = hasRole("admin") || hasRole("accounts");
@@ -89,6 +93,16 @@ export default function PurchaseInvoices() {
       const validItems = computedItems.filter((i) => i.product_id && i.qty > 0);
       if (validItems.length === 0) throw new Error("Add at least one valid item");
 
+      // ALTER: void original first to restore stock + ledger before new doc consumes them
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_purchase_invoice_atomic" as any, {
+          p_pi_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original PI: " + vErr.message);
+      }
+
       const rpcItems = validItems.map((i) => ({
         product_id: i.product_id, batch_no: i.batch_no,
         mfg_date: i.mfg_date || null, exp_date: i.exp_date || null,
@@ -97,7 +111,7 @@ export default function PurchaseInvoices() {
         igst_amount: i.igst, total_amount: i.totalWithGst,
       }));
 
-      const { error } = await supabase.rpc("create_purchase_invoice_atomic" as any, {
+      const { data, error } = await supabase.rpc("create_purchase_invoice_atomic" as any, {
         p_supplier_id: supplierId,
         p_pi_number: piNumber,
         p_pi_date: piDate,
@@ -110,17 +124,51 @@ export default function PurchaseInvoices() {
         p_items: rpcItems,
       });
       if (error) throw error;
+
+      if (alteringFrom && data) {
+        const newPiId = (data as any).pi_id || (data as any).purchase_invoice_id;
+        const newPiNumber = (data as any).pi_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "purchase_invoices",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: { alter_reason: alteringFrom.reason, replaced_by_id: newPiId, replaced_by_number: newPiNumber, strategy: "void+create" },
+        });
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["purchase-invoices"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["supplier-ledger"] });
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); setSupplierId(""); setPiNumber("");
       setItems([{ product_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", batch_no: "", mfg_date: "", exp_date: "" }]);
-      toast.success("Purchase invoice created — stock added automatically");
+      setAlteringFrom(null);
+      toast.success(wasAlter ? "Purchase invoice altered — original voided, replacement created" : "Purchase invoice created — stock added automatically");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startAlter = async (piId: string) => {
+    const { data: pi } = await supabase.from("purchase_invoices").select("*").eq("id", piId).single();
+    if (!pi) { toast.error("Purchase invoice not found"); return; }
+    const { data: piItems } = await supabase.from("purchase_invoice_items").select("*, product_batches(batch_no, mfg_date, exp_date)").eq("purchase_invoice_id", piId);
+    setSupplierId(pi.supplier_id);
+    setPiNumber(pi.pi_number + "-R");
+    setPiDate(new Date().toISOString().split("T")[0]);
+    setItems((piItems || []).map((it: any) => ({
+      product_id: it.product_id,
+      qty: Number(it.qty),
+      rate: Number(it.rate),
+      gst_rate: Number(it.gst_rate ?? 18),
+      hsn_code: it.hsn_code || "",
+      batch_no: it.product_batches?.batch_no || "",
+      mfg_date: it.product_batches?.mfg_date || "",
+      exp_date: it.product_batches?.exp_date || "",
+    })));
+    setDialogOpen(true);
+  };
 
   const addItem = () => setItems([...items, { product_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", batch_no: "", mfg_date: "", exp_date: "" }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
@@ -138,10 +186,10 @@ export default function PurchaseInvoices() {
           <div><h1 className="text-2xl font-bold tracking-tight">Purchase Invoices</h1><p className="text-muted-foreground">Record purchases with GST — auto stock-in</p></div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportToCsv("purchase-invoices.csv", filtered.map((i: any) => ({ pi_number: i.pi_number, supplier: i.suppliers?.name, date: i.pi_date, subtotal: i.subtotal, cgst: i.cgst_total, sgst: i.sgst_total, igst: i.igst_total, total: i.total_amount, status: i.status })), [{ key: "pi_number", label: "PI #" }, { key: "supplier", label: "Supplier" }, { key: "date", label: "Date" }, { key: "subtotal", label: "Subtotal" }, { key: "cgst", label: "CGST" }, { key: "sgst", label: "SGST" }, { key: "igst", label: "IGST" }, { key: "total", label: "Total" }, { key: "status", label: "Status" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setAlteringFrom(null); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Purchase Invoice</Button></DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Purchase Invoice</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{alteringFrom ? `Alter Purchase Invoice ${alteringFrom.number} → new` : "Create Purchase Invoice"}</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); createInvoice.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
@@ -210,7 +258,10 @@ export default function PurchaseInvoices() {
                       <TableCell>₹{Number(inv.igst_total).toFixed(2)}</TableCell>
                       <TableCell className="font-semibold">₹{Number(inv.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={inv.status === "void" ? "destructive" : inv.status === "paid" ? "default" : "secondary"}>{inv.status}</Badge></TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-1">
+                        {isAdmin && inv.status !== "void" && (
+                          <AlterButton onClick={() => setAlterTarget({ id: inv.id, label: inv.pi_number })} />
+                        )}
                         {canVoid && inv.status !== "void" && (
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: inv.id, label: inv.pi_number })}><Ban className="h-4 w-4" /></Button>
                         )}
@@ -230,6 +281,18 @@ export default function PurchaseInvoices() {
         onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
         isPending={voidMutation.isPending}
         title={`Purchase Invoice ${voidTarget?.label || ""}`}
+      />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Purchase Invoice ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, number: alterTarget.label, reason });
+          startAlter(alterTarget.id);
+          setAlterTarget(null);
+        }}
       />
     </DashboardLayout>
   );

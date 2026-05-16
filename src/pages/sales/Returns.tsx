@@ -17,15 +17,19 @@ import { toast } from "sonner";
 import { calculateGST } from "@/lib/gst";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 type ReturnItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string };
 
 export default function Returns() {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; number: string; reason: string } | null>(null);
 
   const voidMutation = useVoidTransaction({ table: "credit_notes", invalidateKeys: [["credit-notes"]] });
   const canVoid = hasRole("admin") || hasRole("accounts");
@@ -77,6 +81,16 @@ export default function Returns() {
       const validItems = items.filter((i) => i.qty > 0);
       if (!invoiceId || validItems.length === 0) throw new Error("Select invoice and return qty");
 
+      // ALTER: void original CN first (restores stock + reverses ledger)
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_credit_note_atomic" as any, {
+          p_cn_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original credit note: " + vErr.message);
+      }
+
       const computedItems = validItems.map((item) => {
         const amount = item.qty * item.rate;
         const gst = calculateGST(amount, item.gst_rate, dealerStateCode);
@@ -96,17 +110,45 @@ export default function Returns() {
         p_items: computedItems,
       });
       if (error) throw error;
+
+      if (alteringFrom && data) {
+        const newCnId = (data as any).credit_note_id || (data as any).cn_id;
+        const newCnNumber = (data as any).credit_note_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "credit_notes",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: { alter_reason: alteringFrom.reason, replaced_by_id: newCnId, replaced_by_number: newCnNumber, strategy: "void+create" },
+        });
+      }
       return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["credit-notes"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); setInvoiceId(""); setReason(""); setItems([]);
-      toast.success("Credit note created, stock restored");
+      setAlteringFrom(null);
+      toast.success(wasAlter ? "Credit note altered — original voided, replacement created" : "Credit note created, stock restored");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startAlter = async (cnId: string) => {
+    const { data: cn } = await supabase.from("credit_notes").select("*").eq("id", cnId).single();
+    if (!cn) { toast.error("Credit note not found"); return; }
+    const { data: cnItems } = await supabase.from("credit_note_items").select("*").eq("credit_note_id", cnId);
+    setInvoiceId(cn.invoice_id);
+    setReason(cn.reason || "");
+    setItems((cnItems || []).map((it: any) => ({
+      product_id: it.product_id, batch_id: it.batch_id,
+      qty: Number(it.qty), rate: Number(it.rate),
+      gst_rate: Number(it.gst_rate ?? 18), hsn_code: it.hsn_code || "",
+    })));
+    setDialogOpen(true);
+  };
 
   const filtered = creditNotes.filter((cn: any) => {
     const s = search.toLowerCase();
@@ -118,10 +160,10 @@ export default function Returns() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div><h1 className="text-2xl font-bold tracking-tight">Sales Returns</h1><p className="text-muted-foreground">Process returns and credit notes</p></div>
-          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setInvoiceId(""); setItems([]); setReason(""); } }}>
+          <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setInvoiceId(""); setItems([]); setReason(""); setAlteringFrom(null); } }}>
             <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Return</Button></DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Create Credit Note</DialogTitle></DialogHeader>
+              <DialogHeader><DialogTitle>{alteringFrom ? `Alter Credit Note ${alteringFrom.number} → new` : "Create Credit Note"}</DialogTitle></DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); createReturn.mutate(); }} className="space-y-4">
                 <div className="space-y-2">
                   <Label>Invoice *</Label>
@@ -166,7 +208,10 @@ export default function Returns() {
                       <TableCell>₹{Number(cn.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={cn.status === "void" ? "destructive" : "default"}>{cn.status || "active"}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{cn.reason || "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-1">
+                        {isAdmin && cn.status !== "void" && (
+                          <AlterButton onClick={() => setAlterTarget({ id: cn.id, label: cn.credit_note_number })} />
+                        )}
                         {canVoid && cn.status !== "void" && (
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: cn.id, label: cn.credit_note_number })}><Ban className="h-4 w-4" /></Button>
                         )}
@@ -186,6 +231,18 @@ export default function Returns() {
         onConfirm={(reason) => { if (voidTarget) voidMutation.mutate({ id: voidTarget.id, reason }, { onSuccess: () => setVoidTarget(null) }); }}
         isPending={voidMutation.isPending}
         title={`Credit Note ${voidTarget?.label || ""}`}
+      />
+
+      <AlterReasonDialog
+        open={!!alterTarget}
+        onOpenChange={(v) => { if (!v) setAlterTarget(null); }}
+        title={`Credit Note ${alterTarget?.label || ""}`}
+        onConfirm={(reason) => {
+          if (!alterTarget) return;
+          setAlteringFrom({ id: alterTarget.id, number: alterTarget.label, reason });
+          startAlter(alterTarget.id);
+          setAlterTarget(null);
+        }}
       />
     </DashboardLayout>
   );
