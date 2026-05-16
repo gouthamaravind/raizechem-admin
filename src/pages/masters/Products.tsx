@@ -218,9 +218,9 @@ export default function Products() {
               { key: "min_stock_alert_qty", label: "Min Alert Qty" },
             ])}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setFormLevelPrices({}); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Product</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Product" : "Add Product"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Product" : "Create"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Product Info */}
                   <fieldset className="space-y-3">
@@ -324,7 +324,7 @@ export default function Products() {
                   </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Product" : "Add Product"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>

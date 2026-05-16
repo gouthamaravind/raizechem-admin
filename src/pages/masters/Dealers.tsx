@@ -378,9 +378,9 @@ export default function Dealers() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); setSameAsBilling(false); setGstWarning(null); setGstVerifiedAt(null); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Dealer</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Dealer" : "Add Dealer"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Dealer" : "Create"}</DialogTitle></DialogHeader>
 
                 {/* GST Warning Banner */}
                 {gstWarning && (
@@ -603,7 +603,7 @@ export default function Dealers() {
                     </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Dealer" : "Add Dealer"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>

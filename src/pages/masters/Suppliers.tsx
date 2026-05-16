@@ -172,9 +172,9 @@ export default function Suppliers() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); setErrors({}); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Supplier</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Supplier" : "Add Supplier"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Supplier" : "Create"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <fieldset className="space-y-3">
                     <legend className="text-sm font-semibold text-foreground">Basic Information</legend>
@@ -241,7 +241,7 @@ export default function Suppliers() {
                   </fieldset>
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Supplier" : "Add Supplier"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>

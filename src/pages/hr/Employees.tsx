@@ -120,9 +120,9 @@ export default function Employees() {
               { key: "pan", label: "PAN" }, { key: "phone", label: "Phone" }, { key: "status", label: "Status" },
             ])}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) { setEditId(null); setForm(emptyForm); } }}>
-              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Add Employee</Button></DialogTrigger>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>{editId ? "Edit Employee" : "Add Employee"}</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{editId ? "Alter Employee" : "Create"}</DialogTitle></DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2 space-y-2"><Label>Name *</Label><Input required value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
@@ -183,7 +183,7 @@ export default function Employees() {
                   )}
 
                   <Button type="submit" className="w-full" disabled={mutation.isPending}>
-                    {mutation.isPending ? "Saving..." : editId ? "Update Employee" : "Add Employee"}
+                    {mutation.isPending ? "Saving..." : editId ? "Alter" : "Create"}
                   </Button>
                 </form>
               </DialogContent>
