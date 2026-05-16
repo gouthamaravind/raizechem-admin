@@ -15,6 +15,7 @@ import { Search, Plus, Trash2, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
+import { AlterButton } from "@/components/tally/AlterButton";
 
 type LineItem = { product_id: string; qty: number; rate: number };
 
@@ -25,6 +26,8 @@ export default function PurchaseOrders() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [alterId, setAlterId] = useState<string | null>(null);
+  const [alterReason, setAlterReason] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0 }]);
