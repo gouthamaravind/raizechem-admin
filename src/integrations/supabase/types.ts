@@ -4159,6 +4159,28 @@ export type Database = {
         }
         Returns: Json
       }
+      alter_order_atomic: {
+        Args: {
+          p_altered_by?: string
+          p_dealer_id: string
+          p_items?: Json
+          p_notes?: string
+          p_order_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      alter_po_atomic: {
+        Args: {
+          p_altered_by?: string
+          p_items?: Json
+          p_notes?: string
+          p_po_id: string
+          p_reason?: string
+          p_supplier_id: string
+        }
+        Returns: Json
+      }
       apply_prorata_credit: { Args: { p_payment_id: string }; Returns: number }
       approve_field_order: {
         Args: { _field_order_id: string; _order_number: string }
