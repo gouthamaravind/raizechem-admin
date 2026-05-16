@@ -22,7 +22,7 @@ import { AlterButton } from "@/components/tally/AlterButton";
 import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 export default function Advances() {
-  const { hasRole } = useAuth();
+  const { hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -30,6 +30,8 @@ export default function Advances() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
   const [allocViewId, setAllocViewId] = useState<string | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; receipt_number: string; reason: string; initial: any } | null>(null);
 
   const canManage = hasRole("admin") || hasRole("accounts");
   const pg = usePagination();
