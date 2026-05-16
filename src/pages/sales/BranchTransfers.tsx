@@ -126,7 +126,6 @@ export default function BranchTransfers() {
 
   const confirmTransfer = useMutation({
     mutationFn: async (transferId: string) => {
-      // Mark as confirmed — in production this would auto-create sale invoice (from) + purchase invoice (to)
       const { error } = await supabase
         .from("branch_transfers")
         .update({ status: "confirmed" })
@@ -135,8 +134,23 @@ export default function BranchTransfers() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["branch-transfers"] });
-      toast.success("Transfer confirmed — invoice pair will be generated");
+      toast.success("Transfer confirmed");
     },
+  });
+
+  const convertToInvoice = useMutation({
+    mutationFn: async (transferId: string) => {
+      const { data, error } = await supabase.rpc("convert_branch_transfer_to_invoice" as any, { p_transfer_id: transferId });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: (invoiceId) => {
+      qc.invalidateQueries({ queryKey: ["branch-transfers"] });
+      toast.success("Sale invoice generated", {
+        action: { label: "Open", onClick: () => window.open(`/sales/invoices/${invoiceId}/print`, "_blank") },
+      });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const addItem = () => setItems([...items, { product_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "" }]);
@@ -275,11 +289,23 @@ export default function BranchTransfers() {
                       <TableCell>₹{Number(t.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={statusColors[t.status] as any}>{t.status}</Badge></TableCell>
                       <TableCell>
-                        {t.status === "draft" && (
-                          <Button size="sm" variant="outline" onClick={() => confirmTransfer.mutate(t.id)}>
-                            Confirm
-                          </Button>
-                        )}
+                        <div className="flex gap-1">
+                          {t.status === "draft" && (
+                            <Button size="sm" variant="outline" onClick={() => confirmTransfer.mutate(t.id)}>
+                              Confirm
+                            </Button>
+                          )}
+                          {(t.status === "draft" || t.status === "confirmed") && !t.sale_invoice_id && (
+                            <Button size="sm" onClick={() => convertToInvoice.mutate(t.id)} disabled={convertToInvoice.isPending}>
+                              → Invoice
+                            </Button>
+                          )}
+                          {t.sale_invoice_id && (
+                            <Button size="sm" variant="ghost" onClick={() => window.open(`/sales/invoices/${t.sale_invoice_id}/print`, "_blank")}>
+                              View Invoice
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
