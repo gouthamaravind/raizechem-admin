@@ -18,15 +18,19 @@ import { exportToCsv } from "@/lib/csv-export";
 import { calculateGST } from "@/lib/gst";
 import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
+import { AlterButton } from "@/components/tally/AlterButton";
+import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
 type PIItem = { product_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; batch_no: string; mfg_date: string; exp_date: string };
 
 export default function PurchaseInvoices() {
-  const { user, hasRole } = useAuth();
+  const { user, hasRole, isAdmin } = useAuth();
   const qc = useQueryClient();
   const location = useLocation();
   const [search, setSearch] = useState("");
   const [voidTarget, setVoidTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alterTarget, setAlterTarget] = useState<{ id: string; label: string } | null>(null);
+  const [alteringFrom, setAlteringFrom] = useState<{ id: string; number: string; reason: string } | null>(null);
 
   const voidMutation = useVoidTransaction({ table: "purchase_invoices", invalidateKeys: [["purchase-invoices"]] });
   const canVoid = hasRole("admin") || hasRole("accounts");
