@@ -208,7 +208,10 @@ export default function Returns() {
                       <TableCell>₹{Number(cn.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={cn.status === "void" ? "destructive" : "default"}>{cn.status || "active"}</Badge></TableCell>
                       <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{cn.reason || "—"}</TableCell>
-                      <TableCell>
+                      <TableCell className="flex gap-1">
+                        {isAdmin && cn.status !== "void" && (
+                          <AlterButton onClick={() => setAlterTarget({ id: cn.id, label: cn.credit_note_number })} />
+                        )}
                         {canVoid && cn.status !== "void" && (
                           <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: cn.id, label: cn.credit_note_number })}><Ban className="h-4 w-4" /></Button>
                         )}
