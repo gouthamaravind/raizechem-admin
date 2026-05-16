@@ -81,6 +81,16 @@ export default function Returns() {
       const validItems = items.filter((i) => i.qty > 0);
       if (!invoiceId || validItems.length === 0) throw new Error("Select invoice and return qty");
 
+      // ALTER: void original CN first (restores stock + reverses ledger)
+      if (alteringFrom) {
+        const { error: vErr } = await supabase.rpc("void_credit_note_atomic" as any, {
+          p_cn_id: alteringFrom.id,
+          p_reason: `ALTER: ${alteringFrom.reason}`,
+          p_voided_by: user?.id,
+        });
+        if (vErr) throw new Error("Could not void original credit note: " + vErr.message);
+      }
+
       const computedItems = validItems.map((item) => {
         const amount = item.qty * item.rate;
         const gst = calculateGST(amount, item.gst_rate, dealerStateCode);
@@ -100,17 +110,45 @@ export default function Returns() {
         p_items: computedItems,
       });
       if (error) throw error;
+
+      if (alteringFrom && data) {
+        const newCnId = (data as any).credit_note_id || (data as any).cn_id;
+        const newCnNumber = (data as any).credit_note_number;
+        await supabase.from("audit_logs" as any).insert({
+          table_name: "credit_notes",
+          record_id: alteringFrom.id,
+          action: "ALTER",
+          actor_user_id: user?.id,
+          new_data: { alter_reason: alteringFrom.reason, replaced_by_id: newCnId, replaced_by_number: newCnNumber, strategy: "void+create" },
+        });
+      }
       return data;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["credit-notes"] });
       qc.invalidateQueries({ queryKey: ["batches"] });
       qc.invalidateQueries({ queryKey: ["ledger"] });
+      const wasAlter = !!alteringFrom;
       setDialogOpen(false); setInvoiceId(""); setReason(""); setItems([]);
-      toast.success("Credit note created, stock restored");
+      setAlteringFrom(null);
+      toast.success(wasAlter ? "Credit note altered — original voided, replacement created" : "Credit note created, stock restored");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startAlter = async (cnId: string) => {
+    const { data: cn } = await supabase.from("credit_notes").select("*").eq("id", cnId).single();
+    if (!cn) { toast.error("Credit note not found"); return; }
+    const { data: cnItems } = await supabase.from("credit_note_items").select("*").eq("credit_note_id", cnId);
+    setInvoiceId(cn.invoice_id);
+    setReason(cn.reason || "");
+    setItems((cnItems || []).map((it: any) => ({
+      product_id: it.product_id, batch_id: it.batch_id,
+      qty: Number(it.qty), rate: Number(it.rate),
+      gst_rate: Number(it.gst_rate ?? 18), hsn_code: it.hsn_code || "",
+    })));
+    setDialogOpen(true);
+  };
 
   const filtered = creditNotes.filter((cn: any) => {
     const s = search.toLowerCase();
