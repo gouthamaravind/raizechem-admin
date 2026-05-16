@@ -59,10 +59,10 @@ export default function Orders() {
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
 
-  const createOrder = useMutation({
+  const saveOrder = useMutation({
     mutationFn: async () => {
       if (!dealerId || items.length === 0) throw new Error("Select dealer and add items");
-      if (isOverdue(dealerId)) {
+      if (!alterId && isOverdue(dealerId)) {
         const info = getOverdue(dealerId);
         throw new Error(`Order blocked: This dealer has ₹${info?.totalOverdue.toLocaleString("en-IN")} overdue by ${info?.maxDaysOverdue} days (>120 days). Collect payment first.`);
       }
@@ -77,6 +77,20 @@ export default function Orders() {
         discount_amount: i.discount_amount,
       }));
 
+      if (alterId) {
+        if (!alterReason.trim()) throw new Error("Alter reason is required");
+        const { data, error } = await supabase.rpc("alter_order_atomic" as any, {
+          p_order_id: alterId,
+          p_dealer_id: dealerId,
+          p_notes: notes || null,
+          p_items: p_items,
+          p_altered_by: user?.id,
+          p_reason: alterReason,
+        });
+        if (error) throw error;
+        return data;
+      }
+
       const { data, error } = await supabase.rpc("create_order_atomic" as any, {
         p_dealer_id: dealerId,
         p_notes: notes || null,
@@ -89,11 +103,32 @@ export default function Orders() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["orders"] });
-      setDialogOpen(false); setDealerId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
-      toast.success("Order created");
+      setDialogOpen(false); setAlterId(null); setAlterReason("");
+      setDealerId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+      toast.success(alterId ? "Order altered" : "Order created");
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const openAlter = async (o: any) => {
+    const { data: rows } = await supabase.from("order_items").select("*").eq("order_id", o.id);
+    setAlterId(o.id);
+    setDealerId(o.dealer_id);
+    setNotes(o.notes || "");
+    setAlterReason("");
+    setItems((rows || []).map((r: any) => ({
+      product_id: r.product_id, qty: Number(r.qty), rate: Number(r.rate),
+      discount_pct: Number(r.discount_pct || 0), discount_amount: Number(r.discount_amount || 0),
+    })));
+    setDialogOpen(true);
+  };
+
+  const openCreate = () => {
+    setAlterId(null); setAlterReason("");
+    setDealerId(""); setNotes("");
+    setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+    setDialogOpen(true);
+  };
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
