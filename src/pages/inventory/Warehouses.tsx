@@ -125,12 +125,12 @@ export default function Warehouses() {
           <Dialog open={whOpen} onOpenChange={setWhOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => { setForm(emptyWarehouse); setEditId(null); }}>
-                <Plus className="h-4 w-4 mr-2" />Add Warehouse
+                <Plus className="h-4 w-4 mr-2" />Create
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editId ? "Edit" : "Add"} Warehouse</DialogTitle>
+                <DialogTitle>{editId ? "Alter" : "Create"} Warehouse</DialogTitle>
               </DialogHeader>
               <form onSubmit={(e) => { e.preventDefault(); whMutation.mutate(); }} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
