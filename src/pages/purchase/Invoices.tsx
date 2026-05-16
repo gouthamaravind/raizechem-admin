@@ -186,10 +186,10 @@ export default function PurchaseInvoices() {
           <div><h1 className="text-2xl font-bold tracking-tight">Purchase Invoices</h1><p className="text-muted-foreground">Record purchases with GST — auto stock-in</p></div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => exportToCsv("purchase-invoices.csv", filtered.map((i: any) => ({ pi_number: i.pi_number, supplier: i.suppliers?.name, date: i.pi_date, subtotal: i.subtotal, cgst: i.cgst_total, sgst: i.sgst_total, igst: i.igst_total, total: i.total_amount, status: i.status })), [{ key: "pi_number", label: "PI #" }, { key: "supplier", label: "Supplier" }, { key: "date", label: "Date" }, { key: "subtotal", label: "Subtotal" }, { key: "cgst", label: "CGST" }, { key: "sgst", label: "SGST" }, { key: "igst", label: "IGST" }, { key: "total", label: "Total" }, { key: "status", label: "Status" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={dialogOpen} onOpenChange={(v) => { setDialogOpen(v); if (!v) setAlteringFrom(null); }}>
               <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />New Purchase Invoice</Button></DialogTrigger>
               <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader><DialogTitle>Create Purchase Invoice</DialogTitle></DialogHeader>
+                <DialogHeader><DialogTitle>{alteringFrom ? `Alter Purchase Invoice ${alteringFrom.number} → new` : "Create Purchase Invoice"}</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); createInvoice.mutate(); }} className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
