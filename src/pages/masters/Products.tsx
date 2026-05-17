@@ -363,8 +363,8 @@ export default function Products() {
               <div className="overflow-x-auto">
                 <Table>
                    <TableHeader><TableRow>
-                     <TableHead>Name</TableHead><TableHead>HSN</TableHead><TableHead>Unit</TableHead>
-                     <TableHead>GST</TableHead><TableHead>Sale Price</TableHead><TableHead>Price Levels</TableHead>
+                     <TableHead>Name</TableHead><TableHead>Brand</TableHead><TableHead>HSN</TableHead><TableHead>Unit</TableHead>
+                     <TableHead>GST</TableHead><TableHead>Sale Price</TableHead><TableHead>Packs</TableHead><TableHead>Price Levels</TableHead>
                      <TableHead>Category</TableHead><TableHead>Active</TableHead>
                      <TableHead className="w-20"></TableHead>
                    </TableRow></TableHeader>
