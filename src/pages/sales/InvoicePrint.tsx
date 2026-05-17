@@ -44,7 +44,11 @@ function StandardTemplate({ inv, dealer, items, company, isIntra, placeOfSupply 
     <div className="max-w-[210mm] mx-auto p-8 print:p-6 print:pt-0 mt-16 print:mt-0 text-sm">
       <h2 className="text-center text-lg font-bold mb-1">TAX INVOICE</h2>
       <div className="grid grid-cols-2 border border-foreground/30 mb-2">
-        <div className="p-3 border-r border-foreground/30">
+        <div className="p-3 border-r border-foreground/30 flex gap-3">
+          {company?.logo_url && (
+            <img src={company.logo_url} alt="Logo" className="h-16 w-16 object-contain shrink-0" crossOrigin="anonymous" />
+          )}
+          <div className="flex-1">
           <p className="font-bold text-base">{company?.company_name || "Raizechem Pvt Ltd"}</p>
           {company?.legal_name && <p className="text-xs text-muted-foreground">{company.legal_name}</p>}
           <p>{company?.address_line1}{company?.address_line2 ? `, ${company.address_line2}` : ""}</p>
