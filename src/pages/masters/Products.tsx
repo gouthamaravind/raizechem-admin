@@ -13,16 +13,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, Plus, Pencil, Download, Tags } from "lucide-react";
+import { Search, Plus, Pencil, Download, Tags, Package } from "lucide-react";
 import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ProductPacksDialog } from "@/components/products/ProductPacksDialog";
 
 const emptyForm = {
   name: "", slug: "", hsn_code: "", unit: "KG", gst_rate: 18,
   category: "", description: "", sale_price: 0, purchase_price_default: 0,
-  min_stock_alert_qty: 0,
+  min_stock_alert_qty: 0, brand: "",
 };
 const UNITS = ["KG", "L", "MT", "PCS", "DRUM", "BAG", "BOX", "TON", "GM", "ML"];
 const GST_RATES = [0, 5, 12, 18, 28];
@@ -40,6 +41,7 @@ export default function Products() {
   const [formLevelPrices, setFormLevelPrices] = useState<Record<string, string>>({});
   const [pricingProductId, setPricingProductId] = useState<string | null>(null);
   const [levelPrices, setLevelPrices] = useState<Record<string, string>>({});
+  const [packsProduct, setPacksProduct] = useState<any | null>(null);
   const qc = useQueryClient();
   const { branchId } = useBranch();
 
@@ -71,6 +73,17 @@ export default function Products() {
       const { data, error } = await q;
       if (error) throw error;
       return data;
+    },
+  });
+
+  const { data: packCounts = {} } = useQuery({
+    queryKey: ["product_packs_count"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("product_packs").select("product_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((r: any) => { counts[r.product_id] = (counts[r.product_id] || 0) + 1; });
+      return counts;
     },
   });
 
@@ -177,7 +190,7 @@ export default function Products() {
       name: p.name, slug: p.slug || "", hsn_code: p.hsn_code || "", unit: p.unit,
       gst_rate: p.gst_rate, category: p.category || "", description: p.description || "",
       sale_price: p.sale_price || 0, purchase_price_default: p.purchase_price_default || 0,
-      min_stock_alert_qty: p.min_stock_alert_qty || 0,
+      min_stock_alert_qty: p.min_stock_alert_qty || 0, brand: p.brand || "",
     });
     // Pre-fill price levels for editing
     const existing: Record<string, string> = {};
@@ -248,9 +261,15 @@ export default function Products() {
                         </Select>
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label>Description</Label>
-                      <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Optional product description, specifications, safety notes..." rows={2} className="resize-none" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label>Raizechem Brand</Label>
+                        <Input value={form.brand} onChange={(e) => set("brand", e.target.value)} placeholder="e.g. ShieldX, Azotricon" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Description</Label>
+                        <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Optional notes" rows={1} className="resize-none" />
+                      </div>
                     </div>
                   </fieldset>
 
@@ -344,8 +363,8 @@ export default function Products() {
               <div className="overflow-x-auto">
                 <Table>
                    <TableHeader><TableRow>
-                     <TableHead>Name</TableHead><TableHead>HSN</TableHead><TableHead>Unit</TableHead>
-                     <TableHead>GST</TableHead><TableHead>Sale Price</TableHead><TableHead>Price Levels</TableHead>
+                     <TableHead>Name</TableHead><TableHead>Brand</TableHead><TableHead>HSN</TableHead><TableHead>Unit</TableHead>
+                     <TableHead>GST</TableHead><TableHead>Sale Price</TableHead><TableHead>Packs</TableHead><TableHead>Price Levels</TableHead>
                      <TableHead>Category</TableHead><TableHead>Active</TableHead>
                      <TableHead className="w-20"></TableHead>
                    </TableRow></TableHeader>
@@ -355,10 +374,17 @@ export default function Products() {
                        return (
                        <TableRow key={p.id} className={!p.is_active ? "opacity-50" : ""}>
                          <TableCell className="font-medium">{p.name}</TableCell>
+                         <TableCell className="text-xs text-muted-foreground">{p.brand || "—"}</TableCell>
                          <TableCell className="text-xs font-mono text-muted-foreground">{p.hsn_code || "—"}</TableCell>
                          <TableCell>{p.unit}</TableCell>
                          <TableCell>{p.gst_rate}%</TableCell>
                          <TableCell>₹{(p.sale_price || 0).toLocaleString("en-IN")}</TableCell>
+                         <TableCell>
+                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setPacksProduct(p)}>
+                             <Package className="h-3 w-3" />
+                             {(packCounts as any)[p.id] ? `${(packCounts as any)[p.id]} packs` : "Add"}
+                           </Button>
+                         </TableCell>
                          <TableCell>
                            <Popover open={pricingProductId === p.id} onOpenChange={(open) => { if (open) openPricing(p.id); else { setPricingProductId(null); setLevelPrices({}); } }}>
                              <PopoverTrigger asChild>
@@ -409,8 +435,13 @@ export default function Products() {
                </div>
              )}
            </CardContent>
-         </Card>
-       </div>
-     </DashboardLayout>
+          </Card>
+        </div>
+        <ProductPacksDialog
+          open={!!packsProduct}
+          onOpenChange={(v) => { if (!v) setPacksProduct(null); }}
+          product={packsProduct}
+        />
+      </DashboardLayout>
    );
  }

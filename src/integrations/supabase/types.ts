@@ -367,6 +367,7 @@ export type Database = {
           gst_rate: number
           hsn_code: string | null
           id: string
+          pack_id: string | null
           product_id: string
           qty: number
           rate: number
@@ -378,6 +379,7 @@ export type Database = {
           gst_rate?: number
           hsn_code?: string | null
           id?: string
+          pack_id?: string | null
           product_id: string
           qty: number
           rate: number
@@ -389,6 +391,7 @@ export type Database = {
           gst_rate?: number
           hsn_code?: string | null
           id?: string
+          pack_id?: string | null
           product_id?: string
           qty?: number
           rate?: number
@@ -399,6 +402,13 @@ export type Database = {
             columns: ["branch_transfer_id"]
             isOneToOne: false
             referencedRelation: "branch_transfers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_transfer_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
             referencedColumns: ["id"]
           },
           {
@@ -774,6 +784,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           igst_amount: number
+          pack_id: string | null
           product_id: string
           qty: number
           rate: number
@@ -790,6 +801,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           igst_amount?: number
+          pack_id?: string | null
           product_id: string
           qty: number
           rate: number
@@ -806,6 +818,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           igst_amount?: number
+          pack_id?: string | null
           product_id?: string
           qty?: number
           rate?: number
@@ -825,6 +838,13 @@ export type Database = {
             columns: ["credit_note_id"]
             isOneToOne: false
             referencedRelation: "credit_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_note_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
             referencedColumns: ["id"]
           },
           {
@@ -1176,6 +1196,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           igst_amount: number
+          pack_id: string | null
           product_id: string
           qty: number
           rate: number
@@ -1192,6 +1213,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           igst_amount?: number
+          pack_id?: string | null
           product_id: string
           qty: number
           rate: number
@@ -1208,6 +1230,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           igst_amount?: number
+          pack_id?: string | null
           product_id?: string
           qty?: number
           rate?: number
@@ -1227,6 +1250,13 @@ export type Database = {
             columns: ["debit_note_id"]
             isOneToOne: false
             referencedRelation: "debit_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debit_note_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
             referencedColumns: ["id"]
           },
           {
@@ -1593,6 +1623,7 @@ export type Database = {
           expected_rate: number
           field_order_id: string
           id: string
+          pack_id: string | null
           product_id: string
           qty: number
         }
@@ -1601,6 +1632,7 @@ export type Database = {
           expected_rate?: number
           field_order_id: string
           id?: string
+          pack_id?: string | null
           product_id: string
           qty: number
         }
@@ -1609,6 +1641,7 @@ export type Database = {
           expected_rate?: number
           field_order_id?: string
           id?: string
+          pack_id?: string | null
           product_id?: string
           qty?: number
         }
@@ -1618,6 +1651,13 @@ export type Database = {
             columns: ["field_order_id"]
             isOneToOne: false
             referencedRelation: "field_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_order_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
             referencedColumns: ["id"]
           },
           {
@@ -2026,6 +2066,7 @@ export type Database = {
           id: string
           igst_amount: number
           invoice_id: string
+          pack_id: string | null
           product_id: string
           qty: number
           rate: number
@@ -2044,6 +2085,7 @@ export type Database = {
           id?: string
           igst_amount?: number
           invoice_id: string
+          pack_id?: string | null
           product_id: string
           qty: number
           rate: number
@@ -2062,6 +2104,7 @@ export type Database = {
           id?: string
           igst_amount?: number
           invoice_id?: string
+          pack_id?: string | null
           product_id?: string
           qty?: number
           rate?: number
@@ -2081,6 +2124,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
             referencedColumns: ["id"]
           },
           {
@@ -2388,6 +2438,7 @@ export type Database = {
           discount_pct: number
           id: string
           order_id: string
+          pack_id: string | null
           product_id: string
           qty: number
           rate: number
@@ -2399,6 +2450,7 @@ export type Database = {
           discount_pct?: number
           id?: string
           order_id: string
+          pack_id?: string | null
           product_id: string
           qty: number
           rate: number
@@ -2410,6 +2462,7 @@ export type Database = {
           discount_pct?: number
           id?: string
           order_id?: string
+          pack_id?: string | null
           product_id?: string
           qty?: number
           rate?: number
@@ -2420,6 +2473,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
             referencedColumns: ["id"]
           },
           {
@@ -2825,6 +2885,83 @@ export type Database = {
           },
         ]
       }
+      product_packs: {
+        Row: {
+          basic_price: number
+          created_at: string
+          gst_amount: number
+          id: string
+          is_active: boolean
+          margin: number
+          mrp: number
+          pack_label: string
+          packing_cost: number
+          price_finished_goods: number
+          price_inclusive_gst: number
+          product_id: string
+          purchase_price: number
+          scheme_1: number
+          scheme_2: number
+          sort_order: number
+          unit_size: number | null
+          unit_uom: string | null
+          units_per_case: number
+          updated_at: string
+        }
+        Insert: {
+          basic_price?: number
+          created_at?: string
+          gst_amount?: number
+          id?: string
+          is_active?: boolean
+          margin?: number
+          mrp?: number
+          pack_label: string
+          packing_cost?: number
+          price_finished_goods?: number
+          price_inclusive_gst?: number
+          product_id: string
+          purchase_price?: number
+          scheme_1?: number
+          scheme_2?: number
+          sort_order?: number
+          unit_size?: number | null
+          unit_uom?: string | null
+          units_per_case?: number
+          updated_at?: string
+        }
+        Update: {
+          basic_price?: number
+          created_at?: string
+          gst_amount?: number
+          id?: string
+          is_active?: boolean
+          margin?: number
+          mrp?: number
+          pack_label?: string
+          packing_cost?: number
+          price_finished_goods?: number
+          price_inclusive_gst?: number
+          product_id?: string
+          purchase_price?: number
+          scheme_1?: number
+          scheme_2?: number
+          sort_order?: number
+          unit_size?: number | null
+          unit_uom?: string | null
+          units_per_case?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_packs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_price_levels: {
         Row: {
           branch_id: string | null
@@ -2952,6 +3089,7 @@ export type Database = {
       products: {
         Row: {
           branch_id: string | null
+          brand: string | null
           category: string | null
           created_at: string
           created_by: string | null
@@ -2970,6 +3108,7 @@ export type Database = {
         }
         Insert: {
           branch_id?: string | null
+          brand?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
@@ -2988,6 +3127,7 @@ export type Database = {
         }
         Update: {
           branch_id?: string | null
+          brand?: string | null
           category?: string | null
           created_at?: string
           created_by?: string | null
@@ -3051,6 +3191,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           igst_amount: number
+          pack_id: string | null
           product_id: string
           purchase_invoice_id: string
           qty: number
@@ -3067,6 +3208,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           igst_amount?: number
+          pack_id?: string | null
           product_id: string
           purchase_invoice_id: string
           qty: number
@@ -3083,6 +3225,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           igst_amount?: number
+          pack_id?: string | null
           product_id?: string
           purchase_invoice_id?: string
           qty?: number
@@ -3096,6 +3239,13 @@ export type Database = {
             columns: ["batch_id"]
             isOneToOne: false
             referencedRelation: "product_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_invoice_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
             referencedColumns: ["id"]
           },
           {
@@ -3213,6 +3363,7 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          pack_id: string | null
           product_id: string
           purchase_order_id: string
           qty: number
@@ -3222,6 +3373,7 @@ export type Database = {
           amount: number
           created_at?: string
           id?: string
+          pack_id?: string | null
           product_id: string
           purchase_order_id: string
           qty: number
@@ -3231,12 +3383,20 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          pack_id?: string | null
           product_id?: string
           purchase_order_id?: string
           qty?: number
           rate?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_pack_id_fkey"
+            columns: ["pack_id"]
+            isOneToOne: false
+            referencedRelation: "product_packs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "purchase_order_items_product_id_fkey"
             columns: ["product_id"]
