@@ -76,6 +76,17 @@ export default function Products() {
     },
   });
 
+  const { data: packCounts = {} } = useQuery({
+    queryKey: ["product_packs_count"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("product_packs").select("product_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((r: any) => { counts[r.product_id] = (counts[r.product_id] || 0) + 1; });
+      return counts;
+    },
+  });
+
   const categories = [...new Set(products.map((p: any) => p.category).filter(Boolean))];
 
   const validate = (): boolean => {
