@@ -285,16 +285,28 @@ export default function WaybillLog() {
                       <TableCell><Badge variant={statusVariant[w.status] ?? "secondary"}>{w.status}</Badge></TableCell>
                       <TableCell className="text-xs">{w.valid_until ? new Date(w.valid_until).toLocaleString() : "—"}</TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1 flex-wrap">
                           {(w.status === "pending" || w.status === "failed") && (
                             <Button size="sm" variant="outline" onClick={() => generate.mutate(w.id)}>
                               <Send className="h-3 w-3 mr-1" />Push
                             </Button>
                           )}
                           {w.status === "generated" && (
-                            <Button size="sm" variant="ghost" onClick={() => cancel.mutate(w.id)}>
-                              <XCircle className="h-3 w-3 mr-1" />Cancel
-                            </Button>
+                            <>
+                              {w.source_type === "invoice" && (
+                                <Button size="sm" variant="outline" onClick={() => navigate(`/sales/invoices/${w.source_id}/eway-bill`)}>
+                                  <Printer className="h-3 w-3 mr-1" />Print
+                                </Button>
+                              )}
+                              <Button size="sm" variant="outline" asChild>
+                                <a href="https://ewaybillgst.gov.in" target="_blank" rel="noreferrer">
+                                  <ExternalLink className="h-3 w-3 mr-1" />NIC
+                                </a>
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => cancel.mutate(w.id)}>
+                                <XCircle className="h-3 w-3 mr-1" />Cancel
+                              </Button>
+                            </>
                           )}
                         </div>
                       </TableCell>
