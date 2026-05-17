@@ -55,6 +55,7 @@ function StandardTemplate({ inv, dealer, items, company, isIntra, placeOfSupply 
           <p>{company?.city}, {company?.state} - {company?.pincode}</p>
           <p><strong>GSTIN:</strong> {company?.gst_number || "—"}</p>
           <p><strong>State:</strong> {company?.state} (Code: {(company as any)?.state_code || "36"})</p>
+          </div>
         </div>
         <div className="p-3">
           <p className="font-bold">Bill To: {dealer?.name}</p>
