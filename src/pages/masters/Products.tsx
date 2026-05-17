@@ -13,16 +13,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Search, Plus, Pencil, Download, Tags } from "lucide-react";
+import { Search, Plus, Pencil, Download, Tags, Package } from "lucide-react";
 import { AlterButton } from "@/components/tally/AlterButton";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ProductPacksDialog } from "@/components/products/ProductPacksDialog";
 
 const emptyForm = {
   name: "", slug: "", hsn_code: "", unit: "KG", gst_rate: 18,
   category: "", description: "", sale_price: 0, purchase_price_default: 0,
-  min_stock_alert_qty: 0,
+  min_stock_alert_qty: 0, brand: "",
 };
 const UNITS = ["KG", "L", "MT", "PCS", "DRUM", "BAG", "BOX", "TON", "GM", "ML"];
 const GST_RATES = [0, 5, 12, 18, 28];
