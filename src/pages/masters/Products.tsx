@@ -179,7 +179,7 @@ export default function Products() {
       name: p.name, slug: p.slug || "", hsn_code: p.hsn_code || "", unit: p.unit,
       gst_rate: p.gst_rate, category: p.category || "", description: p.description || "",
       sale_price: p.sale_price || 0, purchase_price_default: p.purchase_price_default || 0,
-      min_stock_alert_qty: p.min_stock_alert_qty || 0,
+      min_stock_alert_qty: p.min_stock_alert_qty || 0, brand: p.brand || "",
     });
     // Pre-fill price levels for editing
     const existing: Record<string, string> = {};
