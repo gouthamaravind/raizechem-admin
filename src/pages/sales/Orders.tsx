@@ -53,6 +53,35 @@ export default function Orders() {
     },
   });
   const orders = ordersRaw.slice(0, pg.pageSize);
+  const orderIds = orders.map((o: any) => o.id);
+
+  const { data: orderInvoices = [] } = useQuery({
+    queryKey: ["orders-invoices", orderIds],
+    enabled: orderIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoices")
+        .select("id, order_id, invoice_number, status")
+        .in("order_id", orderIds);
+      return data || [];
+    },
+  });
+  const invoiceIds = (orderInvoices as any[]).map((i: any) => i.id);
+  const { data: invoiceWaybills = [] } = useQuery({
+    queryKey: ["orders-waybills", invoiceIds],
+    enabled: invoiceIds.length > 0,
+    queryFn: async () => {
+      const { data } = await (supabase.from("waybills" as any) as any)
+        .select("id, source_id, status, ewb_number")
+        .eq("source_type", "invoice")
+        .in("source_id", invoiceIds);
+      return data || [];
+    },
+  });
+  const invoiceForOrder = (orderId: string) =>
+    (orderInvoices as any[]).find((i: any) => i.order_id === orderId && i.status !== "voided");
+  const waybillForInvoice = (invoiceId: string) =>
+    (invoiceWaybills as any[]).find((w: any) => w.source_id === invoiceId && w.status === "generated");
 
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
@@ -234,16 +263,38 @@ export default function Orders() {
                       <TableCell>₹{Number(o.total_amount).toLocaleString("en-IN")}</TableCell>
                       <TableCell><Badge variant={statusColors[o.status] as any}>{o.status}</Badge></TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {o.status === "draft" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "confirmed" })}>Confirm</Button>}
-                          {o.status === "confirmed" && (
-                            <>
-                              <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "dispatched" })}>Dispatch</Button>
-                              <Button size="sm" variant="default" onClick={() => handleConvertToInvoice(o)} title="Convert to Invoice"><FileText className="h-3.5 w-3.5 mr-1" />Invoice</Button>
-                            </>
+                        <div className="flex flex-wrap gap-1">
+                          {o.status === "draft" && (
+                            <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "confirmed" })}>Confirm</Button>
                           )}
-                          {o.status === "dispatched" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "delivered" })}>Delivered</Button>}
-                          {o.status !== "cancelled" && <AlterButton onClick={() => openAlter(o)} />}
+                          {o.status === "confirmed" && (() => {
+                            const inv = invoiceForOrder(o.id);
+                            if (!inv) {
+                              return (
+                                <Button size="sm" variant="default" onClick={() => handleConvertToInvoice(o)} title="Create tax invoice">
+                                  <FileText className="h-3.5 w-3.5 mr-1" />Create Invoice
+                                </Button>
+                              );
+                            }
+                            const wb = waybillForInvoice(inv.id);
+                            return (
+                              <>
+                                <Button size="sm" variant="ghost" onClick={() => navigate(`/sales/invoices`)} title={`Invoice ${inv.invoice_number}`}>
+                                  <FileText className="h-3.5 w-3.5 mr-1" />{inv.invoice_number}
+                                </Button>
+                                {!wb && (
+                                  <Button size="sm" variant="outline" onClick={() => navigate("/warehouse/waybills", { state: { prefillInvoiceId: inv.id } })}>
+                                    E-Way Bill
+                                  </Button>
+                                )}
+                                <Button size="sm" variant="default" onClick={() => updateStatus.mutate({ id: o.id, status: "dispatched" })}>
+                                  Mark Dispatched
+                                </Button>
+                              </>
+                            );
+                          })()}
+                          {o.status === "dispatched" && <Button size="sm" variant="outline" onClick={() => updateStatus.mutate({ id: o.id, status: "delivered" })}>Mark Delivered</Button>}
+                          {o.status !== "cancelled" && o.status !== "delivered" && <AlterButton onClick={() => openAlter(o)} />}
                         </div>
                       </TableCell>
                     </TableRow>
