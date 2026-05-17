@@ -41,6 +41,7 @@ export default function Products() {
   const [formLevelPrices, setFormLevelPrices] = useState<Record<string, string>>({});
   const [pricingProductId, setPricingProductId] = useState<string | null>(null);
   const [levelPrices, setLevelPrices] = useState<Record<string, string>>({});
+  const [packsProduct, setPacksProduct] = useState<any | null>(null);
   const qc = useQueryClient();
   const { branchId } = useBranch();
 
