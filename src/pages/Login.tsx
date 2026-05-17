@@ -31,10 +31,6 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateDomain(email)) {
-      toast.error(`Only @${ALLOWED_DOMAIN} emails are allowed`);
-      return;
-    }
     setLoading(true);
     try {
       const { error } = await signIn(email, password);
