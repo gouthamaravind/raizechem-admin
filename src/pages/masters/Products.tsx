@@ -374,10 +374,17 @@ export default function Products() {
                        return (
                        <TableRow key={p.id} className={!p.is_active ? "opacity-50" : ""}>
                          <TableCell className="font-medium">{p.name}</TableCell>
+                         <TableCell className="text-xs text-muted-foreground">{p.brand || "—"}</TableCell>
                          <TableCell className="text-xs font-mono text-muted-foreground">{p.hsn_code || "—"}</TableCell>
                          <TableCell>{p.unit}</TableCell>
                          <TableCell>{p.gst_rate}%</TableCell>
                          <TableCell>₹{(p.sale_price || 0).toLocaleString("en-IN")}</TableCell>
+                         <TableCell>
+                           <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setPacksProduct(p)}>
+                             <Package className="h-3 w-3" />
+                             {(packCounts as any)[p.id] ? `${(packCounts as any)[p.id]} packs` : "Add"}
+                           </Button>
+                         </TableCell>
                          <TableCell>
                            <Popover open={pricingProductId === p.id} onOpenChange={(open) => { if (open) openPricing(p.id); else { setPricingProductId(null); setLevelPrices({}); } }}>
                              <PopoverTrigger asChild>
