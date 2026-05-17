@@ -26,6 +26,7 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
 
 export default function WaybillLog() {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { branchId } = useBranch();
   const location = useLocation();
   const [search, setSearch] = useState("");
