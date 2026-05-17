@@ -435,8 +435,13 @@ export default function Products() {
                </div>
              )}
            </CardContent>
-         </Card>
-       </div>
-     </DashboardLayout>
+          </Card>
+        </div>
+        <ProductPacksDialog
+          open={!!packsProduct}
+          onOpenChange={(v) => { if (!v) setPacksProduct(null); }}
+          product={packsProduct}
+        />
+      </DashboardLayout>
    );
  }
