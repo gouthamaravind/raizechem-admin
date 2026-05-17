@@ -171,11 +171,6 @@ Deno.serve(async (req) => {
         throw new Error("email, password, full_name required");
       }
 
-      // Domain check
-      if (!email.endsWith("@raizechem.in")) {
-        throw new Error("Only @raizechem.in emails allowed");
-      }
-
       const { data: newUser, error } =
         await supabaseAdmin.auth.admin.createUser({
           email,
