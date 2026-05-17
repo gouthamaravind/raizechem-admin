@@ -261,9 +261,15 @@ export default function Products() {
                         </Select>
                       </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label>Description</Label>
-                      <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Optional product description, specifications, safety notes..." rows={2} className="resize-none" />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label>Raizechem Brand</Label>
+                        <Input value={form.brand} onChange={(e) => set("brand", e.target.value)} placeholder="e.g. ShieldX, Azotricon" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>Description</Label>
+                        <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Optional notes" rows={1} className="resize-none" />
+                      </div>
                     </div>
                   </fieldset>
 
