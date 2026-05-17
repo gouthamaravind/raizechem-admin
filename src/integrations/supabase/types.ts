@@ -4305,6 +4305,29 @@ export type Database = {
             }
             Returns: Json
           }
+        | {
+            Args: {
+              p_branch_id?: string
+              p_cgst_total: number
+              p_created_by: string
+              p_dealer_id: string
+              p_delivery_to?: string
+              p_dispatch_from?: string
+              p_due_date?: string
+              p_igst_total: number
+              p_invoice_date: string
+              p_items?: Json
+              p_order_id?: string
+              p_place_of_supply?: string
+              p_round_off?: number
+              p_sgst_total: number
+              p_subtotal: number
+              p_total_amount: number
+              p_transport_mode?: string
+              p_vehicle_no?: string
+            }
+            Returns: Json
+          }
       create_order_atomic:
         | {
             Args: {

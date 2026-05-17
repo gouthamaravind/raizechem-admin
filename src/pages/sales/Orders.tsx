@@ -282,14 +282,13 @@ export default function Orders() {
                                 <Button size="sm" variant="ghost" onClick={() => navigate(`/sales/invoices`)} title={`Invoice ${inv.invoice_number}`}>
                                   <FileText className="h-3.5 w-3.5 mr-1" />{inv.invoice_number}
                                 </Button>
-                                {!wb && (
-                                  <Button size="sm" variant="outline" onClick={() => navigate("/warehouse/waybills", { state: { prefillInvoiceId: inv.id } })}>
-                                    E-Way Bill
+                                {!wb ? (
+                                  <Button size="sm" variant="default" onClick={() => navigate("/warehouse/waybills", { state: { prefillInvoiceId: inv.id } })}>
+                                    Generate E-Way Bill
                                   </Button>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs">EWB: {wb.ewb_number || "—"}</Badge>
                                 )}
-                                <Button size="sm" variant="default" onClick={() => updateStatus.mutate({ id: o.id, status: "dispatched" })}>
-                                  Mark Dispatched
-                                </Button>
                               </>
                             );
                           })()}

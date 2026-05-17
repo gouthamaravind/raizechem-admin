@@ -215,6 +215,8 @@ export default function Invoices() {
         p_due_date: dueDate,
         p_items: itemsPayload,
         p_round_off: roundOff,
+        p_order_id: convertingOrderId,
+        p_branch_id: branchId || null,
       } as any);
       if (error) throw error;
 
@@ -251,9 +253,9 @@ export default function Invoices() {
       }
     },
     onSuccess: async () => {
-      // If converting from an order, mark it as dispatched
+      // Invoice created from an order: keep order as 'confirmed'.
+      // Order will auto-transition to 'dispatched' when E-Way Bill is generated (DB trigger).
       if (convertingOrderId) {
-        await supabase.from("orders").update({ status: "dispatched" as any }).eq("id", convertingOrderId);
         qc.invalidateQueries({ queryKey: ["orders"] });
         setConvertingOrderId(null);
       }
