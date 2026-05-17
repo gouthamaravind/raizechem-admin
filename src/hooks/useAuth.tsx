@@ -29,31 +29,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from("user_roles").select("role").eq("user_id", userId),
       supabase.from("profiles").select("full_name, email, avatar_url").eq("id", userId).single(),
     ]);
-    if (rolesRes.data) setUserRoles(rolesRes.data.map((r) => r.role as AppRole));
+    setUserRoles(rolesRes.data ? rolesRes.data.map((r) => r.role as AppRole) : []);
     if (profileRes.data) setProfile(profileRes.data);
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    let mounted = true;
+
+    const handleSession = async (session: Session | null) => {
+      if (!mounted) return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        setTimeout(() => fetchUserData(session.user.id), 0);
+        try {
+          await fetchUserData(session.user.id);
+        } catch (e) {
+          console.error("fetchUserData failed", e);
+        }
       } else {
         setUserRoles([]);
         setProfile(null);
       }
-      setLoading(false);
+      if (mounted) setLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Defer to avoid deadlock inside the auth callback
+      setTimeout(() => handleSession(session), 0);
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchUserData(session.user.id);
-      setLoading(false);
-    });
+    supabase.auth.getSession().then(({ data: { session } }) => handleSession(session));
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
