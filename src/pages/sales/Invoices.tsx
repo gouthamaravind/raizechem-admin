@@ -215,6 +215,8 @@ export default function Invoices() {
         p_due_date: dueDate,
         p_items: itemsPayload,
         p_round_off: roundOff,
+        p_order_id: convertingOrderId,
+        p_branch_id: branchId || null,
       } as any);
       if (error) throw error;
 
