@@ -53,6 +53,35 @@ export default function Orders() {
     },
   });
   const orders = ordersRaw.slice(0, pg.pageSize);
+  const orderIds = orders.map((o: any) => o.id);
+
+  const { data: orderInvoices = [] } = useQuery({
+    queryKey: ["orders-invoices", orderIds],
+    enabled: orderIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("invoices")
+        .select("id, order_id, invoice_number, status")
+        .in("order_id", orderIds);
+      return data || [];
+    },
+  });
+  const invoiceIds = (orderInvoices as any[]).map((i: any) => i.id);
+  const { data: invoiceWaybills = [] } = useQuery({
+    queryKey: ["orders-waybills", invoiceIds],
+    enabled: invoiceIds.length > 0,
+    queryFn: async () => {
+      const { data } = await (supabase.from("waybills" as any) as any)
+        .select("id, source_id, status, ewb_number")
+        .eq("source_type", "invoice")
+        .in("source_id", invoiceIds);
+      return data || [];
+    },
+  });
+  const invoiceForOrder = (orderId: string) =>
+    (orderInvoices as any[]).find((i: any) => i.order_id === orderId && i.status !== "voided");
+  const waybillForInvoice = (invoiceId: string) =>
+    (invoiceWaybills as any[]).find((w: any) => w.source_id === invoiceId && w.status === "generated");
 
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
   const { data: products = [] } = useQuery({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
