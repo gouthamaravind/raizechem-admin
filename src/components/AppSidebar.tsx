@@ -7,13 +7,14 @@ import {
   ScrollText, Radio, MapPin, MapPinned, ClipboardCheck, BadgeCheck, Grid3X3, HelpCircle,
   ChevronDown, Scale, PieChart, Sheet, WarehouseIcon, Combine, ArrowLeftRight,
   LayoutGrid, ArrowUpFromLine, Layers, FileMinus, FilePlus, Notebook, Ban, ShieldCheck,
-  Lock as LockIcon,
+  Lock as LockIcon, Home, Map, History
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { MODULE_ACCESS } from "@/types/roles";
 import { cn } from "@/lib/utils";
+import { Capacitor } from "@capacitor/core";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent,
   SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarHeader,
@@ -156,11 +157,27 @@ const navGroups = [
   },
 ];
 
+const mobileNavGroups = [
+  {
+    label: "Field Work",
+    module: "fieldops",
+    items: [
+      { title: "Mobile Home", url: "/m/home", icon: Home },
+      { title: "My Duty", url: "/m/duty", icon: Map },
+      { title: "My Visits", url: "/m/dealers", icon: MapPin },
+      { title: "Orders", url: "/m/orders", icon: ShoppingCart },
+      { title: "Collections", url: "/m/payments", icon: Banknote },
+    ],
+  },
+];
+
 export function AppSidebar() {
   const location = useLocation();
-  const { userRoles } = useAuth();
+  const { userRoles, isAdmin } = useAuth();
+  const isNative = Capacitor.isNativePlatform();
 
   const hasModuleAccess = (module: string) => {
+    if (isAdmin) return true;
     const allowed = MODULE_ACCESS[module as keyof typeof MODULE_ACCESS];
     if (!allowed) return true;
     return userRoles.some((r) => allowed.includes(r));
@@ -171,6 +188,11 @@ export function AppSidebar() {
       (item) => location.pathname === item.url || location.pathname.startsWith(item.url + "/")
     );
 
+  // Use mobile groups if on native app OR if the user ONLY has fieldops role (not admin)
+  const activeGroups = (isNative || (userRoles.includes("fieldops") && !isAdmin))
+    ? mobileNavGroups
+    : navGroups;
+
   return (
     <Sidebar className="border-r-0 glass">
       <SidebarHeader className="px-4 py-5 border-b border-sidebar-border/50">
@@ -180,13 +202,13 @@ export function AppSidebar() {
           </div>
           <div>
             <h2 className="text-sm font-semibold tracking-tight">Raizechem</h2>
-            <p className="text-[10px] text-muted-foreground">Admin Panel</p>
+            <p className="text-[10px] text-muted-foreground">{isNative ? "Mobile App" : "Admin Panel"}</p>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-2">
-        {navGroups.filter((g) => hasModuleAccess(g.module)).map((group) => {
+        {activeGroups.filter((g) => hasModuleAccess(g.module)).map((group) => {
           // Dashboard group — no collapsible wrapper
           if (!group.label) {
             return (

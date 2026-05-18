@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, Navigation, Clock, Users, Map, Filter, RefreshCw } from "lucide-react";
+import { MapPin, Navigation, Clock, Users, Map, Filter, RefreshCw, Battery } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -72,6 +72,7 @@ interface ActiveEmployee {
   lng: number | null;
   lastUpdated: string | null;
   accuracy?: number | null;
+  batteryLevel?: number | null;
 }
 
 interface VisitPoint {
@@ -131,7 +132,7 @@ export function LiveTracking() {
     queryFn: async () => {
       const { data, error } = await (supabase.rpc as any)("get_active_duty_locations");
       if (error) throw error;
-      return ((data as ActiveDutyRow[]) || []).map((row) => {
+      return ((data as ActiveDutyRow[]) || []).map((row: any) => {
         const last = row.last_point || {};
         const elapsed = Math.max(0, Math.round((Date.now() - new Date(row.start_time).getTime()) / 60000));
         return {
@@ -145,6 +146,7 @@ export function LiveTracking() {
           lng: last.lng ? Number(last.lng) : null,
           accuracy: last.accuracy ?? null,
           lastUpdated: last.recorded_at || null,
+          batteryLevel: row.battery_level ?? null,
         } as ActiveEmployee;
       });
     },
@@ -418,6 +420,12 @@ export function LiveTracking() {
                       {e.accuracy != null && (
                         <div className="text-[11px] text-muted-foreground">±{Math.round(Number(e.accuracy))} m</div>
                       )}
+                      {e.batteryLevel != null && (
+                        <div className="text-[11px] flex items-center gap-1">
+                          <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-primary'}`} />
+                          {Math.round(Number(e.batteryLevel) * 100)}% battery
+                        </div>
+                      )}
                       {e.lastUpdated && (
                         <div className="text-[11px] text-muted-foreground">
                           Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
@@ -477,6 +485,12 @@ export function LiveTracking() {
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
+                {e.batteryLevel != null && (
+                  <span className="flex items-center gap-1">
+                    <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-muted-foreground'}`} />
+                    {Math.round(Number(e.batteryLevel) * 100)}%
+                  </span>
+                )}
                 <span className="flex items-center gap-1">
                   <Navigation className="h-3 w-3" />{e.totalKm.toFixed(1)} km
                 </span>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { SyncBadge } from "@/components/mobile/SyncBadge";
 import { useFieldOps } from "@/hooks/useFieldOps";
@@ -6,11 +6,35 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { MapPin, Play, Square, Navigation, Settings, ShieldCheck, Activity, BatteryCharging } from "lucide-react";
+import { MapPin, Play, Square, Navigation, Settings, ShieldCheck, Activity, BatteryCharging, Map as MapIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useBackgroundTracking } from "@/hooks/useBackgroundTracking";
 import { useDutyTimer } from "@/hooks/useDutyTimer";
 import { useLocationCapture } from "@/hooks/useLocationCapture";
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { Device } from "@capacitor/device";
+import { Badge } from "@/components/ui/badge";
+
+// Fix leaflet icon issue
+type LeafletIconPrototype = typeof L.Icon.Default.prototype & {
+  _getIconUrl?: () => string;
+};
+delete (L.Icon.Default.prototype as LeafletIconPrototype)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+});
+
+function MapRecenter({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+}
 
 type TrackingMode = "low" | "normal" | "high";
 
@@ -48,6 +72,15 @@ export default function MobileDuty() {
 
   const hasConsent = () => localStorage.getItem(CONSENT_KEY) === "true";
 
+  const getBattery = async () => {
+    try {
+      const info = await Device.getBatteryInfo();
+      return info.batteryLevel;
+    } catch {
+      return undefined;
+    }
+  };
+
   const loadSummary = useCallback(async () => {
     const { data } = await getTodaySummary();
     const d = data as any;
@@ -79,13 +112,15 @@ export default function MobileDuty() {
   const doStart = async () => {
     try {
       const loc = await getLocation();
-      const { data, error } = await startDuty(loc.lat, loc.lng, trackingMode);
+      const battery = await getBattery();
+      const { data, error } = await startDuty(loc.lat, loc.lng, trackingMode, battery);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, trackingMode);
       toast({ title: "Duty Started", description: `Tracking: ${TRACKING_LABELS[trackingMode]}` });
     } catch {
-      const { data, error } = await startDuty(undefined, undefined, trackingMode);
+      const battery = await getBattery();
+      const { data, error } = await startDuty(undefined, undefined, trackingMode, battery);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, trackingMode);
@@ -113,12 +148,13 @@ export default function MobileDuty() {
 
   const handleStop = async () => {
     if (!activeSession) return;
+    const battery = await getBattery();
     try {
       const loc = await getLocation();
-      const { error } = await stopDuty(activeSession.id, loc.lat, loc.lng);
+      const { error } = await stopDuty(activeSession.id, loc.lat, loc.lng, battery);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
     } catch {
-      const { error } = await stopDuty(activeSession.id);
+      const { error } = await stopDuty(activeSession.id, undefined, undefined, battery);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
     }
     await stopTracking();
@@ -126,6 +162,13 @@ export default function MobileDuty() {
     toast({ title: "Duty Ended" });
     loadSummary();
   };
+
+  const pathPositions = useMemo(() => {
+    if (!queue.length) return [];
+    return queue.map(p => [p.lat, p.lng] as [number, number]);
+  }, [queue]);
+
+  const currentPos = pathPositions.length > 0 ? pathPositions[pathPositions.length - 1] : null;
 
   const handleManualLocation = async () => {
     if (!activeSession) return;
@@ -154,10 +197,38 @@ export default function MobileDuty() {
       <div className="space-y-6">
         <SyncBadge count={pendingSync.length} />
         {isTracking && (
-          <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-sm">
-            <Activity className="h-3.5 w-3.5 text-primary" />
-            <span>Background tracking active</span>
-            <span className="rounded-full bg-accent px-2 py-0.5">queued: {queue.length}</span>
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-sm">
+              <Activity className="h-3.5 w-3.5 text-primary" />
+              <span>Background tracking active</span>
+              <span className="rounded-full bg-accent px-2 py-0.5 ml-auto text-[10px]">pings: {queue.length}</span>
+            </div>
+
+            {/* Path Map */}
+            <div className="h-48 w-full rounded-2xl overflow-hidden border border-border shadow-sm relative">
+              <MapContainer
+                center={currentPos || [17.3850, 78.4867]}
+                zoom={15}
+                style={{ height: "100%", width: "100%" }}
+                zoomControl={false}
+              >
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                {pathPositions.length > 1 && (
+                  <Polyline positions={pathPositions} color="hsl(var(--primary))" weight={3} opacity={0.7} />
+                )}
+                {currentPos && (
+                  <>
+                    <Marker position={currentPos} />
+                    <MapRecenter center={currentPos} />
+                  </>
+                )}
+              </MapContainer>
+              <div className="absolute bottom-2 right-2 z-[1000]">
+                <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-[10px] py-0 px-2 h-5">
+                  <MapIcon className="h-2.5 w-2.5 mr-1" /> Live Path
+                </Badge>
+              </div>
+            </div>
           </div>
         )}
 

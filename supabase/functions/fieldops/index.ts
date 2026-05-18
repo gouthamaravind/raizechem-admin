@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
 
     // ========== START DUTY ==========
     if (action === "start-duty" && req.method === "POST") {
-      const { lat, lng, tracking_mode } = await req.json();
+      const { lat, lng, tracking_mode, battery_level } = await req.json();
 
       // Validate tracking_mode
       const validModes = ["low", "normal", "high"];
@@ -86,11 +86,21 @@ Deno.serve(async (req) => {
           user_id: userId,
           start_location: lat && lng ? { lat, lng } : null,
           tracking_mode: mode,
+          start_battery: battery_level || null,
         })
         .select("id, start_time, status, tracking_mode")
         .single();
 
       if (sessErr) throw sessErr;
+
+      // Update profile status
+      await supabase.from("profiles").update({
+        is_on_duty: true,
+        last_battery: battery_level || null,
+        last_location_lat: lat || null,
+        last_location_lng: lng || null,
+        last_ping_at: new Date().toISOString(),
+      }).eq("id", userId);
 
       // Record first location point
       if (lat && lng) {
@@ -100,6 +110,7 @@ Deno.serve(async (req) => {
           lat,
           lng,
           source: "gps",
+          battery_level: battery_level || null,
         });
       }
 
@@ -177,6 +188,7 @@ Deno.serve(async (req) => {
           accuracy: accuracy,
           source: p.source || "gps",
           recorded_at: p.recorded_at || new Date().toISOString(),
+          battery_level: p.battery_level || null,
         });
       }
 
@@ -185,6 +197,16 @@ Deno.serve(async (req) => {
           .from("location_points")
           .insert(accepted);
         if (insErr) throw insErr;
+
+        // Update live status on profile with the latest point
+        const latest = accepted[accepted.length - 1];
+        await supabase.from("profiles").update({
+          last_battery: latest.battery_level || null,
+          last_location_lat: latest.lat,
+          last_location_lng: latest.lng,
+          last_ping_at: latest.recorded_at,
+          is_on_duty: true,
+        }).eq("id", userId);
       }
 
       return ok({
@@ -374,6 +396,11 @@ Deno.serve(async (req) => {
   } catch (e: any) {
     if (e.message === "Unauthorized") {
       return err("Unauthorized", 401);
+    }
+    return err(e.message, 500);
+  }
+});
+ return err("Unauthorized", 401);
     }
     return err(e.message, 500);
   }

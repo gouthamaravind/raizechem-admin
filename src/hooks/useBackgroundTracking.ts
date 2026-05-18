@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Geolocation } from "@capacitor/geolocation";
 import { Network } from "@capacitor/network";
+import { Device } from "@capacitor/device";
 import { useFieldOps } from "./useFieldOps";
 
 type TrackingMode = "low" | "normal" | "high";
@@ -20,6 +21,7 @@ interface QueuedPoint {
   lng: number;
   accuracy?: number | null;
   recorded_at: string;
+  battery_level?: number;
 }
 
 function loadQueue(): QueuedPoint[] {
@@ -80,32 +82,50 @@ export function useBackgroundTracking() {
 
     await Geolocation.requestPermissions();
 
+    const getBattery = async () => {
+      try {
+        const info = await Device.getBatteryInfo();
+        return info.batteryLevel;
+      } catch {
+        return undefined;
+      }
+    };
+
     // Watch position (Capacitor keeps running in background more reliably than navigator)
     watchId.current = await Geolocation.watchPosition({
       enableHighAccuracy: true,
       timeout: 20000,
-    }, (pos, err) => {
+    }, async (pos, err) => {
       if (err || !pos) return;
+      const battery = await getBattery();
       enqueue({
         lat: pos.coords.latitude,
         lng: pos.coords.longitude,
         accuracy: pos.coords.accuracy,
         recorded_at: new Date().toISOString(),
+        battery_level: battery,
       });
     });
 
     // Polling interval to ensure captures even if watch throttles
-    batchTimer.current = setInterval(() => {
-      Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 })
-        .then((pos) => {
-          enqueue({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            recorded_at: new Date().toISOString(),
-          });
-        })
-        .catch(() => {});
+    batchTimer.current = setInterval(async () => {
+      try {
+        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 });
+        const battery = await getBattery();
+        enqueue({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          recorded_at: new Date().toISOString(),
+          battery_level: battery,
+        });
+      } catch {
+        // Fallback for battery even if GPS fails
+        const battery = await getBattery();
+        if (battery !== undefined) {
+           // We could record a battery-only ping here if needed
+        }
+      }
       flush();
     }, Math.min(interval, BATCH_INTERVAL_MS));
 

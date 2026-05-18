@@ -155,13 +155,13 @@ export function useFieldOps() {
     };
   }, [syncPending]);
 
-  const startDuty = (lat?: number, lng?: number, tracking_mode?: string) =>
-    callFieldOps("start-duty", "POST", { lat, lng, tracking_mode: tracking_mode || "normal" });
+  const startDuty = (lat?: number, lng?: number, tracking_mode?: string, battery_level?: number) =>
+    callFieldOps("start-duty", "POST", { lat, lng, tracking_mode: tracking_mode || "normal", battery_level });
 
-  const stopDuty = (sessionId: string, lat?: number, lng?: number) =>
-    callFieldOps("stop-duty", "POST", { session_id: sessionId, lat, lng });
+  const stopDuty = (sessionId: string, lat?: number, lng?: number, battery_level?: number) =>
+    callFieldOps("stop-duty", "POST", { session_id: sessionId, lat, lng, battery_level });
 
-  const addLocations = (sessionId: string, points: AddLocationPoint[]) =>
+  const addLocations = (sessionId: string, points: (AddLocationPoint & { battery_level?: number })[]) =>
     callFieldOps("add-locations", "POST", { session_id: sessionId, points });
 
   const checkinVisit = (dealerId: string, sessionId?: string, lat?: number, lng?: number, notes?: string) =>
