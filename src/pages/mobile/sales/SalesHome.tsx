@@ -10,15 +10,16 @@ export default function SalesHome() {
   useEffect(() => {
     (async () => {
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const [inv, ord, out] = await Promise.all([
+      const [inv, ord, invs] = await Promise.all([
         supabase.from("invoices").select("id", { count: "exact", head: true }).gte("created_at", today.toISOString()),
         supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["draft", "confirmed"]),
-        supabase.rpc("get_dealer_outstanding_total").then(r => r).catch(() => ({ data: 0 } as any)),
+        supabase.from("invoices").select("total_amount, amount_paid").neq("status", "voided"),
       ]);
+      const outstanding = (invs.data || []).reduce((s, r: any) => s + Math.max(0, Number(r.total_amount || 0) - Number(r.amount_paid || 0)), 0);
       setK({
         invToday: inv.count || 0,
         ordersOpen: ord.count || 0,
-        outstanding: Number((out as any)?.data || 0),
+        outstanding,
       });
     })();
   }, []);
