@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { getMobileShell } from "@/types/roles";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowRight, MapPin } from "lucide-react";
