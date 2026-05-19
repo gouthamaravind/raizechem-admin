@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Capacitor } from "@capacitor/core";
+
 
 const ALLOWED_DOMAIN = "raizechem.in";
 
@@ -17,8 +17,9 @@ export default function Login() {
   const { signIn, session } = useAuth();
   const navigate = useNavigate();
 
-  const isNative = Capacitor.isNativePlatform();
-  const defaultRedirect = isNative ? "/m/home" : "/dashboard";
+  // Always land on /dashboard; the route guard will reroute fieldops-only
+  // users to the /m/home mobile shell on native devices.
+  const defaultRedirect = "/dashboard";
 
   if (session) {
     return <Navigate to={defaultRedirect} replace />;
