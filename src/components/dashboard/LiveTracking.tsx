@@ -530,6 +530,11 @@ export function LiveTracking() {
                       {isStale(e.lastUpdated) && " • stale (>5m)"}
                     </p>
                   )}
+                  {(e.lastIp || e.lastDevice) && (
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {e.lastDevice ? `📱 ${e.lastDevice}` : ""}{e.lastDevice && e.lastIp ? " · " : ""}{e.lastIp ? `🌐 ${e.lastIp}` : ""}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
