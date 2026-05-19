@@ -73,6 +73,8 @@ interface ActiveEmployee {
   lastUpdated: string | null;
   accuracy?: number | null;
   batteryLevel?: number | null;
+  lastIp?: string | null;
+  lastDevice?: string | null;
 }
 
 interface VisitPoint {
