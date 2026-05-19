@@ -443,7 +443,7 @@ export function LiveTracking() {
                         </div>
                       </Popup>
                     </Marker>
-                  </div>
+                  </Fragment>
                 );
               })}
 
