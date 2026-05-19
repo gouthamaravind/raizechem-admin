@@ -406,35 +406,46 @@ export function LiveTracking() {
             {positions.length > 0 && <FitBounds positions={positions} />}
             {filteredEmployees
               .filter((e) => e.lat && e.lng)
-              .map((e, idx) => (
-                <Marker
-                  key={e.sessionId}
-                  position={[e.lat!, e.lng!]}
-                  icon={createColorIcon(isStale(e.lastUpdated) ? "#9ca3af" : colors[idx % colors.length])}
-                >
-                  <Popup>
-                    <div className="text-sm">
-                      <strong>{e.name}</strong>
-                      <br />
-                      {e.totalKm.toFixed(1)} km · {formatDuration(e.durationMins)}
-                      {e.accuracy != null && (
-                        <div className="text-[11px] text-muted-foreground">±{Math.round(Number(e.accuracy))} m</div>
-                      )}
-                      {e.batteryLevel != null && (
-                        <div className="text-[11px] flex items-center gap-1">
-                          <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-primary'}`} />
-                          {Math.round(Number(e.batteryLevel) * 100)}% battery
+              .map((e, idx) => {
+                const color = isStale(e.lastUpdated) ? "#9ca3af" : colors[idx % colors.length];
+                return (
+                  <div key={e.sessionId}>
+                    {e.accuracy != null && Number(e.accuracy) > 0 && (
+                      <Circle
+                        center={[e.lat!, e.lng!]}
+                        radius={Math.min(Number(e.accuracy), 200)}
+                        pathOptions={{ color, fillColor: color, fillOpacity: 0.12, weight: 1 }}
+                      />
+                    )}
+                    <Marker
+                      position={[e.lat!, e.lng!]}
+                      icon={createColorIcon(color)}
+                    >
+                      <Popup>
+                        <div className="text-sm">
+                          <strong>{e.name}</strong>
+                          <br />
+                          {e.totalKm.toFixed(1)} km · {formatDuration(e.durationMins)}
+                          {e.accuracy != null && (
+                            <div className="text-[11px] text-muted-foreground">±{Math.round(Number(e.accuracy))} m</div>
+                          )}
+                          {e.batteryLevel != null && (
+                            <div className="text-[11px] flex items-center gap-1">
+                              <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-primary'}`} />
+                              {Math.round(Number(e.batteryLevel) * 100)}% battery
+                            </div>
+                          )}
+                          {e.lastUpdated && (
+                            <div className="text-[11px] text-muted-foreground">
+                              Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {e.lastUpdated && (
-                        <div className="text-[11px] text-muted-foreground">
-                          Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
-                        </div>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                      </Popup>
+                    </Marker>
+                  </div>
+                );
+              })}
 
             {showVisits && visitPoints
               .filter((v) => v.lat && v.lng)
