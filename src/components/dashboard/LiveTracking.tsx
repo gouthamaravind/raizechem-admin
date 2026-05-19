@@ -409,7 +409,7 @@ export function LiveTracking() {
               .map((e, idx) => {
                 const color = isStale(e.lastUpdated) ? "#9ca3af" : colors[idx % colors.length];
                 return (
-                  <div key={e.sessionId}>
+                  <Fragment key={e.sessionId}>
                     {e.accuracy != null && Number(e.accuracy) > 0 && (
                       <Circle
                         center={[e.lat!, e.lng!]}
