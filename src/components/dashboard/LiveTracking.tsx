@@ -207,9 +207,38 @@ export function LiveTracking() {
     refetchInterval: 30000,
   });
 
+  // Telemetry overlay (IP, device, last battery) from duty_sessions
+  const sessionIds = (activeSessions || []).map((e) => e.sessionId);
+  const { data: telemetry } = useQuery({
+    queryKey: ["live-telemetry", sessionIds.join(",")],
+    enabled: sessionIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("duty_sessions")
+        .select("id,last_ip,last_device,last_battery,start_ip,start_device")
+        .in("id", sessionIds);
+      if (error) throw error;
+      return Object.fromEntries((data || []).map((r: any) => [r.id, r]));
+    },
+    refetchInterval: 30000,
+  });
+
   useEffect(() => {
-    if (activeSessions) setEmployees(activeSessions);
-  }, [activeSessions]);
+    if (activeSessions) {
+      const merged = activeSessions.map((e) => {
+        const t = telemetry?.[e.sessionId];
+        return t
+          ? {
+              ...e,
+              lastIp: t.last_ip || t.start_ip || null,
+              lastDevice: t.last_device || t.start_device || null,
+              batteryLevel: t.last_battery != null ? Number(t.last_battery) / 100 : e.batteryLevel,
+            }
+          : e;
+      });
+      setEmployees(merged);
+    }
+  }, [activeSessions, telemetry]);
 
   // Realtime nudges to refresh positions quickly
   useEffect(() => {
