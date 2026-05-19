@@ -2,19 +2,45 @@ import { useEffect, useState } from "react";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { SyncBadge } from "@/components/mobile/SyncBadge";
 import { useFieldOps } from "@/hooks/useFieldOps";
-import { MapPin, ShoppingCart, CreditCard, TrendingUp, Clock, RefreshCw, ArrowUpRight, ShieldCheck, AlertTriangle, Users } from "lucide-react";
+import { MapPin, ShoppingCart, CreditCard, TrendingUp, Clock, RefreshCw, ArrowUpRight, ShieldCheck, AlertTriangle, Users, Power, Battery } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+
+async function getBatteryPct(): Promise<number | undefined> {
+  try {
+    const nav: any = navigator;
+    if (nav.getBattery) {
+      const b = await nav.getBattery();
+      return Math.round((b.level ?? 0) * 100);
+    }
+  } catch {/* ignore */}
+  return undefined;
+}
+
+function getPos(): Promise<{ lat?: number; lng?: number }> {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) return resolve({});
+    navigator.geolocation.getCurrentPosition(
+      (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
+      () => resolve({}),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+}
 
 export default function MobileHome() {
-  const { getTodaySummary, pendingSync } = useFieldOps();
+  const { getTodaySummary, pendingSync, startDuty, stopDuty } = useFieldOps();
   const { userRoles, isAdmin } = useAuth();
   const [summary, setSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const isFieldOps = userRoles.includes("fieldops") || isAdmin;
+  const onDuty = !!summary?.active_session;
 
   const load = async () => {
     const { data } = await getTodaySummary();
@@ -26,6 +52,24 @@ export default function MobileHome() {
   useEffect(() => {
     load();
   }, []);
+
+  const handleToggle = async (next: boolean) => {
+    setToggling(true);
+    try {
+      const [pos, battery] = await Promise.all([getPos(), getBatteryPct()]);
+      if (next) {
+        const { error } = await startDuty(pos.lat, pos.lng, "normal", battery);
+        if (error) toast.error(error); else toast.success("Duty started");
+      } else if (summary?.active_session?.id) {
+        const { error } = await stopDuty(summary.active_session.id, pos.lat, pos.lng, battery);
+        if (error) toast.error(error); else toast.success("Duty ended");
+      }
+      await load();
+    } finally {
+      setToggling(false);
+    }
+  };
+
 
   const cards = summary
     ? [
