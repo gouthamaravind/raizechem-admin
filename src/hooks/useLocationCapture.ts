@@ -1,4 +1,5 @@
 import { Geolocation } from "@capacitor/geolocation";
+import { Capacitor } from "@capacitor/core";
 
 export interface LocationPoint {
   lat: number;
@@ -7,7 +8,20 @@ export interface LocationPoint {
 }
 
 export function useLocationCapture() {
+  const ensurePermission = async () => {
+    if (!Capacitor.isNativePlatform()) return true;
+    try {
+      const state = await Geolocation.checkPermissions();
+      if (state.location === "granted") return true;
+      const req = await Geolocation.requestPermissions();
+      return req.location === "granted";
+    } catch {
+      return false;
+    }
+  };
+
   const getLocation = async (): Promise<LocationPoint> => {
+    await ensurePermission();
     try {
       const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 });
       return { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
@@ -23,5 +37,5 @@ export function useLocationCapture() {
     }
   };
 
-  return { getLocation };
+  return { getLocation, ensurePermission };
 }
