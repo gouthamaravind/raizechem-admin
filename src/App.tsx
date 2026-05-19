@@ -87,6 +87,7 @@ import FieldOpsVisits from "./pages/fieldops/Visits";
 import FieldOpsFieldOrders from "./pages/fieldops/FieldOrders";
 import FieldOpsPayments from "./pages/fieldops/FieldPayments";
 import PincodeCoverage from "./pages/fieldops/PincodeCoverage";
+import FieldOpsAttendance from "./pages/fieldops/Attendance";
 import MobileLogin from "./pages/mobile/MobileLogin";
 import MobileHome from "./pages/mobile/MobileHome";
 import MobileDuty from "./pages/mobile/MobileDuty";
