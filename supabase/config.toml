@@ -37,3 +37,6 @@ verify_jwt = false
 
 [functions.dispatch-overdue-reminders]
 verify_jwt = false
+
+[functions.osrm-snap]
+verify_jwt = false

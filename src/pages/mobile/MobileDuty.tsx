@@ -212,7 +212,7 @@ export default function MobileDuty() {
                 style={{ height: "100%", width: "100%" }}
                 zoomControl={false}
               >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; OSM &copy; CARTO' />
                 {pathPositions.length > 1 && (
                   <Polyline positions={pathPositions} color="hsl(var(--primary))" weight={3} opacity={0.7} />
                 )}

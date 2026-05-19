@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, Navigation, Clock, Users, Map, Filter, RefreshCw, Battery } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Input } from "@/components/ui/input";
@@ -400,41 +400,52 @@ export function LiveTracking() {
             scrollWheelZoom={true}
           >
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org">OSM</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
             {positions.length > 0 && <FitBounds positions={positions} />}
             {filteredEmployees
               .filter((e) => e.lat && e.lng)
-              .map((e, idx) => (
-                <Marker
-                  key={e.sessionId}
-                  position={[e.lat!, e.lng!]}
-                  icon={createColorIcon(isStale(e.lastUpdated) ? "#9ca3af" : colors[idx % colors.length])}
-                >
-                  <Popup>
-                    <div className="text-sm">
-                      <strong>{e.name}</strong>
-                      <br />
-                      {e.totalKm.toFixed(1)} km · {formatDuration(e.durationMins)}
-                      {e.accuracy != null && (
-                        <div className="text-[11px] text-muted-foreground">±{Math.round(Number(e.accuracy))} m</div>
-                      )}
-                      {e.batteryLevel != null && (
-                        <div className="text-[11px] flex items-center gap-1">
-                          <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-primary'}`} />
-                          {Math.round(Number(e.batteryLevel) * 100)}% battery
+              .map((e, idx) => {
+                const color = isStale(e.lastUpdated) ? "#9ca3af" : colors[idx % colors.length];
+                return (
+                  <Fragment key={e.sessionId}>
+                    {e.accuracy != null && Number(e.accuracy) > 0 && (
+                      <Circle
+                        center={[e.lat!, e.lng!]}
+                        radius={Math.min(Number(e.accuracy), 200)}
+                        pathOptions={{ color, fillColor: color, fillOpacity: 0.12, weight: 1 }}
+                      />
+                    )}
+                    <Marker
+                      position={[e.lat!, e.lng!]}
+                      icon={createColorIcon(color)}
+                    >
+                      <Popup>
+                        <div className="text-sm">
+                          <strong>{e.name}</strong>
+                          <br />
+                          {e.totalKm.toFixed(1)} km · {formatDuration(e.durationMins)}
+                          {e.accuracy != null && (
+                            <div className="text-[11px] text-muted-foreground">±{Math.round(Number(e.accuracy))} m</div>
+                          )}
+                          {e.batteryLevel != null && (
+                            <div className="text-[11px] flex items-center gap-1">
+                              <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-primary'}`} />
+                              {Math.round(Number(e.batteryLevel) * 100)}% battery
+                            </div>
+                          )}
+                          {e.lastUpdated && (
+                            <div className="text-[11px] text-muted-foreground">
+                              Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {e.lastUpdated && (
-                        <div className="text-[11px] text-muted-foreground">
-                          Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
-                        </div>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                      </Popup>
+                    </Marker>
+                  </Fragment>
+                );
+              })}
 
             {showVisits && visitPoints
               .filter((v) => v.lat && v.lng)
