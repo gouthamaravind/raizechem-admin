@@ -144,8 +144,30 @@ Deno.serve(async (req) => {
       });
 
       if (rpcErr) throw rpcErr;
+
+      // Best-effort: snap trail to roads via OSRM and replace total_km
+      // with the road-accurate distance. Never block stop-duty on this.
+      try {
+        const snapRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/osrm-snap`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: req.headers.get("Authorization") || "",
+          },
+          body: JSON.stringify({ session_id, update_session: true }),
+        });
+        if (snapRes.ok) {
+          const snap = await snapRes.json();
+          (data as any).snapped_km = snap.km;
+          (data as any).snapped = snap.snapped;
+        }
+      } catch (e) {
+        console.warn("snap-to-road skipped:", (e as Error).message);
+      }
+
       return ok({ result: data });
     }
+
 
     // ========== ADD LOCATION POINTS (BATCH) ==========
     if (action === "add-locations" && req.method === "POST") {
