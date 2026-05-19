@@ -17,8 +17,9 @@ export default function Login() {
   const { signIn, session } = useAuth();
   const navigate = useNavigate();
 
-  const isNative = Capacitor.isNativePlatform();
-  const defaultRedirect = isNative ? "/m/home" : "/dashboard";
+  // Always land on /dashboard; the route guard will reroute fieldops-only
+  // users to the /m/home mobile shell on native devices.
+  const defaultRedirect = "/dashboard";
 
   if (session) {
     return <Navigate to={defaultRedirect} replace />;
