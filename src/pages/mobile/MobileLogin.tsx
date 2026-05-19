@@ -21,7 +21,10 @@ export default function MobileLogin() {
     );
   }
 
-  if (session) return <Navigate to="/m/home" replace />;
+  if (session) {
+    const shell = getMobileShell(userRoles);
+    return <Navigate to={`/m/${shell}/home`} replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
