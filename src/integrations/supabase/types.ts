@@ -4667,6 +4667,7 @@ export type Database = {
         | "accounts"
         | "inventory"
         | "fieldops"
+        | "manager"
       inventory_txn_type:
         | "PURCHASE"
         | "SALE"
@@ -4819,6 +4820,7 @@ export const Constants = {
         "accounts",
         "inventory",
         "fieldops",
+        "manager",
       ],
       inventory_txn_type: [
         "PURCHASE",
