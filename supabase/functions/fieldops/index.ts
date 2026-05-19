@@ -129,10 +129,15 @@ Deno.serve(async (req) => {
 
     // ========== STOP DUTY ==========
     if (action === "stop-duty" && req.method === "POST") {
-      const { session_id, lat, lng } = await req.json();
+      const { session_id, lat, lng, battery_level } = await req.json();
       if (!session_id) return err("session_id required");
 
-      // Record final location
+      await supabase.from("duty_sessions").update({
+        end_battery: battery_level ?? null,
+        last_battery: battery_level ?? null,
+        last_ip: clientIp,
+      }).eq("id", session_id);
+
       if (lat && lng) {
         await supabase.from("location_points").insert({
           duty_session_id: session_id,
