@@ -97,6 +97,11 @@ import MobileOrders from "./pages/mobile/MobileOrders";
 import MobileNewOrder from "./pages/mobile/MobileNewOrder";
 import MobilePayments from "./pages/mobile/MobilePayments";
 import MobileNewPayment from "./pages/mobile/MobileNewPayment";
+import AdminHome from "./pages/mobile/admin/AdminHome";
+import ManagerHome from "./pages/mobile/manager/ManagerHome";
+import ManagerApprovals from "./pages/mobile/manager/ManagerApprovals";
+import SalesHome from "./pages/mobile/sales/SalesHome";
+import MoreMenu from "./pages/mobile/MoreMenu";
 import { MobileGuard } from "./components/mobile/MobileGuard";
 import Features from "./pages/Features";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
@@ -112,15 +117,14 @@ const MAINTENANCE_MODE = false;
 const queryClient = new QueryClient();
 
 import { useAuth } from "@/hooks/useAuth";
+import { getMobileShell } from "@/types/roles";
 
 const P = ({ children }: { children: React.ReactNode }) => {
   const isNative = Capacitor.isNativePlatform();
   const { userRoles, loading } = useAuth();
-  // On native: only redirect fieldops-only users to the mobile shell.
-  // Admins and any user with a non-fieldops role get the responsive desktop UI.
-  if (isNative && !loading) {
-    const isFieldOpsOnly = userRoles.length > 0 && userRoles.every((r) => r === "fieldops");
-    if (isFieldOpsOnly) return <Navigate to="/m/home" replace />;
+  if (isNative && !loading && userRoles.length > 0) {
+    const shell = getMobileShell(userRoles);
+    return <Navigate to={`/m/${shell}/home`} replace />;
   }
   return <ProtectedRoute>{children}</ProtectedRoute>;
 };
@@ -131,8 +135,8 @@ const App = () => {
     return <MaintenanceMode />;
   }
 
-  const isNative = Capacitor.isNativePlatform();
-  const defaultRedirect = isNative ? "/m/home" : "/dashboard";
+  // On native, "/" goes through Dashboard wrapped in P, which redirects to the role-appropriate /m/{shell}/home.
+  const defaultRedirect = "/dashboard";
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -230,15 +234,50 @@ const App = () => {
               <Route path="/approvals" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.approvals}><Approvals /></RoleGuard></P>} />
               {/* Mobile Routes */}
               <Route path="/m/login" element={<MobileLogin />} />
-              <Route path="/m/home" element={<M><MobileHome /></M>} />
-              <Route path="/m/duty" element={<M><MobileDuty /></M>} />
-              <Route path="/m/dealers" element={<M><MobileDealers /></M>} />
-              <Route path="/m/visits/checkin" element={<M><MobileCheckin /></M>} />
-              <Route path="/m/visits/checkout" element={<M><MobileCheckout /></M>} />
-              <Route path="/m/orders" element={<M><MobileOrders /></M>} />
-              <Route path="/m/orders/new" element={<M><MobileNewOrder /></M>} />
-              <Route path="/m/payments" element={<M><MobilePayments /></M>} />
-              <Route path="/m/payments/new" element={<M><MobileNewPayment /></M>} />
+
+              {/* Field Ops shell */}
+              <Route path="/m/fieldops/home" element={<M><MobileHome /></M>} />
+              <Route path="/m/fieldops/duty" element={<M><MobileDuty /></M>} />
+              <Route path="/m/fieldops/dealers" element={<M><MobileDealers /></M>} />
+              <Route path="/m/fieldops/visits/checkin" element={<M><MobileCheckin /></M>} />
+              <Route path="/m/fieldops/visits/checkout" element={<M><MobileCheckout /></M>} />
+              <Route path="/m/fieldops/orders" element={<M><MobileOrders /></M>} />
+              <Route path="/m/fieldops/orders/new" element={<M><MobileNewOrder /></M>} />
+              <Route path="/m/fieldops/payments" element={<M><MobilePayments /></M>} />
+              <Route path="/m/fieldops/payments/new" element={<M><MobileNewPayment /></M>} />
+
+              {/* Manager shell */}
+              <Route path="/m/manager/home" element={<M><ManagerHome /></M>} />
+              <Route path="/m/manager/approvals" element={<M><ManagerApprovals /></M>} />
+              <Route path="/m/manager/orders" element={<M><MobileOrders /></M>} />
+              <Route path="/m/manager/dealers" element={<M><MobileDealers /></M>} />
+              <Route path="/m/manager/more" element={<M><MoreMenu shell="manager" /></M>} />
+
+              {/* Sales shell */}
+              <Route path="/m/sales/home" element={<M><SalesHome /></M>} />
+              <Route path="/m/sales/orders" element={<M><MobileOrders /></M>} />
+              <Route path="/m/sales/invoices" element={<M><MobileOrders /></M>} />
+              <Route path="/m/sales/dealers" element={<M><MobileDealers /></M>} />
+              <Route path="/m/sales/more" element={<M><MoreMenu shell="sales" /></M>} />
+
+              {/* Admin shell */}
+              <Route path="/m/admin/home" element={<M><AdminHome /></M>} />
+              <Route path="/m/admin/approvals" element={<M><ManagerApprovals /></M>} />
+              <Route path="/m/admin/reports" element={<M><MoreMenu shell="admin" /></M>} />
+              <Route path="/m/admin/dealers" element={<M><MobileDealers /></M>} />
+              <Route path="/m/admin/more" element={<M><MoreMenu shell="admin" /></M>} />
+
+              {/* Legacy mobile redirects (installed app compatibility) */}
+              <Route path="/m/home" element={<Navigate to="/m/fieldops/home" replace />} />
+              <Route path="/m/duty" element={<Navigate to="/m/fieldops/duty" replace />} />
+              <Route path="/m/dealers" element={<Navigate to="/m/fieldops/dealers" replace />} />
+              <Route path="/m/visits/checkin" element={<Navigate to="/m/fieldops/visits/checkin" replace />} />
+              <Route path="/m/visits/checkout" element={<Navigate to="/m/fieldops/visits/checkout" replace />} />
+              <Route path="/m/orders" element={<Navigate to="/m/fieldops/orders" replace />} />
+              <Route path="/m/orders/new" element={<Navigate to="/m/fieldops/orders/new" replace />} />
+              <Route path="/m/payments" element={<Navigate to="/m/fieldops/payments" replace />} />
+              <Route path="/m/payments/new" element={<Navigate to="/m/fieldops/payments/new" replace />} />
+
               <Route path="/" element={<Navigate to={defaultRedirect} replace />} />
               <Route path="*" element={<Navigate to={defaultRedirect} replace />} />
             </Routes>
