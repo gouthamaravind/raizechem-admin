@@ -232,6 +232,7 @@ const App = () => {
               <Route path="/fieldops/field-orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsFieldOrders /></RoleGuard></P>} />
               <Route path="/fieldops/payments" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsPayments /></RoleGuard></P>} />
               <Route path="/fieldops/pincodes" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><PincodeCoverage /></RoleGuard></P>} />
+              <Route path="/fieldops/attendance" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.fieldops}><FieldOpsAttendance /></RoleGuard></P>} />
               <Route path="/approvals" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.approvals}><Approvals /></RoleGuard></P>} />
               {/* Mobile Routes */}
               <Route path="/m/login" element={<MobileLogin />} />
