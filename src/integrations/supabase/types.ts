@@ -1671,6 +1671,8 @@ export type Database = {
       }
       field_orders: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           approved_order_id: string | null
           branch_id: string | null
           created_at: string
@@ -1678,12 +1680,16 @@ export type Database = {
           dealer_id: string
           duty_session_id: string | null
           id: string
+          manager_approval_status: string
           notes: string | null
+          rejected_reason: string | null
           requested_delivery_date: string | null
           status: string
           updated_at: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           approved_order_id?: string | null
           branch_id?: string | null
           created_at?: string
@@ -1691,12 +1697,16 @@ export type Database = {
           dealer_id: string
           duty_session_id?: string | null
           id?: string
+          manager_approval_status?: string
           notes?: string | null
+          rejected_reason?: string | null
           requested_delivery_date?: string | null
           status?: string
           updated_at?: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           approved_order_id?: string | null
           branch_id?: string | null
           created_at?: string
@@ -1704,7 +1714,9 @@ export type Database = {
           dealer_id?: string
           duty_session_id?: string | null
           id?: string
+          manager_approval_status?: string
           notes?: string | null
+          rejected_reason?: string | null
           requested_delivery_date?: string | null
           status?: string
           updated_at?: string
@@ -4370,6 +4382,10 @@ export type Database = {
         Args: { _field_order_id: string; _order_number: string }
         Returns: string
       }
+      approve_field_order_atomic: {
+        Args: { p_field_order_id: string; p_notes?: string }
+        Returns: Json
+      }
       bulk_update_pricing_matrix: {
         Args: { p_updates: Json; p_user_id: string }
         Returns: Json
@@ -4629,6 +4645,10 @@ export type Database = {
           p_supplier_id: string
         }
         Returns: Json
+      }
+      reject_field_order: {
+        Args: { p_field_order_id: string; p_reason: string }
+        Returns: undefined
       }
       user_has_branch_access: {
         Args: { p_branch_id: string; p_user_id: string }
