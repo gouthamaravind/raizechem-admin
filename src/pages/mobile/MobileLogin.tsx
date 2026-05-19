@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowRight, MapPin } from "lucide-react";
 
 export default function MobileLogin() {
-  const { session, signIn, loading: authLoading } = useAuth();
+  const { session, signIn, loading: authLoading, userRoles } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
