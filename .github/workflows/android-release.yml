@@ -47,6 +47,10 @@ jobs:
           # Create keystore from base64 secret
           echo "${{ secrets.UPLOAD_KEYSTORE_BASE64 }}" | base64 -d > android/app/upload.keystore
           
+          # Patch AndroidManifest.xml for permissions
+          chmod +x scripts/patch-manifest.sh
+          ./scripts/patch-manifest.sh
+          
           # Patch build.gradle, copy signing.gradle, and update versions
           chmod +x scripts/build-signing-prepare.sh
           ./scripts/build-signing-prepare.sh "$PACKAGE_VERSION" "${{ github.run_number }}"
