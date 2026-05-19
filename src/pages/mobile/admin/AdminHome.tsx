@@ -13,16 +13,17 @@ export default function AdminHome() {
   useEffect(() => {
     (async () => {
       const today = new Date(); today.setHours(0, 0, 0, 0);
-      const [orders, outstanding, alerts, approvals] = await Promise.all([
+      const [orders, invs, batches, approvals] = await Promise.all([
         supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", today.toISOString()),
-        supabase.rpc("get_dealer_outstanding_total").then(r => r).catch(() => ({ data: 0 } as any)),
-        supabase.from("low_stock_alerts").select("id", { count: "exact", head: true }).limit(1).then(r => r).catch(() => ({ count: 0 } as any)),
+        supabase.from("invoices").select("total_amount, amount_paid").neq("status", "voided"),
+        supabase.from("product_batches").select("id", { count: "exact", head: true }).lte("qty_on_hand", 10),
         supabase.from("field_orders").select("id", { count: "exact", head: true }).eq("manager_approval_status", "pending"),
       ]);
+      const pendingPay = (invs.data || []).reduce((s, r: any) => s + Math.max(0, Number(r.total_amount || 0) - Number(r.amount_paid || 0)), 0);
       setK({
         ordersToday: orders.count || 0,
-        pendingPay: Number((outstanding as any)?.data || 0),
-        lowStock: (alerts as any).count || 0,
+        pendingPay,
+        lowStock: batches.count || 0,
         pendingApprovals: approvals.count || 0,
       });
     })();
