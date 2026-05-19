@@ -135,8 +135,8 @@ const App = () => {
     return <MaintenanceMode />;
   }
 
-  const isNative = Capacitor.isNativePlatform();
-  const defaultRedirect = isNative ? "/m/fieldops/home" : "/dashboard";
+  // On native, "/" goes through Dashboard wrapped in P, which redirects to the role-appropriate /m/{shell}/home.
+  const defaultRedirect = "/dashboard";
 
   return (
     <QueryClientProvider client={queryClient}>
