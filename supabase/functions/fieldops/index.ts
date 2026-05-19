@@ -160,6 +160,14 @@ Deno.serve(async (req) => {
 
       if (rpcErr) throw rpcErr;
 
+      // Mark user off-duty on profile
+      await supabase.from("profiles").update({
+        is_on_duty: false,
+        last_battery: battery_level ?? null,
+        last_ping_at: new Date().toISOString(),
+      }).eq("id", userId);
+
+
       // Best-effort: snap trail to roads via OSRM and replace total_km
       // with the road-accurate distance. Never block stop-duty on this.
       try {
