@@ -141,6 +141,7 @@ const navGroups = [
       { title: "Field Orders", url: "/fieldops/field-orders", icon: ClipboardCheck },
       { title: "Field Payments", url: "/fieldops/payments", icon: BadgeCheck },
       { title: "Pincode Coverage", url: "/fieldops/pincodes", icon: MapPin },
+      { title: "Attendance", url: "/fieldops/attendance", icon: CalendarDays },
     ],
   },
   {
