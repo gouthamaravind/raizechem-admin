@@ -422,8 +422,3 @@ Deno.serve(async (req) => {
     return err(e.message, 500);
   }
 });
- return err("Unauthorized", 401);
-    }
-    return err(e.message, 500);
-  }
-});
