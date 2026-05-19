@@ -117,15 +117,14 @@ const MAINTENANCE_MODE = false;
 const queryClient = new QueryClient();
 
 import { useAuth } from "@/hooks/useAuth";
+import { getMobileShell } from "@/types/roles";
 
 const P = ({ children }: { children: React.ReactNode }) => {
   const isNative = Capacitor.isNativePlatform();
   const { userRoles, loading } = useAuth();
-  // On native: only redirect fieldops-only users to the mobile shell.
-  // Admins and any user with a non-fieldops role get the responsive desktop UI.
-  if (isNative && !loading) {
-    const isFieldOpsOnly = userRoles.length > 0 && userRoles.every((r) => r === "fieldops");
-    if (isFieldOpsOnly) return <Navigate to="/m/home" replace />;
+  if (isNative && !loading && userRoles.length > 0) {
+    const shell = getMobileShell(userRoles);
+    return <Navigate to={`/m/${shell}/home`} replace />;
   }
   return <ProtectedRoute>{children}</ProtectedRoute>;
 };
@@ -137,7 +136,7 @@ const App = () => {
   }
 
   const isNative = Capacitor.isNativePlatform();
-  const defaultRedirect = isNative ? "/m/home" : "/dashboard";
+  const defaultRedirect = isNative ? "/m/fieldops/home" : "/dashboard";
 
   return (
     <QueryClientProvider client={queryClient}>
