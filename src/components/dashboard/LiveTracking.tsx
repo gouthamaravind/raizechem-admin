@@ -471,6 +471,12 @@ export function LiveTracking() {
                               Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
                             </div>
                           )}
+                          {(e.lastIp || e.lastDevice) && (
+                            <div className="text-[11px] text-muted-foreground border-t mt-1 pt-1">
+                              {e.lastDevice && <div>📱 {e.lastDevice}</div>}
+                              {e.lastIp && <div>🌐 {e.lastIp}</div>}
+                            </div>
+                          )}
                         </div>
                       </Popup>
                     </Marker>
