@@ -183,26 +183,26 @@ export default function MobileHome() {
               </div>
             )}
 
-            {summary?.active_session ? (
-              <Link to="/m/duty">
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-2 w-2 rounded-full bg-success animate-pulse" />
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Live Duty Active</p>
-                      <p className="text-xs text-muted-foreground">Tracking your movement now</p>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="h-5 w-5 text-primary" />
+            <div className={`rounded-2xl border p-4 flex items-center justify-between gap-3 ${onDuty ? "border-primary/20 bg-primary/5" : "border-dashed border-border"}`}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className={`h-9 w-9 rounded-full flex items-center justify-center ${onDuty ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}>
+                  <Power className="h-4 w-4" />
                 </div>
-              </Link>
-            ) : (
-              <Link to="/m/duty">
-                <div className="rounded-2xl border border-dashed border-border p-4 text-center">
-                  <p className="text-sm font-medium text-muted-foreground">Tap to start your duty session</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{onDuty ? "On Duty" : "Off Duty"}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {onDuty ? "Tracking your movement" : "Flip switch to go on duty"}
+                  </p>
                 </div>
-              </Link>
-            )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch checked={onDuty} disabled={toggling} onCheckedChange={handleToggle} />
+                <Link to="/m/fieldops/duty" className="text-xs text-primary inline-flex items-center gap-1">
+                  Details <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+
           </div>
         )}
       </div>
