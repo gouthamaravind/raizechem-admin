@@ -73,6 +73,8 @@ interface ActiveEmployee {
   lastUpdated: string | null;
   accuracy?: number | null;
   batteryLevel?: number | null;
+  lastIp?: string | null;
+  lastDevice?: string | null;
 }
 
 interface VisitPoint {
@@ -205,9 +207,38 @@ export function LiveTracking() {
     refetchInterval: 30000,
   });
 
+  // Telemetry overlay (IP, device, last battery) from duty_sessions
+  const sessionIds = (activeSessions || []).map((e) => e.sessionId);
+  const { data: telemetry } = useQuery({
+    queryKey: ["live-telemetry", sessionIds.join(",")],
+    enabled: sessionIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("duty_sessions")
+        .select("id,last_ip,last_device,last_battery,start_ip,start_device")
+        .in("id", sessionIds);
+      if (error) throw error;
+      return Object.fromEntries((data || []).map((r: any) => [r.id, r]));
+    },
+    refetchInterval: 30000,
+  });
+
   useEffect(() => {
-    if (activeSessions) setEmployees(activeSessions);
-  }, [activeSessions]);
+    if (activeSessions) {
+      const merged = activeSessions.map((e) => {
+        const t = telemetry?.[e.sessionId];
+        return t
+          ? {
+              ...e,
+              lastIp: t.last_ip || t.start_ip || null,
+              lastDevice: t.last_device || t.start_device || null,
+              batteryLevel: t.last_battery != null ? Number(t.last_battery) / 100 : e.batteryLevel,
+            }
+          : e;
+      });
+      setEmployees(merged);
+    }
+  }, [activeSessions, telemetry]);
 
   // Realtime nudges to refresh positions quickly
   useEffect(() => {
@@ -440,6 +471,12 @@ export function LiveTracking() {
                               Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
                             </div>
                           )}
+                          {(e.lastIp || e.lastDevice) && (
+                            <div className="text-[11px] text-muted-foreground border-t mt-1 pt-1">
+                              {e.lastDevice && <div>📱 {e.lastDevice}</div>}
+                              {e.lastIp && <div>🌐 {e.lastIp}</div>}
+                            </div>
+                          )}
                         </div>
                       </Popup>
                     </Marker>
@@ -491,6 +528,11 @@ export function LiveTracking() {
                     <p className={`text-[10px] ${isStale(e.lastUpdated) ? "text-destructive" : "text-muted-foreground"}`}>
                       Last ping {new Date(e.lastUpdated).toLocaleTimeString()}
                       {isStale(e.lastUpdated) && " • stale (>5m)"}
+                    </p>
+                  )}
+                  {(e.lastIp || e.lastDevice) && (
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {e.lastDevice ? `📱 ${e.lastDevice}` : ""}{e.lastDevice && e.lastIp ? " · " : ""}{e.lastIp ? `🌐 ${e.lastIp}` : ""}
                     </p>
                   )}
                 </div>

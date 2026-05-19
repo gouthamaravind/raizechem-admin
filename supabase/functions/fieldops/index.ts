@@ -60,15 +60,19 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
+    const clientIp =
+      (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-real-ip") ||
+      null;
+
     // ========== START DUTY ==========
     if (action === "start-duty" && req.method === "POST") {
-      const { lat, lng, tracking_mode, battery_level } = await req.json();
+      const { lat, lng, tracking_mode, battery_level, device_name } = await req.json();
 
-      // Validate tracking_mode
       const validModes = ["low", "normal", "high"];
       const mode = validModes.includes(tracking_mode) ? tracking_mode : "normal";
 
-      // Check no active session exists
       const { data: existing } = await supabase
         .from("duty_sessions")
         .select("id")
@@ -86,23 +90,28 @@ Deno.serve(async (req) => {
           user_id: userId,
           start_location: lat && lng ? { lat, lng } : null,
           tracking_mode: mode,
-          start_battery: battery_level || null,
+          start_battery: battery_level ?? null,
+          last_battery: battery_level ?? null,
+          start_ip: clientIp,
+          last_ip: clientIp,
+          start_device: device_name || null,
+          last_device: device_name || null,
         })
         .select("id, start_time, status, tracking_mode")
         .single();
 
       if (sessErr) throw sessErr;
 
-      // Update profile status
       await supabase.from("profiles").update({
         is_on_duty: true,
-        last_battery: battery_level || null,
+        last_battery: battery_level ?? null,
+        last_ip: clientIp,
+        last_device: device_name || null,
         last_location_lat: lat || null,
         last_location_lng: lng || null,
         last_ping_at: new Date().toISOString(),
       }).eq("id", userId);
 
-      // Record first location point
       if (lat && lng) {
         await supabase.from("location_points").insert({
           duty_session_id: session.id,
@@ -117,12 +126,18 @@ Deno.serve(async (req) => {
       return ok({ session });
     }
 
+
     // ========== STOP DUTY ==========
     if (action === "stop-duty" && req.method === "POST") {
-      const { session_id, lat, lng } = await req.json();
+      const { session_id, lat, lng, battery_level } = await req.json();
       if (!session_id) return err("session_id required");
 
-      // Record final location
+      await supabase.from("duty_sessions").update({
+        end_battery: battery_level ?? null,
+        last_battery: battery_level ?? null,
+        last_ip: clientIp,
+      }).eq("id", session_id);
+
       if (lat && lng) {
         await supabase.from("location_points").insert({
           duty_session_id: session_id,
@@ -144,6 +159,14 @@ Deno.serve(async (req) => {
       });
 
       if (rpcErr) throw rpcErr;
+
+      // Mark user off-duty on profile
+      await supabase.from("profiles").update({
+        is_on_duty: false,
+        last_battery: battery_level ?? null,
+        last_ping_at: new Date().toISOString(),
+      }).eq("id", userId);
+
 
       // Best-effort: snap trail to roads via OSRM and replace total_km
       // with the road-accurate distance. Never block stop-duty on this.
@@ -224,11 +247,18 @@ Deno.serve(async (req) => {
         const latest = accepted[accepted.length - 1];
         await supabase.from("profiles").update({
           last_battery: latest.battery_level || null,
+          last_ip: clientIp,
           last_location_lat: latest.lat,
           last_location_lng: latest.lng,
           last_ping_at: latest.recorded_at,
           is_on_duty: true,
         }).eq("id", userId);
+
+        // Update session rolling telemetry
+        await supabase.from("duty_sessions").update({
+          last_battery: latest.battery_level || null,
+          last_ip: clientIp,
+        }).eq("id", session_id);
       }
 
       return ok({

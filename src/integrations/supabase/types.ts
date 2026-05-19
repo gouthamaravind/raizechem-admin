@@ -1356,10 +1356,17 @@ export type Database = {
       duty_sessions: {
         Row: {
           created_at: string
+          end_battery: number | null
           end_location: Json | null
           end_time: string | null
           id: string
           incentive_amount: number
+          last_battery: number | null
+          last_device: string | null
+          last_ip: string | null
+          start_battery: number | null
+          start_device: string | null
+          start_ip: string | null
           start_location: Json | null
           start_time: string
           status: string
@@ -1370,10 +1377,17 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          end_battery?: number | null
           end_location?: Json | null
           end_time?: string | null
           id?: string
           incentive_amount?: number
+          last_battery?: number | null
+          last_device?: string | null
+          last_ip?: string | null
+          start_battery?: number | null
+          start_device?: string | null
+          start_ip?: string | null
           start_location?: Json | null
           start_time?: string
           status?: string
@@ -1384,10 +1398,17 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          end_battery?: number | null
           end_location?: Json | null
           end_time?: string | null
           id?: string
           incentive_amount?: number
+          last_battery?: number | null
+          last_device?: string | null
+          last_ip?: string | null
+          start_battery?: number | null
+          start_device?: string | null
+          start_ip?: string | null
           start_location?: Json | null
           start_time?: string
           status?: string
@@ -3173,6 +3194,13 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          is_on_duty: boolean
+          last_battery: number | null
+          last_device: string | null
+          last_ip: string | null
+          last_location_lat: number | null
+          last_location_lng: number | null
+          last_ping_at: string | null
           updated_at: string
         }
         Insert: {
@@ -3181,6 +3209,13 @@ export type Database = {
           email?: string | null
           full_name?: string
           id: string
+          is_on_duty?: boolean
+          last_battery?: number | null
+          last_device?: string | null
+          last_ip?: string | null
+          last_location_lat?: number | null
+          last_location_lng?: number | null
+          last_ping_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -3189,6 +3224,13 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          is_on_duty?: boolean
+          last_battery?: number | null
+          last_device?: string | null
+          last_ip?: string | null
+          last_location_lat?: number | null
+          last_location_lng?: number | null
+          last_ping_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -4343,7 +4385,16 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_attendance_days: {
+        Row: {
+          is_present: boolean | null
+          ist_date: string | null
+          total_hours: number | null
+          total_minutes: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       allocate_advance_to_invoice_atomic: {
