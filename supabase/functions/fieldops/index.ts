@@ -247,11 +247,18 @@ Deno.serve(async (req) => {
         const latest = accepted[accepted.length - 1];
         await supabase.from("profiles").update({
           last_battery: latest.battery_level || null,
+          last_ip: clientIp,
           last_location_lat: latest.lat,
           last_location_lng: latest.lng,
           last_ping_at: latest.recorded_at,
           is_on_duty: true,
         }).eq("id", userId);
+
+        // Update session rolling telemetry
+        await supabase.from("duty_sessions").update({
+          last_battery: latest.battery_level || null,
+          last_ip: clientIp,
+        }).eq("id", session_id);
       }
 
       return ok({
