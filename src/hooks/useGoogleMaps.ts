@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type GoogleMapsApi = { maps?: Record<string, unknown> };
+type GoogleMapsObject = { setMap?: (map: unknown) => void; addListener?: (...args: unknown[]) => unknown };
+type GoogleMapsApi = {
+  maps?: {
+    Map: new (...args: unknown[]) => GoogleMapsObject;
+    InfoWindow: new (...args: unknown[]) => GoogleMapsObject & { setContent: (content: string) => void; open: (...args: unknown[]) => void };
+    LatLngBounds: new (...args: unknown[]) => GoogleMapsObject & { extend: (point: unknown) => void; isEmpty: () => boolean };
+    Marker: new (...args: unknown[]) => GoogleMapsObject;
+    Circle: new (...args: unknown[]) => GoogleMapsObject;
+    Polyline: new (...args: unknown[]) => GoogleMapsObject;
+    SymbolPath: { CIRCLE: unknown };
+    event: { addListenerOnce: (...args: unknown[]) => unknown };
+  };
+};
 
 declare global {
   interface Window {
