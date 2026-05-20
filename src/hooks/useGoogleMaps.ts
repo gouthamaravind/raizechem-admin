@@ -15,6 +15,14 @@ let cachedConfig: { browserKey: string; trackingId?: string } | null = null;
 
 async function fetchMapsConfig(): Promise<{ browserKey: string; trackingId?: string }> {
   if (cachedConfig) return cachedConfig;
+
+  const envBrowserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const envTrackingId = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string | undefined;
+  if (envBrowserKey) {
+    cachedConfig = { browserKey: envBrowserKey, trackingId: envTrackingId };
+    return cachedConfig;
+  }
+
   const { data, error } = await supabase.functions.invoke("maps-config");
   if (error || !data?.browserKey) throw new Error("Failed to load Google Maps config");
   cachedConfig = { browserKey: data.browserKey as string, trackingId: data.trackingId as string | undefined };
