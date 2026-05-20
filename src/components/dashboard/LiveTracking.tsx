@@ -1,37 +1,14 @@
-import { useState, useEffect, useMemo, Fragment } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MapPin, Navigation, Clock, Users, Map, Filter, RefreshCw, Battery } from "lucide-react";
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { GMap, type GMapMarker } from "@/components/maps/GMap";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-
-// Fix default marker icons for leaflet in bundled apps
-type LeafletIconPrototype = typeof L.Icon.Default.prototype & {
-  _getIconUrl?: () => string;
-};
-
-delete (L.Icon.Default.prototype as LeafletIconPrototype)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-function createColorIcon(color: string) {
-  return L.divIcon({
-    className: "custom-marker",
-    html: `<div style="background:${color};width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.3)"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-}
 
 function formatDuration(mins: number) {
   const h = Math.floor(mins / 60);
@@ -48,17 +25,6 @@ function formatAge(ts?: string | null) {
   const hours = Math.floor(mins / 60);
   const rem = mins % 60;
   return `${hours}h ${rem}m ago`;
-}
-
-function FitBounds({ positions }: { positions: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (positions.length > 0) {
-      const bounds = L.latLngBounds(positions.map(([lat, lng]) => [lat, lng]));
-      map.fitBounds(bounds, { padding: [30, 30], maxZoom: 14 });
-    }
-  }, [positions, map]);
-  return null;
 }
 
 interface ActiveEmployee {
