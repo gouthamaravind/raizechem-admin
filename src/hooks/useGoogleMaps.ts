@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+type GoogleMapsApi = { maps?: Record<string, unknown> };
+
 declare global {
   interface Window {
-    google?: any;
+    google?: GoogleMapsApi;
     __googleMapsLoading?: Promise<void>;
     __initGoogleMaps?: () => void;
   }
@@ -20,6 +22,7 @@ async function fetchMapsConfig(): Promise<{ browserKey: string; trackingId?: str
 }
 
 export function useGoogleMaps(libraries: string[] = ["maps", "marker"]) {
+  const librariesParam = libraries.join(",");
   const [ready, setReady] = useState<boolean>(!!window.google?.maps);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,10 +37,9 @@ export function useGoogleMaps(libraries: string[] = ["maps", "marker"]) {
           window.__googleMapsLoading = new Promise<void>((resolve) => {
             window.__initGoogleMaps = () => resolve();
             const s = document.createElement("script");
-            const libs = libraries.join(",");
             const params = new URLSearchParams({
               key: browserKey,
-              libraries: libs,
+              libraries: librariesParam,
               loading: "async",
               callback: "__initGoogleMaps",
               auth_referrer_policy: "origin",
@@ -52,13 +54,13 @@ export function useGoogleMaps(libraries: string[] = ["maps", "marker"]) {
         }
         await window.__googleMapsLoading;
         if (!cancelled) setReady(true);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Maps load failed");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Maps load failed");
       }
     })();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [librariesParam]);
 
   return { ready, error, google: ready ? window.google : null };
 }
