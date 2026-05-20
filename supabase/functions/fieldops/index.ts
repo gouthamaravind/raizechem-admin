@@ -180,10 +180,10 @@ Deno.serve(async (req) => {
       }).eq("id", userId);
 
 
-      // Best-effort: snap trail to roads via OSRM and replace total_km
+      // Best-effort: snap trail to roads via Google Roads API and replace total_km
       // with the road-accurate distance. Never block stop-duty on this.
       try {
-        const snapRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/osrm-snap`, {
+        const snapRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/google-roads`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

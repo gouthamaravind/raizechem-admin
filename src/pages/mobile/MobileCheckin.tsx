@@ -10,17 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { MapPin, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { MapContainer, TileLayer, Marker, Circle } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-type LeafletIconPrototype = typeof L.Icon.Default.prototype & { _getIconUrl?: () => string };
-delete (L.Icon.Default.prototype as LeafletIconPrototype)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
+import { GMap } from "@/components/maps/GMap";
 
 const ACTIVITY_TYPES = [
   { value: "visit", label: "General Visit" },
@@ -100,21 +90,13 @@ export default function MobileCheckin() {
                 <Loader2 className="h-4 w-4 animate-spin" /> Locating you…
               </div>
             ) : pos ? (
-              <MapContainer
-                center={[pos.lat, pos.lng]}
+              <GMap
+                center={{ lat: pos.lat, lng: pos.lng }}
                 zoom={16}
-                style={{ height: "100%", width: "100%" }}
-                scrollWheelZoom={false}
-                attributionControl={false}
-              >
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
-                <Marker position={[pos.lat, pos.lng]} />
-                <Circle
-                  center={[pos.lat, pos.lng]}
-                  radius={Math.min(pos.accuracy || 30, 200)}
-                  pathOptions={{ color: "hsl(142 76% 36%)", fillColor: "hsl(142 76% 36%)", fillOpacity: 0.15, weight: 1 }}
-                />
-              </MapContainer>
+                markers={[{ id: "me", lat: pos.lat, lng: pos.lng, color: "hsl(142 76% 36%)", accuracy: pos.accuracy }]}
+                fitBounds={false}
+                height="100%"
+              />
             ) : (
               <div className="h-full flex flex-col items-center justify-center text-destructive text-sm p-4 text-center">
                 <MapPin className="h-5 w-5 mb-1" />

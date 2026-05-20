@@ -40,3 +40,9 @@ verify_jwt = false
 
 [functions.osrm-snap]
 verify_jwt = false
+
+[functions.maps-config]
+verify_jwt = false
+
+[functions.google-roads]
+verify_jwt = false
