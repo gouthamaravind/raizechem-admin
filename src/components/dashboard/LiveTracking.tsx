@@ -462,11 +462,10 @@ export function LiveTracking() {
                           )}
                           {e.batteryLevel != null && (
                             <div className="text-[11px] flex items-center gap-1">
-                              <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-primary'}`} />
-                              {Math.round(Number(e.batteryLevel) * 100)}% battery
+                              <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 20 ? 'text-destructive' : 'text-primary'}`} />
+                              {Math.round(Number(e.batteryLevel))}% battery
                             </div>
-                          )}
-                          {e.lastUpdated && (
+                          )}                          {e.lastUpdated && (
                             <div className="text-[11px] text-muted-foreground">
                               Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
                             </div>
@@ -540,8 +539,8 @@ export function LiveTracking() {
               <div className="flex items-center gap-3 shrink-0 text-xs text-muted-foreground">
                 {e.batteryLevel != null && (
                   <span className="flex items-center gap-1">
-                    <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 0.2 ? 'text-destructive' : 'text-muted-foreground'}`} />
-                    {Math.round(Number(e.batteryLevel) * 100)}%
+                    <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 20 ? 'text-destructive' : 'text-muted-foreground'}`} />
+                    {Math.round(Number(e.batteryLevel))}%
                   </span>
                 )}
                 <span className="flex items-center gap-1">

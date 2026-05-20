@@ -75,7 +75,8 @@ export default function MobileDuty() {
   const getBattery = async () => {
     try {
       const info = await Device.getBatteryInfo();
-      return info.batteryLevel;
+      // Convert 0.85 to 85 for integer storage
+      return info.batteryLevel !== undefined ? Math.round(info.batteryLevel * 100) : undefined;
     } catch {
       return undefined;
     }
