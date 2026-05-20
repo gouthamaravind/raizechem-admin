@@ -1,7 +1,19 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type GoogleMapsApi = { maps?: Record<string, unknown> };
+type GoogleMapsObject = { setMap?: (map: unknown) => void; addListener?: (...args: unknown[]) => unknown };
+type GoogleMapsApi = {
+  maps?: {
+    Map: new (...args: unknown[]) => GoogleMapsObject;
+    InfoWindow: new (...args: unknown[]) => GoogleMapsObject & { setContent: (content: string) => void; open: (...args: unknown[]) => void };
+    LatLngBounds: new (...args: unknown[]) => GoogleMapsObject & { extend: (point: unknown) => void; isEmpty: () => boolean };
+    Marker: new (...args: unknown[]) => GoogleMapsObject;
+    Circle: new (...args: unknown[]) => GoogleMapsObject;
+    Polyline: new (...args: unknown[]) => GoogleMapsObject;
+    SymbolPath: { CIRCLE: unknown };
+    event: { addListenerOnce: (...args: unknown[]) => unknown };
+  };
+};
 
 declare global {
   interface Window {
@@ -15,6 +27,14 @@ let cachedConfig: { browserKey: string; trackingId?: string } | null = null;
 
 async function fetchMapsConfig(): Promise<{ browserKey: string; trackingId?: string }> {
   if (cachedConfig) return cachedConfig;
+
+  const envBrowserKey = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY as string | undefined;
+  const envTrackingId = import.meta.env.VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID as string | undefined;
+  if (envBrowserKey) {
+    cachedConfig = { browserKey: envBrowserKey, trackingId: envTrackingId };
+    return cachedConfig;
+  }
+
   const { data, error } = await supabase.functions.invoke("maps-config");
   if (error || !data?.browserKey) throw new Error("Failed to load Google Maps config");
   cachedConfig = { browserKey: data.browserKey as string, trackingId: data.trackingId as string | undefined };
