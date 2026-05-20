@@ -115,10 +115,11 @@ export default function MobileDuty() {
 
   const pathPositions = useMemo(() => {
     if (!queue.length) return [];
-    return queue.map(p => [p.lat, p.lng] as [number, number]);
+    return queue.map(p => ({ lat: p.lat, lng: p.lng }));
   }, [queue]);
 
   const currentPos = pathPositions.length > 0 ? pathPositions[pathPositions.length - 1] : null;
+
 
   const handleManualLocation = async () => {
     if (!activeSession) return;
@@ -156,23 +157,15 @@ export default function MobileDuty() {
 
             {/* Path Map */}
             <div className="h-48 w-full rounded-2xl overflow-hidden border border-border shadow-sm relative">
-              <MapContainer
-                center={currentPos || [17.3850, 78.4867]}
+              <GMap
+                height="100%"
+                center={currentPos || { lat: 17.385, lng: 78.4867 }}
                 zoom={15}
-                style={{ height: "100%", width: "100%" }}
-                zoomControl={false}
-              >
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" attribution='&copy; OSM &copy; CARTO' />
-                {pathPositions.length > 1 && (
-                  <Polyline positions={pathPositions} color="hsl(var(--primary))" weight={3} opacity={0.7} />
-                )}
-                {currentPos && (
-                  <>
-                    <Marker position={currentPos} />
-                    <MapRecenter center={currentPos} />
-                  </>
-                )}
-              </MapContainer>
+                fitBounds={false}
+                markers={currentPos ? [{ id: "me", lat: currentPos.lat, lng: currentPos.lng, color: "hsl(var(--primary))" }] : []}
+                polylines={pathPositions.length > 1 ? [{ path: pathPositions, color: "hsl(var(--primary))" }] : []}
+              />
+
               <div className="absolute bottom-2 right-2 z-[1000]">
                 <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-[10px] py-0 px-2 h-5">
                   <MapIcon className="h-2.5 w-2.5 mr-1" /> Live Path
