@@ -2,6 +2,17 @@ import { useEffect, useRef } from "react";
 import { useGoogleMaps } from "@/hooks/useGoogleMaps";
 import { Loader2 } from "lucide-react";
 
+type MapsNamespace = {
+  Map: new (element: HTMLElement, options: Record<string, unknown>) => any;
+  InfoWindow: new () => any;
+  LatLngBounds: new () => any;
+  Marker: new (options: Record<string, unknown>) => any;
+  Circle: new (options: Record<string, unknown>) => any;
+  Polyline: new (options: Record<string, unknown>) => any;
+  SymbolPath: { CIRCLE: unknown };
+  event: { addListenerOnce: (...args: any[]) => unknown };
+};
+
 export interface GMapMarker {
   id: string;
   lat: number;
@@ -41,8 +52,9 @@ export function GMap({
 
   // Init map once
   useEffect(() => {
-    if (!ready || !google || !containerRef.current || mapRef.current) return;
-    mapRef.current = new google.maps.Map(containerRef.current, {
+    const maps = google?.maps as MapsNamespace | undefined;
+    if (!ready || !maps || !containerRef.current || mapRef.current) return;
+    mapRef.current = new maps.Map(containerRef.current, {
       center: center || { lat: 17.385, lng: 78.4867 },
       zoom,
       disableDefaultUI: false,
@@ -51,17 +63,18 @@ export function GMap({
       fullscreenControl: true,
       zoomControl: true,
     });
-    infoRef.current = new google.maps.InfoWindow();
+    infoRef.current = new maps.InfoWindow();
     onMapReady?.(mapRef.current);
   }, [ready]);
 
   // Re-render overlays when markers/polylines change
   useEffect(() => {
-    if (!ready || !google || !mapRef.current) return;
+    const maps = google?.maps as MapsNamespace | undefined;
+    if (!ready || !maps || !mapRef.current) return;
     overlayRefs.current.forEach((o) => o.setMap?.(null));
     overlayRefs.current = [];
 
-    const bounds = new google.maps.LatLngBounds();
+    const bounds = new maps.LatLngBounds();
     let hasPoints = false;
 
     for (const m of markers) {
@@ -69,12 +82,12 @@ export function GMap({
       hasPoints = true;
       const pos = { lat: m.lat, lng: m.lng };
       const color = m.color || "#3b82f6";
-      const marker = new google.maps.Marker({
+      const marker = new maps.Marker({
         position: pos,
         map: mapRef.current,
         title: m.title,
         icon: {
-          path: google.maps.SymbolPath.CIRCLE,
+          path: maps.SymbolPath.CIRCLE,
           scale: 8,
           fillColor: color,
           fillOpacity: 1,
@@ -91,7 +104,7 @@ export function GMap({
       overlayRefs.current.push(marker);
 
       if (m.accuracy && m.accuracy > 0) {
-        const circle = new google.maps.Circle({
+        const circle = new maps.Circle({
           center: pos,
           radius: Math.min(m.accuracy, 200),
           map: mapRef.current,
@@ -108,7 +121,7 @@ export function GMap({
 
     for (const pl of polylines) {
       if (!pl.path?.length) continue;
-      const line = new google.maps.Polyline({
+      const line = new maps.Polyline({
         path: pl.path,
         map: mapRef.current,
         strokeColor: pl.color || "#3b82f6",
@@ -124,7 +137,7 @@ export function GMap({
 
     if (fitBounds && hasPoints && !bounds.isEmpty()) {
       mapRef.current.fitBounds(bounds, 40);
-      const listener = google.maps.event.addListenerOnce(mapRef.current, "idle", () => {
+      maps.event.addListenerOnce(mapRef.current, "idle", () => {
         if (mapRef.current.getZoom() > 16) mapRef.current.setZoom(16);
       });
     } else if (center) {
