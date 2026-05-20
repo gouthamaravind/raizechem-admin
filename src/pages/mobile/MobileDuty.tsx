@@ -9,30 +9,10 @@ import { toast } from "@/hooks/use-toast";
 import { useBackgroundTracking } from "@/hooks/useBackgroundTracking";
 import { useDutyTimer } from "@/hooks/useDutyTimer";
 import { useLocationCapture } from "@/hooks/useLocationCapture";
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { GMap } from "@/components/maps/GMap";
 import { Device } from "@capacitor/device";
 import { Badge } from "@/components/ui/badge";
 
-// Fix leaflet icon issue
-type LeafletIconPrototype = typeof L.Icon.Default.prototype & {
-  _getIconUrl?: () => string;
-};
-delete (L.Icon.Default.prototype as LeafletIconPrototype)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-function MapRecenter({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, map.getZoom());
-  }, [center, map]);
-  return null;
-}
 
 type ActiveSession = {
   id: string;

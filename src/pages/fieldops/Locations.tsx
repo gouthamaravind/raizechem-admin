@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useEffect } from "react";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,41 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MapPin, Route, Sparkles } from "lucide-react";
 import { format } from "date-fns";
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-type LeafletIconPrototype = typeof L.Icon.Default.prototype & { _getIconUrl?: () => string };
-delete (L.Icon.Default.prototype as LeafletIconPrototype)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
-
-const startIcon = L.divIcon({
-  className: "trail-marker",
-  html: `<div style="background:hsl(142 76% 36%);width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-  iconSize: [18, 18], iconAnchor: [9, 9],
-});
-const endIcon = L.divIcon({
-  className: "trail-marker",
-  html: `<div style="background:hsl(0 84% 60%);width:18px;height:18px;border-radius:50%;border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`,
-  iconSize: [18, 18], iconAnchor: [9, 9],
-});
-
-function FitBounds({ positions }: { positions: [number, number][] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (positions.length > 1) {
-      const bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
-    } else if (positions.length === 1) {
-      map.setView(positions[0], 14);
-    }
-  }, [positions, map]);
-  return null;
-}
+import { GMap } from "@/components/maps/GMap";
 
 export default function FieldOpsLocations() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -71,19 +37,19 @@ export default function FieldOpsLocations() {
     enabled: !!sessionId,
   });
 
-  const rawPositions = useMemo(
-    () => points.map((p: any) => [Number(p.lat), Number(p.lng)] as [number, number])
-              .filter(([la, ln]) => Number.isFinite(la) && Number.isFinite(ln)),
+  const rawPath = useMemo(
+    () => points.map((p: any) => ({ lat: Number(p.lat), lng: Number(p.lng) }))
+              .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)),
     [points]
   );
 
-  // Snap trail to roads via OSRM (cached per session)
+  // Snap trail to roads via Google Roads API
   const { data: snap } = useQuery({
     queryKey: ["fieldops-snap", sessionId, points.length],
     enabled: !!sessionId && points.length >= 2,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase.functions.invoke("osrm-snap", {
+      const { data, error } = await supabase.functions.invoke("google-roads", {
         body: { session_id: sessionId },
       });
       if (error) throw error;
@@ -91,8 +57,21 @@ export default function FieldOpsLocations() {
     },
   });
 
-  const snappedPositions = snap?.geometry || [];
-  const allPositions = snappedPositions.length > 1 ? snappedPositions : rawPositions;
+  const snappedPath = (snap?.geometry || []).map(([lat, lng]) => ({ lat, lng }));
+
+  const markers = [];
+  const endPoint = snappedPath.length > 1 ? snappedPath : rawPath;
+  if (endPoint.length > 0) {
+    markers.push({ id: "start", lat: endPoint[0].lat, lng: endPoint[0].lng, color: "hsl(142 76% 36%)", title: "Start" });
+    if (endPoint.length > 1) {
+      const last = endPoint[endPoint.length - 1];
+      markers.push({ id: "end", lat: last.lat, lng: last.lng, color: "hsl(0 84% 60%)", title: "End" });
+    }
+  }
+
+  const polylines = [];
+  if (rawPath.length > 1) polylines.push({ path: rawPath, color: "#3b82f6", dashed: true });
+  if (snappedPath.length > 1) polylines.push({ path: snappedPath, color: "hsl(142 76% 36%)" });
 
   return (
     <DashboardLayout>
@@ -119,7 +98,7 @@ export default function FieldOpsLocations() {
               <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground flex items-center gap-1"><Sparkles className="h-3 w-3" />Road-Snapped</CardTitle></CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{snap?.snapped ? `${snap.km.toFixed(2)} km` : "—"}</div>
-                {snap?.snapped && <Badge variant="secondary" className="mt-1 text-xs">via OSRM</Badge>}
+                {snap?.snapped && <Badge variant="secondary" className="mt-1 text-xs">via Google Roads</Badge>}
               </CardContent>
             </Card>
             <Card>
@@ -140,35 +119,10 @@ export default function FieldOpsLocations() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {allPositions.length === 0 ? (
+            {endPoint.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">No GPS points to plot.</div>
             ) : (
-              <div className="h-[500px] rounded-lg overflow-hidden border border-border">
-                <MapContainer
-                  center={allPositions[0]}
-                  zoom={13}
-                  style={{ height: "100%", width: "100%" }}
-                  scrollWheelZoom
-                >
-                  <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                  />
-                  {/* Raw GPS (faint, dashed) */}
-                  {rawPositions.length > 1 && (
-                    <Polyline positions={rawPositions} pathOptions={{ color: "hsl(220 60% 50% / 0.35)", weight: 3, dashArray: "5,8" }} />
-                  )}
-                  {/* Snapped road path (bright, solid) */}
-                  {snappedPositions.length > 1 && (
-                    <Polyline positions={snappedPositions} pathOptions={{ color: "hsl(142 76% 36%)", weight: 5, opacity: 0.85 }} />
-                  )}
-                  <Marker position={allPositions[0]} icon={startIcon} />
-                  {allPositions.length > 1 && (
-                    <Marker position={allPositions[allPositions.length - 1]} icon={endIcon} />
-                  )}
-                  <FitBounds positions={allPositions} />
-                </MapContainer>
-              </div>
+              <GMap markers={markers} polylines={polylines} height={500} fitBounds />
             )}
             <div className="flex gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
               <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-green-600 border-2 border-white" />Start</span>
