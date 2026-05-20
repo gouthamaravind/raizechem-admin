@@ -389,86 +389,62 @@ export function LiveTracking() {
         </div>
 
         {/* Map */}
-        <div className="rounded-lg overflow-hidden border" style={{ height: 300 }}>
-          <MapContainer
-            center={defaultCenter}
-            zoom={12}
-            style={{ height: "100%", width: "100%" }}
-            scrollWheelZoom={true}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            />
-            {positions.length > 0 && <FitBounds positions={positions} />}
-            {filteredEmployees
-              .filter((e) => e.lat && e.lng)
-              .map((e, idx) => {
-                const color = isStale(e.lastUpdated) ? "#9ca3af" : colors[idx % colors.length];
-                return (
-                  <Fragment key={e.sessionId}>
-                    {e.accuracy != null && Number(e.accuracy) > 0 && (
-                      <Circle
-                        center={[e.lat!, e.lng!]}
-                        radius={Math.min(Number(e.accuracy), 200)}
-                        pathOptions={{ color, fillColor: color, fillOpacity: 0.12, weight: 1 }}
-                      />
-                    )}
-                    <Marker
-                      position={[e.lat!, e.lng!]}
-                      icon={createColorIcon(color)}
-                    >
-                      <Popup>
-                        <div className="text-sm">
-                          <strong>{e.name}</strong>
-                          <br />
-                          {e.totalKm.toFixed(1)} km · {formatDuration(e.durationMins)}
-                          {e.accuracy != null && (
-                            <div className="text-[11px] text-muted-foreground">±{Math.round(Number(e.accuracy))} m</div>
-                          )}
-                          {e.batteryLevel != null && (
-                            <div className="text-[11px] flex items-center gap-1">
-                              <Battery className={`h-3 w-3 ${Number(e.batteryLevel) < 20 ? 'text-destructive' : 'text-primary'}`} />
-                              {Math.round(Number(e.batteryLevel))}% battery
-                            </div>
-                          )}                          {e.lastUpdated && (
-                            <div className="text-[11px] text-muted-foreground">
-                              Last ping {new Date(e.lastUpdated).toLocaleTimeString()} {isStale(e.lastUpdated) && "(stale)"}
-                            </div>
-                          )}
-                          {(e.lastIp || e.lastDevice) && (
-                            <div className="text-[11px] text-muted-foreground border-t mt-1 pt-1">
-                              {e.lastDevice && <div>📱 {e.lastDevice}</div>}
-                              {e.lastIp && <div>🌐 {e.lastIp}</div>}
-                            </div>
-                          )}
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </Fragment>
-                );
-              })}
+        {(() => {
+          const empMarkers: GMapMarker[] = filteredEmployees
+            .filter((e) => e.lat && e.lng)
+            .map((e, idx) => {
+              const color = isStale(e.lastUpdated) ? "#9ca3af" : colors[idx % colors.length];
+              const popupHtml = `
+                <div style="font-size:13px;min-width:160px">
+                  <strong>${e.name}</strong><br/>
+                  ${e.totalKm.toFixed(1)} km · ${formatDuration(e.durationMins)}
+                  ${e.accuracy != null ? `<div style="font-size:11px;color:#6b7280">±${Math.round(Number(e.accuracy))} m</div>` : ""}
+                  ${e.batteryLevel != null ? `<div style="font-size:11px">🔋 ${Math.round(Number(e.batteryLevel))}%</div>` : ""}
+                  ${e.lastUpdated ? `<div style="font-size:11px;color:#6b7280">Last ping ${new Date(e.lastUpdated).toLocaleTimeString()}${isStale(e.lastUpdated) ? " (stale)" : ""}</div>` : ""}
+                  ${e.lastDevice ? `<div style="font-size:11px;color:#6b7280;border-top:1px solid #e5e7eb;margin-top:4px;padding-top:4px">📱 ${e.lastDevice}</div>` : ""}
+                  ${e.lastIp ? `<div style="font-size:11px;color:#6b7280">🌐 ${e.lastIp}</div>` : ""}
+                </div>`;
+              return {
+                id: e.sessionId,
+                lat: e.lat!,
+                lng: e.lng!,
+                color,
+                title: e.name,
+                accuracy: e.accuracy ? Number(e.accuracy) : undefined,
+                popupHtml,
+              };
+            });
 
-            {showVisits && visitPoints
-              .filter((v) => v.lat && v.lng)
-              .map((v) => (
-                <Marker
-                  key={`${v.visitId}-${v.type}`}
-                  position={[v.lat!, v.lng!]}
-                  icon={createColorIcon(v.type === "checkin" ? "#22c55e" : "#9ca3af")}
-                >
-                  <Popup>
-                    <div className="text-sm space-y-1">
-                      <div className="font-semibold">{v.dealerName || "Dealer"}</div>
-                      <div className="text-xs text-muted-foreground">{v.fullName}</div>
-                      <div className="text-xs">{v.type === "checkin" ? "Check-in" : "Check-out"}</div>
-                      <div className="text-[11px] text-muted-foreground">{v.time ? formatAge(v.time) : ""}</div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-          </MapContainer>
-        </div>
+          const visitMarkers: GMapMarker[] = showVisits
+            ? visitPoints
+                .filter((v) => v.lat && v.lng)
+                .map((v) => ({
+                  id: `${v.visitId}-${v.type}`,
+                  lat: v.lat!,
+                  lng: v.lng!,
+                  color: v.type === "checkin" ? "#22c55e" : "#9ca3af",
+                  title: v.dealerName || "Dealer",
+                  popupHtml: `
+                    <div style="font-size:13px;min-width:160px">
+                      <div style="font-weight:600">${v.dealerName || "Dealer"}</div>
+                      <div style="font-size:11px;color:#6b7280">${v.fullName || ""}</div>
+                      <div style="font-size:11px">${v.type === "checkin" ? "Check-in" : "Check-out"}</div>
+                      <div style="font-size:11px;color:#6b7280">${v.time ? formatAge(v.time) : ""}</div>
+                    </div>`,
+                }))
+            : [];
+
+          return (
+            <GMap
+              height={300}
+              center={{ lat: defaultCenter[0], lng: defaultCenter[1] }}
+              zoom={12}
+              markers={[...empMarkers, ...visitMarkers]}
+              fitBounds
+              className="rounded-lg overflow-hidden border"
+            />
+          );
+        })()}
 
         {/* Employee List */}
         <div className="space-y-2">
