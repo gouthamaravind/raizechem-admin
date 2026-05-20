@@ -3,14 +3,36 @@ import { useGoogleMaps } from "@/hooks/useGoogleMaps";
 import { Loader2 } from "lucide-react";
 
 type MapsNamespace = {
-  Map: new (element: HTMLElement, options: Record<string, unknown>) => any;
-  InfoWindow: new () => any;
-  LatLngBounds: new () => any;
-  Marker: new (options: Record<string, unknown>) => any;
-  Circle: new (options: Record<string, unknown>) => any;
-  Polyline: new (options: Record<string, unknown>) => any;
+  Map: new (element: HTMLElement, options: Record<string, unknown>) => MapObject;
+  InfoWindow: new () => InfoWindowObject;
+  LatLngBounds: new () => BoundsObject;
+  Marker: new (options: Record<string, unknown>) => OverlayObject;
+  Circle: new (options: Record<string, unknown>) => OverlayObject;
+  Polyline: new (options: Record<string, unknown>) => OverlayObject;
   SymbolPath: { CIRCLE: unknown };
-  event: { addListenerOnce: (...args: any[]) => unknown };
+  event: { addListenerOnce: (target: unknown, eventName: string, handler: () => void) => unknown };
+};
+
+type MapObject = {
+  fitBounds: (bounds: BoundsObject, padding?: number) => void;
+  getZoom: () => number;
+  setZoom: (zoom: number) => void;
+  setCenter: (center: { lat: number; lng: number }) => void;
+};
+
+type OverlayObject = {
+  setMap?: (map: MapObject | null) => void;
+  addListener?: (eventName: string, handler: () => void) => unknown;
+};
+
+type InfoWindowObject = {
+  setContent: (content: string) => void;
+  open: (map: MapObject, anchor: OverlayObject) => void;
+};
+
+type BoundsObject = {
+  extend: (point: { lat: number; lng: number }) => void;
+  isEmpty: () => boolean;
 };
 
 export interface GMapMarker {
@@ -31,7 +53,7 @@ interface GMapProps {
   fitBounds?: boolean;
   height?: number | string;
   className?: string;
-  onMapReady?: (map: any) => void;
+  onMapReady?: (map: MapObject) => void;
 }
 
 export function GMap({
@@ -46,9 +68,9 @@ export function GMap({
 }: GMapProps) {
   const { ready, error, google } = useGoogleMaps();
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const overlayRefs = useRef<any[]>([]);
-  const infoRef = useRef<any>(null);
+  const mapRef = useRef<MapObject | null>(null);
+  const overlayRefs = useRef<OverlayObject[]>([]);
+  const infoRef = useRef<InfoWindowObject | null>(null);
 
   // Init map once
   useEffect(() => {
@@ -97,6 +119,7 @@ export function GMap({
       });
       if (m.popupHtml) {
         marker.addListener("click", () => {
+          if (!infoRef.current || !mapRef.current || !m.popupHtml) return;
           infoRef.current.setContent(m.popupHtml);
           infoRef.current.open(mapRef.current, marker);
         });
