@@ -1,25 +1,28 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+type GoogleMapsApi = { maps?: Record<string, unknown> };
+
 declare global {
   interface Window {
-    google?: any;
+    google?: GoogleMapsApi;
     __googleMapsLoading?: Promise<void>;
     __initGoogleMaps?: () => void;
   }
 }
 
-let cachedKey: string | null = null;
+let cachedConfig: { browserKey: string; trackingId?: string } | null = null;
 
-async function fetchBrowserKey(): Promise<string> {
-  if (cachedKey) return cachedKey;
+async function fetchMapsConfig(): Promise<{ browserKey: string; trackingId?: string }> {
+  if (cachedConfig) return cachedConfig;
   const { data, error } = await supabase.functions.invoke("maps-config");
   if (error || !data?.browserKey) throw new Error("Failed to load Google Maps config");
-  cachedKey = data.browserKey as string;
-  return cachedKey;
+  cachedConfig = { browserKey: data.browserKey as string, trackingId: data.trackingId as string | undefined };
+  return cachedConfig;
 }
 
 export function useGoogleMaps(libraries: string[] = ["maps", "marker"]) {
+  const librariesParam = libraries.join(",");
   const [ready, setReady] = useState<boolean>(!!window.google?.maps);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,12 +33,19 @@ export function useGoogleMaps(libraries: string[] = ["maps", "marker"]) {
     (async () => {
       try {
         if (!window.__googleMapsLoading) {
-          const key = await fetchBrowserKey();
+          const { browserKey, trackingId } = await fetchMapsConfig();
           window.__googleMapsLoading = new Promise<void>((resolve) => {
             window.__initGoogleMaps = () => resolve();
             const s = document.createElement("script");
-            const libs = libraries.join(",");
-            s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=${libs}&loading=async&callback=__initGoogleMaps`;
+            const params = new URLSearchParams({
+              key: browserKey,
+              libraries: librariesParam,
+              loading: "async",
+              callback: "__initGoogleMaps",
+              auth_referrer_policy: "origin",
+            });
+            if (trackingId) params.set("channel", trackingId);
+            s.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
             s.async = true;
             s.defer = true;
             s.onerror = () => { setError("Failed to load Google Maps script"); };
@@ -44,13 +54,13 @@ export function useGoogleMaps(libraries: string[] = ["maps", "marker"]) {
         }
         await window.__googleMapsLoading;
         if (!cancelled) setReady(true);
-      } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Maps load failed");
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Maps load failed");
       }
     })();
 
     return () => { cancelled = true; };
-  }, []);
+  }, [librariesParam]);
 
   return { ready, error, google: ready ? window.google : null };
 }
