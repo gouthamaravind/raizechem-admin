@@ -10,17 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/hooks/use-toast";
 import { MapPin, CheckCircle, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { MapContainer, TileLayer, Marker, Circle } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-
-type LeafletIconPrototype = typeof L.Icon.Default.prototype & { _getIconUrl?: () => string };
-delete (L.Icon.Default.prototype as LeafletIconPrototype)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
-});
+import { GMap } from "@/components/maps/GMap";
 
 const ACTIVITY_TYPES = [
   { value: "visit", label: "General Visit" },
