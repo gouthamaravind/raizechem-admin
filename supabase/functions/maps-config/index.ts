@@ -7,9 +7,19 @@ const corsHeaders = {
 
 Deno.serve((req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  const browserKey = Deno.env.get("GOOGLE_MAPS_BROWSER_KEY") || "";
+  const browserKey =
+    Deno.env.get("GOOGLE_MAPS_BROWSER_KEY") ||
+    Deno.env.get("VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_BROWSER_KEY") ||
+    "";
   return new Response(
-    JSON.stringify({ browserKey, mapId: Deno.env.get("GOOGLE_MAPS_MAP_ID") || "" }),
+    JSON.stringify({
+      browserKey,
+      mapId: Deno.env.get("GOOGLE_MAPS_MAP_ID") || "",
+      trackingId:
+        Deno.env.get("GOOGLE_MAPS_TRACKING_ID") ||
+        Deno.env.get("VITE_LOVABLE_CONNECTOR_GOOGLE_MAPS_TRACKING_ID") ||
+        "",
+    }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });
