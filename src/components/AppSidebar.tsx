@@ -158,24 +158,11 @@ const navGroups = [
   },
 ];
 
-const mobileNavGroups = [
-  {
-    label: "Field Work",
-    module: "fieldops",
-    items: [
-      { title: "Mobile Home", url: "/m/home", icon: Home },
-      { title: "My Duty", url: "/m/duty", icon: Map },
-      { title: "My Visits", url: "/m/dealers", icon: MapPin },
-      { title: "Orders", url: "/m/orders", icon: ShoppingCart },
-      { title: "Collections", url: "/m/payments", icon: Banknote },
-    ],
-  },
-];
-
 export function AppSidebar() {
   const location = useLocation();
   const { userRoles, isAdmin } = useAuth();
   const isNative = Capacitor.isNativePlatform();
+  const shell = getMobileShell(userRoles);
 
   const hasModuleAccess = (module: string) => {
     if (isAdmin) return true;
@@ -188,6 +175,22 @@ export function AppSidebar() {
     group.items.some(
       (item) => location.pathname === item.url || location.pathname.startsWith(item.url + "/")
     );
+
+  const mobileNavGroups = [
+    {
+      label: "Mobile Tools",
+      module: "dashboard",
+      items: [
+        { title: "Home", url: `/m/${shell}/home`, icon: Home },
+        { title: "Dealers", url: `/m/${shell}/dealers`, icon: MapPin },
+        { title: "Orders", url: `/m/${shell}/orders`, icon: ShoppingCart },
+      ],
+    },
+  ];
+
+  if (shell === 'fieldops') {
+    mobileNavGroups[0].items.splice(1, 0, { title: "My Duty", url: "/m/fieldops/duty", icon: Map });
+  }
 
   // Use mobile groups if on native app OR if the user ONLY has fieldops role (not admin)
   const activeGroups = (isNative || (userRoles.includes("fieldops") && !isAdmin))
@@ -203,7 +206,7 @@ export function AppSidebar() {
           </div>
           <div>
             <h2 className="text-sm font-semibold tracking-tight">Raizechem</h2>
-            <p className="text-[10px] text-muted-foreground">{isNative ? "Mobile App" : "Admin Panel"}</p>
+            <p className="text-[10px] text-muted-foreground">{isNative ? `${shell.toUpperCase()} APP` : "Admin Panel"}</p>
           </div>
         </div>
       </SidebarHeader>

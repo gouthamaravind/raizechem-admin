@@ -122,11 +122,21 @@ import { getMobileShell } from "@/types/roles";
 
 const P = ({ children }: { children: React.ReactNode }) => {
   const isNative = Capacitor.isNativePlatform();
-  const { userRoles, loading } = useAuth();
-  if (isNative && !loading && userRoles.length > 0) {
+  const { session, userRoles, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (isNative && session) {
     const shell = getMobileShell(userRoles);
     return <Navigate to={`/m/${shell}/home`} replace />;
   }
+
   return <ProtectedRoute>{children}</ProtectedRoute>;
 };
 const M = ({ children }: { children: React.ReactNode }) => <MobileGuard>{children}</MobileGuard>;

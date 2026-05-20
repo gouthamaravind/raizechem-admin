@@ -39,6 +39,6 @@ export function getMobileShell(roles: AppRole[]): MobileShell {
   if (p === "manager") return "manager";
   if (p === "sales") return "sales";
   if (p === "fieldops") return "fieldops";
-  // accounts/warehouse/inventory → admin shell (read-only feel)
-  return "admin";
+  // Default for others or empty
+  return "fieldops";
 }
