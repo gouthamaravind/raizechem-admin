@@ -3,10 +3,8 @@ import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { SyncBadge } from "@/components/mobile/SyncBadge";
 import { useFieldOps } from "@/hooks/useFieldOps";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
-import { MapPin, Play, Square, Navigation, Settings, ShieldCheck, Activity, BatteryCharging, Map as MapIcon } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { MapPin, Play, Square, Navigation, ShieldCheck, Activity, Map as MapIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { useBackgroundTracking } from "@/hooks/useBackgroundTracking";
 import { useDutyTimer } from "@/hooks/useDutyTimer";
@@ -36,37 +34,21 @@ function MapRecenter({ center }: { center: [number, number] }) {
   return null;
 }
 
-type TrackingMode = "low" | "normal" | "high";
-
-const TRACKING_LABELS: Record<TrackingMode, string> = {
-  low: "Low (every 5 min)",
-  normal: "Normal (~30 sec)",
-  high: "High (~20 sec)",
-};
-
-const CONSENT_KEY = "fieldops_location_consent";
-
 type ActiveSession = {
   id: string;
   start_time: string;
-  tracking_mode?: string | null;
 };
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
-  return "Unable to capture current location";
-}
+const CONSENT_KEY = "fieldops_location_consent_v1";
 
 export default function MobileDuty() {
   const { startDuty, stopDuty, addLocations, getTodaySummary, pendingSync, loading } = useFieldOps();
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [liveKm, setLiveKm] = useState(0);
   const [pageLoading, setPageLoading] = useState(true);
-  const [trackingMode, setTrackingMode] = useState<TrackingMode>("normal");
-  const [showSettings, setShowSettings] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
   const [pendingStart, setPendingStart] = useState(false);
-  const { startTracking, stopTracking, queue, flushQueue, isTracking } = useBackgroundTracking();
+  const { startTracking, stopTracking, queue, isTracking } = useBackgroundTracking();
   const { getLocation } = useLocationCapture();
   const elapsed = useDutyTimer(activeSession?.start_time);
 
@@ -75,8 +57,10 @@ export default function MobileDuty() {
   const getBattery = async () => {
     try {
       const info = await Device.getBatteryInfo();
-      // Convert 0.85 to 85 for integer storage
-      return info.batteryLevel !== undefined ? Math.round(info.batteryLevel * 100) : undefined;
+      if (info.batteryLevel === undefined) return undefined;
+      // Force whole number conversion (0-100)
+      const level = info.batteryLevel <= 1 ? info.batteryLevel * 100 : info.batteryLevel;
+      return Math.round(level);
     } catch {
       return undefined;
     }
@@ -88,62 +72,47 @@ export default function MobileDuty() {
     if (d) {
       setActiveSession(d.active_session || null);
       setLiveKm(d.live_km || 0);
-      if (d.active_session?.tracking_mode) {
-        setTrackingMode(d.active_session.tracking_mode as TrackingMode);
-      }
     }
     setPageLoading(false);
-  }, []);
+  }, [getTodaySummary]);
 
   useEffect(() => {
     loadSummary();
     return () => undefined;
-  }, []);
-
-  // Resume background tracking if a session is already active when the page mounts
-  useEffect(() => {
-    if (activeSession && !isTracking) {
-      startTracking(activeSession.id, trackingMode);
-    }
-    if (!activeSession && isTracking) {
-      stopTracking();
-    }
-  }, [activeSession, trackingMode, isTracking, startTracking, stopTracking]);
-
-  const doStart = async () => {
-    try {
-      const loc = await getLocation();
-      const battery = await getBattery();
-      const { data, error } = await startDuty(loc.lat, loc.lng, trackingMode, battery);
-      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession((data as any).session);
-      startTracking((data as any).session.id, trackingMode);
-      toast({ title: "Duty Started", description: `Tracking: ${TRACKING_LABELS[trackingMode]}` });
-    } catch {
-      const battery = await getBattery();
-      const { data, error } = await startDuty(undefined, undefined, trackingMode, battery);
-      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession((data as any).session);
-      startTracking((data as any).session.id, trackingMode);
-      toast({ title: "Duty Started", description: "Location unavailable" });
-    }
-  };
+  }, [loadSummary]);
 
   const handleStart = async () => {
     if (!hasConsent()) {
-      setPendingStart(true);
       setShowConsent(true);
       return;
     }
+    setPendingStart(true);
     await doStart();
+    setPendingStart(false);
   };
 
   const handleConsentAccept = async () => {
     localStorage.setItem(CONSENT_KEY, "true");
     setShowConsent(false);
-    if (pendingStart) {
-      setPendingStart(false);
-      await doStart();
+    await doStart();
+  };
+
+  const doStart = async () => {
+    try {
+      const loc = await getLocation();
+      const battery = await getBattery();
+      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery);
+      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
+      setActiveSession((data as any).session);
+      startTracking((data as any).session.id, "normal");
+      toast({ title: "Duty Started" });
+    } catch {
+      const battery = await getBattery();
+      const { data, error } = await startDuty(undefined, undefined, "normal", battery);
+      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
+      setActiveSession((data as any).session);
+      startTracking((data as any).session.id, "normal");
+      toast({ title: "Duty Started", description: "Location unavailable" });
     }
   };
 
@@ -178,8 +147,8 @@ export default function MobileDuty() {
       const { error } = await addLocations(activeSession.id, [{ lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, recorded_at: new Date().toISOString() }]);
       if (error) toast({ title: "Error", description: error, variant: "destructive" });
       else toast({ title: "Location Captured", description: `Accuracy: ${loc.accuracy.toFixed(0)}m` });
-    } catch (error) {
-      toast({ title: "Location Error", description: getErrorMessage(error), variant: "destructive" });
+    } catch {
+      toast({ title: "Location Error", description: "Unable to capture location", variant: "destructive" });
     }
   };
 
@@ -244,33 +213,12 @@ export default function MobileDuty() {
               </div>
               <p className="text-4xl font-mono font-bold tracking-tight text-foreground">{elapsed}</p>
               <p className="mt-2 text-sm font-medium text-primary">{liveKm} km traveled</p>
-              <div className="mt-2 flex items-center justify-center gap-1 text-xs text-muted-foreground">
-                <MapPin className="h-3 w-3" />
-                <span>Tracking: {TRACKING_LABELS[trackingMode]}</span>
-              </div>
-              <div className="mt-4 grid grid-cols-2 gap-3 text-left">
-                <div className="rounded-2xl border border-border bg-background px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Queue</p>
+              <div className="mt-4 grid grid-cols-1">
+                <div className="rounded-2xl border border-border bg-background px-4 py-3 text-center">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Location Pings Queued</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{queue.length}</p>
                 </div>
-                <div className="rounded-2xl border border-border bg-background px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Mode</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">{trackingMode}</p>
-                </div>
               </div>
-            </div>
-
-            {/* Tracking Mode Selector */}
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setShowSettings(true)}
-                variant="outline"
-                size="sm"
-                className="gap-1"
-              >
-                <Settings className="h-4 w-4" />
-                Tune Tracking
-              </Button>
             </div>
 
             <Button
@@ -286,7 +234,7 @@ export default function MobileDuty() {
             <Button
               onClick={handleStop}
               variant="destructive"
-              className="w-full h-14 text-base gap-2"
+              className="w-full h-14 text-lg gap-2"
               disabled={loading}
             >
               <Square className="h-5 w-5" />
@@ -294,38 +242,20 @@ export default function MobileDuty() {
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 space-y-6">
-            <div className="flex h-24 w-24 items-center justify-center rounded-[2rem] border border-border bg-card shadow-lg shadow-primary/10">
-              <img src="/raizechem-field-logo.png" alt="RaizeChem" className="h-16 w-16 object-contain" />
+          <div className="flex flex-col gap-6 items-center justify-center py-8">
+            <div className="rounded-full bg-accent p-8 text-primary">
+              <ShieldCheck className="h-12 w-12" />
             </div>
+
             <div className="text-center space-y-1">
               <h2 className="text-2xl font-bold tracking-tight text-foreground">Ready to start duty?</h2>
               <p className="text-sm text-muted-foreground">Begin GPS-backed field activity tracking for today.</p>
             </div>
 
-            {/* Pre-start tracking mode */}
-            <div className="w-full space-y-3 rounded-[1.5rem] border border-border bg-card p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                <BatteryCharging className="h-4 w-4 text-primary" />
-                <span>Tracking Mode</span>
-              </div>
-              <Select value={trackingMode} onValueChange={(v) => setTrackingMode(v as TrackingMode)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">{TRACKING_LABELS.low}</SelectItem>
-                  <SelectItem value="normal">{TRACKING_LABELS.normal}</SelectItem>
-                  <SelectItem value="high">{TRACKING_LABELS.high}</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Choose a balanced mode for routine visits, or high accuracy for route-heavy days.
-              </p>
-            </div>
-
             <Button
               onClick={handleStart}
               className="w-full h-14 text-lg gap-2"
-              disabled={loading}
+              disabled={loading || pendingStart}
             >
               <Play className="h-5 w-5" />
               Start Duty
@@ -334,64 +264,30 @@ export default function MobileDuty() {
         )}
       </div>
 
-      {/* Tracking Settings Dialog */}
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Tracking Settings</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Capture Frequency</Label>
-              <Select value={trackingMode} onValueChange={(v) => setTrackingMode(v as TrackingMode)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">{TRACKING_LABELS.low}</SelectItem>
-                  <SelectItem value="normal">{TRACKING_LABELS.normal}</SelectItem>
-                  <SelectItem value="high">{TRACKING_LABELS.high}</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Higher frequency = more accurate distance but uses more battery and data.
-              </p>
-            </div>
-            <Button className="w-full" onClick={() => setShowSettings(false)}>Done</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Location Consent Dialog */}
-      <Dialog open={showConsent} onOpenChange={(v) => { if (!v) { setShowConsent(false); setPendingStart(false); } }}>
-        <DialogContent>
+      {/* Consent Dialog */}
+      <Dialog open={showConsent} onOpenChange={setShowConsent}>
+        <DialogContent className="sm:max-w-md rounded-[2rem]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5 text-primary" />
-              Location Permission
-            </DialogTitle>
+            <DialogTitle>Location Tracking Consent</DialogTitle>
+            <DialogDescription className="py-4 space-y-4">
+              <p>
+                RaizeChem collects location data to enable automated distance tracking and route history **only while you are on duty**.
+              </p>
+              <p className="text-foreground font-medium">
+                Data is collected in the background even when the app is closed or not in use to ensure accurate kilometer calculation for your travel incentives.
+              </p>
+              <p>
+                Tracking stops immediately when you click "Stop Duty". We do not track your location while you are off-duty.
+              </p>
+            </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 text-sm">
-            <p className="text-foreground leading-relaxed">
-              Raizechem collects your device location <strong>only while you are on duty</strong> to:
-            </p>
-            <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-              <li>Calculate distance traveled for incentive computation</li>
-              <li>Record dealer visit check-in / check-out locations</li>
-              <li>Generate route reports for your daily activity summary</li>
-            </ul>
-            <p className="text-muted-foreground leading-relaxed">
-              Location data is encrypted and stored securely. Points older than 30 days are summarized 
-              and detailed GPS coordinates are removed. Your location is <strong>never tracked</strong> when 
-              duty is not active. You can change tracking frequency in settings.
-            </p>
-            <p className="text-xs text-muted-foreground border-t pt-3">
-              By tapping "I Agree", you consent to location collection during active duty sessions as described above.
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => { setShowConsent(false); setPendingStart(false); }}>
-                Cancel
-              </Button>
-              <Button className="flex-1" onClick={handleConsentAccept}>
-                I Agree & Start
-              </Button>
-            </div>
+          <div className="flex flex-col gap-3">
+            <Button className="w-full h-12" onClick={handleConsentAccept}>
+              I Agree & Start
+            </Button>
+            <Button variant="ghost" className="w-full h-12" onClick={() => setShowConsent(false)}>
+              Not Now
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

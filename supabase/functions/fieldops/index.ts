@@ -9,6 +9,15 @@ const corsHeaders = {
 const MAX_POINTS_PER_DAY = 600;
 const MAX_ACCURACY_METERS = 100;
 
+function forceIntBattery(level: any): number | null {
+  if (level === null || level === undefined) return null;
+  const val = Number(level);
+  if (isNaN(val)) return null;
+  // If value is <= 1 (like 0.25), it's likely a percentage decimal, convert to 25
+  const finalVal = val <= 1 ? val * 100 : val;
+  return Math.round(finalVal);
+}
+
 async function authenticate(req: Request) {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) throw new Error("Unauthorized");
@@ -69,6 +78,7 @@ Deno.serve(async (req) => {
     // ========== START DUTY ==========
     if (action === "start-duty" && req.method === "POST") {
       const { lat, lng, tracking_mode, battery_level, device_name } = await req.json();
+      const battery = forceIntBattery(battery_level);
 
       const validModes = ["low", "normal", "high"];
       const mode = validModes.includes(tracking_mode) ? tracking_mode : "normal";
@@ -90,8 +100,8 @@ Deno.serve(async (req) => {
           user_id: userId,
           start_location: lat && lng ? { lat, lng } : null,
           tracking_mode: mode,
-          start_battery: battery_level ?? null,
-          last_battery: battery_level ?? null,
+          start_battery: battery,
+          last_battery: battery,
           start_ip: clientIp,
           last_ip: clientIp,
           start_device: device_name || null,
@@ -104,7 +114,7 @@ Deno.serve(async (req) => {
 
       await supabase.from("profiles").update({
         is_on_duty: true,
-        last_battery: battery_level ?? null,
+        last_battery: battery,
         last_ip: clientIp,
         last_device: device_name || null,
         last_location_lat: lat || null,
@@ -119,7 +129,7 @@ Deno.serve(async (req) => {
           lat,
           lng,
           source: "gps",
-          battery_level: battery_level || null,
+          battery_level: battery,
         });
       }
 
@@ -131,10 +141,11 @@ Deno.serve(async (req) => {
     if (action === "stop-duty" && req.method === "POST") {
       const { session_id, lat, lng, battery_level } = await req.json();
       if (!session_id) return err("session_id required");
+      const battery = forceIntBattery(battery_level);
 
       await supabase.from("duty_sessions").update({
-        end_battery: battery_level ?? null,
-        last_battery: battery_level ?? null,
+        end_battery: battery,
+        last_battery: battery,
         last_ip: clientIp,
       }).eq("id", session_id);
 
@@ -145,6 +156,7 @@ Deno.serve(async (req) => {
           lat,
           lng,
           source: "gps",
+          battery_level: battery,
         });
 
         await supabase
@@ -163,7 +175,7 @@ Deno.serve(async (req) => {
       // Mark user off-duty on profile
       await supabase.from("profiles").update({
         is_on_duty: false,
-        last_battery: battery_level ?? null,
+        last_battery: battery,
         last_ping_at: new Date().toISOString(),
       }).eq("id", userId);
 
@@ -233,7 +245,7 @@ Deno.serve(async (req) => {
           accuracy: accuracy,
           source: p.source || "gps",
           recorded_at: p.recorded_at || new Date().toISOString(),
-          battery_level: p.battery_level || null,
+          battery_level: forceIntBattery(p.battery_level),
         });
       }
 
@@ -246,7 +258,7 @@ Deno.serve(async (req) => {
         // Update live status on profile with the latest point
         const latest = accepted[accepted.length - 1];
         await supabase.from("profiles").update({
-          last_battery: latest.battery_level || null,
+          last_battery: latest.battery_level,
           last_ip: clientIp,
           last_location_lat: latest.lat,
           last_location_lng: latest.lng,
@@ -256,7 +268,7 @@ Deno.serve(async (req) => {
 
         // Update session rolling telemetry
         await supabase.from("duty_sessions").update({
-          last_battery: latest.battery_level || null,
+          last_battery: latest.battery_level,
           last_ip: clientIp,
         }).eq("id", session_id);
       }

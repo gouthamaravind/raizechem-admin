@@ -85,8 +85,9 @@ export function useBackgroundTracking() {
     const getBattery = async () => {
       try {
         const info = await Device.getBatteryInfo();
-        // Convert 0.85 to 85 for integer storage
-        return info.batteryLevel !== undefined ? Math.round(info.batteryLevel * 100) : undefined;
+        if (info.batteryLevel === undefined) return undefined;
+        const level = info.batteryLevel <= 1 ? info.batteryLevel * 100 : info.batteryLevel;
+        return Math.round(level);
       } catch {
         return undefined;
       }
