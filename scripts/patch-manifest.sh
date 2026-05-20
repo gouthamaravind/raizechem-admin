@@ -16,6 +16,7 @@ PERMISSIONS=(
     "android.permission.ACCESS_FINE_LOCATION"
     "android.permission.ACCESS_BACKGROUND_LOCATION"
     "android.permission.FOREGROUND_SERVICE"
+    "android.permission.FOREGROUND_SERVICE_LOCATION"
     "android.permission.INTERNET"
 )
 
