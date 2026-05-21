@@ -19,6 +19,15 @@ type ActiveSession = {
   start_time: string;
 };
 
+type TodaySummary = {
+  active_session?: ActiveSession | null;
+  live_km?: number;
+};
+
+type StartDutyResponse = {
+  session: ActiveSession;
+};
+
 const CONSENT_KEY = "fieldops_location_consent_v1";
 
 const appendUniquePoint = (points: { lat: number; lng: number }[], point: { lat: number; lng: number }) => {
@@ -67,7 +76,7 @@ export default function MobileDuty() {
   const loadSummary = useCallback(async () => {
     try {
       const { data } = await getTodaySummary();
-      const summary = data as any;
+      const summary = data as TodaySummary | null;
       if (summary?.active_session) {
         const sessId = summary.active_session.id;
         setActiveSession({
@@ -123,7 +132,7 @@ export default function MobileDuty() {
     const interval = setInterval(async () => {
       try {
         const { data } = await getTodaySummary();
-        const summary = data as any;
+        const summary = data as TodaySummary | null;
         if (typeof summary?.live_km === "number") {
           setLiveKm(summary.live_km);
         }
@@ -160,7 +169,7 @@ export default function MobileDuty() {
       setPageLoading(false);
     });
     return () => clearTimeout(safety);
-  }, []);
+  }, [loadSummary]);
 
   const handleStart = () => {
     if (!hasConsent()) { setShowConsent(true); return; }
@@ -182,18 +191,18 @@ export default function MobileDuty() {
       const device = await getDeviceInfo();
       const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      const session = (data as any).session;
+      const session = (data as StartDutyResponse).session;
       setActiveSession(session);
       setLivePos({ lat: loc.lat, lng: loc.lng });
       setDbPoints([{ lat: loc.lat, lng: loc.lng }]);
       startTracking(session.id, "normal");
       toast({ title: "Duty Started" });
-    } catch (e: any) {
+    } catch {
       const battery = await getBattery();
       const device = await getDeviceInfo();
       const { data, error } = await startDuty(undefined, undefined, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      const session = (data as any).session;
+      const session = (data as StartDutyResponse).session;
       setActiveSession(session);
       startTracking(session.id, "normal");
       toast({ title: "Duty Started", description: "Location unavailable" });
