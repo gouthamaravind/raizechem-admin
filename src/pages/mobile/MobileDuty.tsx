@@ -12,7 +12,7 @@ import { useLocationCapture } from "@/hooks/useLocationCapture";
 import { GMap } from "@/components/maps/GMap";
 import { Device } from "@capacitor/device";
 import { Badge } from "@/components/ui/badge";
-
+import { supabase } from "@/integrations/supabase/client";
 
 type ActiveSession = {
   id: string;
@@ -22,7 +22,7 @@ type ActiveSession = {
 const CONSENT_KEY = "fieldops_location_consent_v1";
 
 export default function MobileDuty() {
-  const { startDuty, stopDuty, addLocations, getTodaySummary, pendingSync, loading } = useFieldOps();
+  const { startDuty, stopDuty, getTodaySummary, pendingSync, loading } = useFieldOps();
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
   const [liveKm, setLiveKm] = useState(0);
   const [pageLoading, setPageLoading] = useState(true);
@@ -31,6 +31,7 @@ export default function MobileDuty() {
   const { startTracking, stopTracking, queue, isTracking } = useBackgroundTracking();
   const { getLocation } = useLocationCapture();
   const elapsed = useDutyTimer(activeSession?.start_time);
+  const [dbPoints, setDbPoints] = useState<{ lat: number; lng: number }[]>([]);
 
   const hasConsent = () => localStorage.getItem(CONSENT_KEY) === "true";
 
@@ -38,8 +39,6 @@ export default function MobileDuty() {
     try {
       const info = await Device.getBatteryInfo();
       if (info.batteryLevel === undefined) return undefined;
-      // Force whole number conversion (0-100)
-      // On some platforms level is 0.90, on others it might be 90.
       const level = info.batteryLevel <= 1 ? info.batteryLevel * 100 : info.batteryLevel;
       return Math.round(level);
     } catch {
@@ -56,43 +55,6 @@ export default function MobileDuty() {
     }
   };
 
-  const doStart = async () => {
-    try {
-      const loc = await getLocation();
-      const battery = await getBattery();
-      const device = await getDeviceInfo();
-      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery, device);
-      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession((data as any).session);
-      startTracking((data as any).session.id, "normal");
-      toast({ title: "Duty Started" });
-    } catch {
-      const battery = await getBattery();
-      const device = await getDeviceInfo();
-      const { data, error } = await startDuty(undefined, undefined, "normal", battery, device);
-      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      setActiveSession((data as any).session);
-      startTracking((data as any).session.id, "normal");
-      toast({ title: "Duty Started", description: "Location unavailable" });
-    }
-  };
-
-  useEffect(() => {
-    if (!activeSession) return;
-    const interval = setInterval(async () => {
-      try {
-        const { data } = await getTodaySummary();
-        const summary = data as any;
-        if (typeof summary?.live_km === "number") {
-          setLiveKm(summary.live_km);
-        }
-      } catch { /* noop */ }
-    }, 60000); // refresh distance every minute
-    return () => clearInterval(interval);
-  }, [activeSession, getTodaySummary]);
-
-  const [dbPoints, setDbPoints] = useState<{ lat: number; lng: number }[]>([]);
-
   const loadSummary = useCallback(async () => {
     try {
       const { data } = await getTodaySummary();
@@ -103,24 +65,29 @@ export default function MobileDuty() {
           id: sessId,
           start_time: summary.active_session.start_time,
         });
-        if (!isTracking) startTracking(sessId, summary.active_session.tracking_mode || "normal");
+        if (!isTracking) startTracking(sessId, "normal");
 
-        // Initial fetch of points
+        // Initial fetch of points for the trail
         const { data: pts } = await supabase
           .from("location_points")
           .select("lat,lng")
           .eq("duty_session_id", sessId)
           .order("recorded_at", { ascending: true });
         if (pts) setDbPoints(pts.map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })));
+      } else {
+        setActiveSession(null);
+        setDbPoints([]);
       }
       if (typeof summary?.live_km === "number") setLiveKm(summary.live_km);
-    } catch { /* noop */ }
-  }, [getTodaySummary, startTracking, isTracking]);
+    } catch (e) {
+      console.error("loadSummary failed", e);
+    }
+  }, [getTodaySummary, isTracking, startTracking]);
 
   // Real-time listener for new points to keep the trail updated
   useEffect(() => {
     if (!activeSession) { setDbPoints([]); return; }
-
+    
     const channel = supabase
       .channel(`session-points-${activeSession.id}`)
       .on(
@@ -132,19 +99,32 @@ export default function MobileDuty() {
         }
       )
       .subscribe();
-
+      
     return () => { supabase.removeChannel(channel); };
   }, [activeSession]);
 
+  // Periodic KM refresh while on duty
+  useEffect(() => {
+    if (!activeSession) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await getTodaySummary();
+        const summary = data as any;
+        if (typeof summary?.live_km === "number") {
+          setLiveKm(summary.live_km);
+        }
+      } catch { /* noop */ }
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [activeSession, getTodaySummary]);
+
   useEffect(() => {
     loadSummary().finally(() => setPageLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  ...
-  const pathPositions = useMemo(() => {
-    const local = queue.map(p => ({ lat: p.lat, lng: p.lng }));
-    return [...dbPoints, ...local];
-  }, [dbPoints, queue]);
+
+  const handleStart = () => {
+    if (!hasConsent()) { setShowConsent(true); return; }
+    setPendingStart(true);
     doStart().finally(() => setPendingStart(false));
   };
 
@@ -155,6 +135,28 @@ export default function MobileDuty() {
     doStart().finally(() => setPendingStart(false));
   };
 
+  const doStart = async () => {
+    try {
+      const loc = await getLocation();
+      const battery = await getBattery();
+      const device = await getDeviceInfo();
+      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery, device);
+      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
+      const session = (data as any).session;
+      setActiveSession(session);
+      startTracking(session.id, "normal");
+      toast({ title: "Duty Started" });
+    } catch (e: any) {
+      const battery = await getBattery();
+      const device = await getDeviceInfo();
+      const { data, error } = await startDuty(undefined, undefined, "normal", battery, device);
+      if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
+      const session = (data as any).session;
+      setActiveSession(session);
+      startTracking(session.id, "normal");
+      toast({ title: "Duty Started", description: "Location unavailable" });
+    }
+  };
 
   const handleStop = async () => {
     if (!activeSession) return;
@@ -169,48 +171,19 @@ export default function MobileDuty() {
     }
     await stopTracking();
     setActiveSession(null);
+    setDbPoints([]);
     toast({ title: "Duty Ended" });
     loadSummary();
   };
 
   const pathPositions = useMemo(() => {
-    if (!queue.length) return [];
-    return queue.map(p => ({ lat: p.lat, lng: p.lng }));
-  }, [queue]);
+    const local = queue.map(p => ({ lat: p.lat, lng: p.lng }));
+    return [...dbPoints, ...local];
+  }, [dbPoints, queue]);
 
-  const [livePos, setLivePos] = useState<{ lat: number; lng: number } | null>(null);
-
-  useEffect(() => {
-    if (!activeSession) { setLivePos(null); return; }
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const loc = await getLocation();
-        if (!cancelled) setLivePos({ lat: loc.lat, lng: loc.lng });
-      } catch { /* ignore */ }
-    };
-    tick();
-    const id = setInterval(tick, 15000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, [activeSession, getLocation]);
-
-  const currentPos = pathPositions.length > 0
-    ? pathPositions[pathPositions.length - 1]
-    : livePos;
-
-
-
-  const handleManualLocation = async () => {
-    if (!activeSession) return;
-    try {
-      const loc = await getLocation();
-      const { error } = await addLocations(activeSession.id, [{ lat: loc.lat, lng: loc.lng, accuracy: loc.accuracy, recorded_at: new Date().toISOString() }]);
-      if (error) toast({ title: "Error", description: error, variant: "destructive" });
-      else toast({ title: "Location Captured", description: `Accuracy: ${loc.accuracy.toFixed(0)}m` });
-    } catch {
-      toast({ title: "Location Error", description: "Unable to capture location", variant: "destructive" });
-    }
-  };
+  const currentPos = pathPositions.length > 0 
+    ? pathPositions[pathPositions.length - 1] 
+    : null;
 
   if (pageLoading) {
     return (
@@ -231,11 +204,10 @@ export default function MobileDuty() {
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-sm">
               <Activity className="h-3.5 w-3.5 text-primary" />
-              <span>{isTracking ? "Background tracking active" : "Live location"}</span>
+              <span>Background tracking active</span>
               <span className="rounded-full bg-accent px-2 py-0.5 ml-auto text-[10px]">pings: {queue.length}</span>
             </div>
 
-            {/* Path Map */}
             <div className="h-64 w-full rounded-2xl overflow-hidden border border-border shadow-sm relative">
               <GMap
                 height="100%"
@@ -245,7 +217,6 @@ export default function MobileDuty() {
                 markers={currentPos ? [{ id: "me", lat: currentPos.lat, lng: currentPos.lng, color: "hsl(var(--primary))" }] : []}
                 polylines={pathPositions.length > 1 ? [{ path: pathPositions, color: "hsl(var(--primary))" }] : []}
               />
-
               <div className="absolute bottom-2 right-2 z-[1000]">
                 <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-[10px] py-0 px-2 h-5">
                   <MapIcon className="h-2.5 w-2.5 mr-1" /> Live Path
@@ -254,10 +225,9 @@ export default function MobileDuty() {
             </div>
           </div>
         )}
+
         {activeSession ? (
           <div className="space-y-6">
-
-            {/* Timer Display */}
             <div className="rounded-[1.9rem] border border-border bg-card p-6 text-center shadow-sm">
               <div className="mb-4 flex items-center justify-center gap-2">
                 <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-primary-foreground">
@@ -265,11 +235,11 @@ export default function MobileDuty() {
                 </span>
               </div>
               <p className="text-4xl font-mono font-bold tracking-tight text-foreground">{elapsed}</p>
-              <p className="mt-2 text-sm font-medium text-primary">{liveKm} km traveled</p>
+              <p className="mt-2 text-sm font-medium text-primary">{liveKm.toFixed(2)} km traveled</p>
               <div className="mt-4 grid grid-cols-1">
                 <div className="rounded-2xl border border-border bg-background px-4 py-3 text-center">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Automatic Tracking Status</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">Active ({queue.length} pings)</p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Tracking Heartbeat</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">Active</p>
                 </div>
               </div>
             </div>
@@ -289,12 +259,10 @@ export default function MobileDuty() {
             <div className="rounded-full bg-accent p-8 text-primary">
               <ShieldCheck className="h-12 w-12" />
             </div>
-
             <div className="text-center space-y-1">
               <h2 className="text-2xl font-bold tracking-tight text-foreground">Ready to start duty?</h2>
               <p className="text-sm text-muted-foreground">Begin GPS-backed field activity tracking for today.</p>
             </div>
-
             <Button
               onClick={handleStart}
               className="w-full h-14 text-lg gap-2"
@@ -307,7 +275,6 @@ export default function MobileDuty() {
         )}
       </div>
 
-      {/* Consent Dialog */}
       <Dialog open={showConsent} onOpenChange={setShowConsent}>
         <DialogContent className="sm:max-w-md rounded-[2rem]">
           <DialogHeader>
@@ -317,10 +284,10 @@ export default function MobileDuty() {
                 RaizeChem collects location data to enable automated distance tracking and route history **only while you are on duty**.
               </p>
               <p className="text-foreground font-medium">
-                Data is collected in the background even when the app is closed or not in use to ensure accurate kilometer calculation for your travel incentives.
+                Data is collected in the background even when the app is closed or not in use to ensure accurate kilometer calculation.
               </p>
               <p>
-                Tracking stops immediately when you click "Stop Duty". We do not track your location while you are off-duty.
+                Tracking stops immediately when you click "Stop Duty".
               </p>
             </DialogDescription>
           </DialogHeader>
