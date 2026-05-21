@@ -180,7 +180,11 @@ export function useBackgroundTracking() {
 
   const stop = useCallback(async () => {
     if (watchId.current) {
-      await Geolocation.clearWatch({ id: watchId.current });
+      if (watchId.current.startsWith("web:")) {
+        navigator.geolocation?.clearWatch(Number(watchId.current.slice(4)));
+      } else {
+        await Geolocation.clearWatch({ id: watchId.current });
+      }
       watchId.current = null;
     }
     if (batchTimer.current) {
