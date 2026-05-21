@@ -162,8 +162,14 @@ export function useFieldOps() {
     return `${platform} • ${ua}`.slice(0, 240);
   };
 
-  const startDuty = (lat?: number, lng?: number, tracking_mode?: string, battery_level?: number) =>
-    callFieldOps("start-duty", "POST", { lat, lng, tracking_mode: tracking_mode || "normal", battery_level, device_name: getDeviceName() });
+  const startDuty = (lat?: number, lng?: number, tracking_mode?: string, battery_level?: number, device_name?: string) =>
+    callFieldOps("start-duty", "POST", { 
+      lat, 
+      lng, 
+      tracking_mode: tracking_mode || "normal", 
+      battery_level, 
+      device_name: device_name || getDeviceName() 
+    });
 
   const stopDuty = (sessionId: string, lat?: number, lng?: number, battery_level?: number) =>
     callFieldOps("stop-duty", "POST", { session_id: sessionId, lat, lng, battery_level });

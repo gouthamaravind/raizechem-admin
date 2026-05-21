@@ -60,15 +60,16 @@ export default function MobileDuty() {
     try {
       const loc = await getLocation();
       const battery = await getBattery();
-      await getDeviceInfo();
-      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery);
+      const device = await getDeviceInfo();
+      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, "normal");
       toast({ title: "Duty Started" });
     } catch {
       const battery = await getBattery();
-      const { data, error } = await startDuty(undefined, undefined, "normal", battery);
+      const device = await getDeviceInfo();
+      const { data, error } = await startDuty(undefined, undefined, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, "normal");
@@ -76,30 +77,74 @@ export default function MobileDuty() {
     }
   };
 
+  useEffect(() => {
+    if (!activeSession) return;
+    const interval = setInterval(async () => {
+      try {
+        const { data } = await getTodaySummary();
+        const summary = data as any;
+        if (typeof summary?.live_km === "number") {
+          setLiveKm(summary.live_km);
+        }
+      } catch { /* noop */ }
+    }, 60000); // refresh distance every minute
+    return () => clearInterval(interval);
+  }, [activeSession, getTodaySummary]);
+
+  const [dbPoints, setDbPoints] = useState<{ lat: number; lng: number }[]>([]);
+
   const loadSummary = useCallback(async () => {
     try {
       const { data } = await getTodaySummary();
       const summary = data as any;
       if (summary?.active_session) {
+        const sessId = summary.active_session.id;
         setActiveSession({
-          id: summary.active_session.id,
+          id: sessId,
           start_time: summary.active_session.start_time,
         });
-        if (!isTracking) startTracking(summary.active_session.id, summary.active_session.tracking_mode || "normal");
+        if (!isTracking) startTracking(sessId, summary.active_session.tracking_mode || "normal");
+
+        // Initial fetch of points
+        const { data: pts } = await supabase
+          .from("location_points")
+          .select("lat,lng")
+          .eq("duty_session_id", sessId)
+          .order("recorded_at", { ascending: true });
+        if (pts) setDbPoints(pts.map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })));
       }
       if (typeof summary?.live_km === "number") setLiveKm(summary.live_km);
     } catch { /* noop */ }
   }, [getTodaySummary, startTracking, isTracking]);
 
+  // Real-time listener for new points to keep the trail updated
+  useEffect(() => {
+    if (!activeSession) { setDbPoints([]); return; }
+
+    const channel = supabase
+      .channel(`session-points-${activeSession.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "location_points", filter: `duty_session_id=eq.${activeSession.id}` },
+        (payload) => {
+          const newPt = { lat: Number(payload.new.lat), lng: Number(payload.new.lng) };
+          setDbPoints(prev => [...prev, newPt]);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeSession]);
+
   useEffect(() => {
     loadSummary().finally(() => setPageLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-
-  const handleStart = () => {
-    if (!hasConsent()) { setShowConsent(true); return; }
-    setPendingStart(true);
+  ...
+  const pathPositions = useMemo(() => {
+    const local = queue.map(p => ({ lat: p.lat, lng: p.lng }));
+    return [...dbPoints, ...local];
+  }, [dbPoints, queue]);
     doStart().finally(() => setPendingStart(false));
   };
 
@@ -207,10 +252,6 @@ export default function MobileDuty() {
                 </Badge>
               </div>
             </div>
-
-            <Button variant="outline" size="sm" onClick={handleManualLocation} className="gap-2">
-              <Navigation className="h-4 w-4" /> Capture Location Now
-            </Button>
           </div>
         )}
         {activeSession ? (
