@@ -77,12 +77,25 @@ export default function MobileDuty() {
   };
 
   const loadSummary = useCallback(async () => {
-    try { await getTodaySummary(); } catch { /* noop */ }
-  }, [getTodaySummary]);
+    try {
+      const { data } = await getTodaySummary();
+      const summary = data as any;
+      if (summary?.active_session) {
+        setActiveSession({
+          id: summary.active_session.id,
+          start_time: summary.active_session.start_time,
+        });
+        if (!isTracking) startTracking(summary.active_session.id, summary.active_session.tracking_mode || "normal");
+      }
+      if (typeof summary?.live_km === "number") setLiveKm(summary.live_km);
+    } catch { /* noop */ }
+  }, [getTodaySummary, startTracking, isTracking]);
 
   useEffect(() => {
     loadSummary().finally(() => setPageLoading(false));
-  }, [loadSummary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const handleStart = () => {
     if (!hasConsent()) { setShowConsent(true); return; }
@@ -120,7 +133,26 @@ export default function MobileDuty() {
     return queue.map(p => ({ lat: p.lat, lng: p.lng }));
   }, [queue]);
 
-  const currentPos = pathPositions.length > 0 ? pathPositions[pathPositions.length - 1] : null;
+  const [livePos, setLivePos] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (!activeSession) { setLivePos(null); return; }
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const loc = await getLocation();
+        if (!cancelled) setLivePos({ lat: loc.lat, lng: loc.lng });
+      } catch { /* ignore */ }
+    };
+    tick();
+    const id = setInterval(tick, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [activeSession, getLocation]);
+
+  const currentPos = pathPositions.length > 0
+    ? pathPositions[pathPositions.length - 1]
+    : livePos;
+
 
 
   const handleManualLocation = async () => {
@@ -149,16 +181,17 @@ export default function MobileDuty() {
     <MobileLayout title="Duty">
       <div className="space-y-6">
         <SyncBadge count={pendingSync.length} />
-        {isTracking && (
+
+        {activeSession && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-sm">
               <Activity className="h-3.5 w-3.5 text-primary" />
-              <span>Background tracking active</span>
+              <span>{isTracking ? "Background tracking active" : "Live location"}</span>
               <span className="rounded-full bg-accent px-2 py-0.5 ml-auto text-[10px]">pings: {queue.length}</span>
             </div>
 
             {/* Path Map */}
-            <div className="h-48 w-full rounded-2xl overflow-hidden border border-border shadow-sm relative">
+            <div className="h-64 w-full rounded-2xl overflow-hidden border border-border shadow-sm relative">
               <GMap
                 height="100%"
                 center={currentPos || { lat: 17.385, lng: 78.4867 }}
@@ -174,11 +207,15 @@ export default function MobileDuty() {
                 </Badge>
               </div>
             </div>
+
+            <Button variant="outline" size="sm" onClick={handleManualLocation} className="gap-2">
+              <Navigation className="h-4 w-4" /> Capture Location Now
+            </Button>
           </div>
         )}
-
         {activeSession ? (
           <div className="space-y-6">
+
             {/* Timer Display */}
             <div className="rounded-[1.9rem] border border-border bg-card p-6 text-center shadow-sm">
               <div className="mb-4 flex items-center justify-center gap-2">
