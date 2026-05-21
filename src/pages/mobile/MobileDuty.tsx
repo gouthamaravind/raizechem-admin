@@ -119,7 +119,13 @@ export default function MobileDuty() {
   }, [activeSession, getTodaySummary]);
 
   useEffect(() => {
-    loadSummary().finally(() => setPageLoading(false));
+    // Never block UI more than 4s — render the page even if summary fetch hangs
+    const safety = setTimeout(() => setPageLoading(false), 4000);
+    loadSummary().finally(() => {
+      clearTimeout(safety);
+      setPageLoading(false);
+    });
+    return () => clearTimeout(safety);
   }, []);
 
   const handleStart = () => {
