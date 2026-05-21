@@ -12,7 +12,7 @@ import {
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { MODULE_ACCESS } from "@/types/roles";
+import { MODULE_ACCESS, getMobileShell } from "@/types/roles";
 import { cn } from "@/lib/utils";
 import { Capacitor } from "@capacitor/core";
 import {
