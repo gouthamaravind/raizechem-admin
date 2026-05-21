@@ -2377,6 +2377,7 @@ export type Database = {
       location_points: {
         Row: {
           accuracy: number | null
+          battery_level: number | null
           duty_session_id: string
           id: string
           lat: number
@@ -2387,6 +2388,7 @@ export type Database = {
         }
         Insert: {
           accuracy?: number | null
+          battery_level?: number | null
           duty_session_id: string
           id?: string
           lat: number
@@ -2397,6 +2399,7 @@ export type Database = {
         }
         Update: {
           accuracy?: number | null
+          battery_level?: number | null
           duty_session_id?: string
           id?: string
           lat?: number
