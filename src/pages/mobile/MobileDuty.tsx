@@ -19,7 +19,24 @@ type ActiveSession = {
   start_time: string;
 };
 
+type TodaySummary = {
+  active_session?: ActiveSession | null;
+  live_km?: number;
+};
+
+type StartDutyResponse = {
+  session: ActiveSession;
+};
+
 const CONSENT_KEY = "fieldops_location_consent_v1";
+
+const appendUniquePoint = (points: { lat: number; lng: number }[], point: { lat: number; lng: number }) => {
+  const last = points[points.length - 1];
+  if (last && Math.abs(last.lat - point.lat) < 0.000001 && Math.abs(last.lng - point.lng) < 0.000001) {
+    return points;
+  }
+  return [...points, point];
+};
 
 export default function MobileDuty() {
   const { startDuty, stopDuty, getTodaySummary, pendingSync, loading } = useFieldOps();
@@ -32,6 +49,7 @@ export default function MobileDuty() {
   const { getLocation } = useLocationCapture();
   const elapsed = useDutyTimer(activeSession?.start_time);
   const [dbPoints, setDbPoints] = useState<{ lat: number; lng: number }[]>([]);
+  const [livePos, setLivePos] = useState<{ lat: number; lng: number } | null>(null);
 
   const hasConsent = () => localStorage.getItem(CONSENT_KEY) === "true";
 
@@ -58,7 +76,7 @@ export default function MobileDuty() {
   const loadSummary = useCallback(async () => {
     try {
       const { data } = await getTodaySummary();
-      const summary = data as any;
+      const summary = data as TodaySummary | null;
       if (summary?.active_session) {
         const sessId = summary.active_session.id;
         setActiveSession({
@@ -73,10 +91,15 @@ export default function MobileDuty() {
           .select("lat,lng")
           .eq("duty_session_id", sessId)
           .order("recorded_at", { ascending: true });
-        if (pts) setDbPoints(pts.map(p => ({ lat: Number(p.lat), lng: Number(p.lng) })));
+        if (pts) {
+          const points = pts.map(p => ({ lat: Number(p.lat), lng: Number(p.lng) }));
+          setDbPoints(points);
+          if (points.length) setLivePos(points[points.length - 1]);
+        }
       } else {
         setActiveSession(null);
         setDbPoints([]);
+        setLivePos(null);
       }
       if (typeof summary?.live_km === "number") setLiveKm(summary.live_km);
     } catch (e) {
@@ -109,14 +132,34 @@ export default function MobileDuty() {
     const interval = setInterval(async () => {
       try {
         const { data } = await getTodaySummary();
-        const summary = data as any;
+        const summary = data as TodaySummary | null;
         if (typeof summary?.live_km === "number") {
           setLiveKm(summary.live_km);
         }
       } catch { /* noop */ }
-    }, 60000);
+    }, 20000);
     return () => clearInterval(interval);
   }, [activeSession, getTodaySummary]);
+
+  // Keep the visible marker fresh even before the background batch sync completes.
+  useEffect(() => {
+    if (!activeSession) return;
+    let cancelled = false;
+    const refreshLivePosition = async () => {
+      try {
+        const loc = await getLocation();
+        if (cancelled) return;
+        const point = { lat: loc.lat, lng: loc.lng };
+        setLivePos(point);
+        setDbPoints((prev) => appendUniquePoint(prev, point));
+      } catch {
+        // Keep the last known point on screen when GPS is temporarily unavailable.
+      }
+    };
+    void refreshLivePosition();
+    const interval = setInterval(refreshLivePosition, 15000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [activeSession, getLocation]);
 
   useEffect(() => {
     // Never block UI more than 4s — render the page even if summary fetch hangs
@@ -126,7 +169,7 @@ export default function MobileDuty() {
       setPageLoading(false);
     });
     return () => clearTimeout(safety);
-  }, []);
+  }, [loadSummary]);
 
   const handleStart = () => {
     if (!hasConsent()) { setShowConsent(true); return; }
@@ -148,16 +191,18 @@ export default function MobileDuty() {
       const device = await getDeviceInfo();
       const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      const session = (data as any).session;
+      const session = (data as StartDutyResponse).session;
       setActiveSession(session);
+      setLivePos({ lat: loc.lat, lng: loc.lng });
+      setDbPoints([{ lat: loc.lat, lng: loc.lng }]);
       startTracking(session.id, "normal");
       toast({ title: "Duty Started" });
-    } catch (e: any) {
+    } catch {
       const battery = await getBattery();
       const device = await getDeviceInfo();
       const { data, error } = await startDuty(undefined, undefined, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
-      const session = (data as any).session;
+      const session = (data as StartDutyResponse).session;
       setActiveSession(session);
       startTracking(session.id, "normal");
       toast({ title: "Duty Started", description: "Location unavailable" });
@@ -184,12 +229,13 @@ export default function MobileDuty() {
 
   const pathPositions = useMemo(() => {
     const local = queue.map(p => ({ lat: p.lat, lng: p.lng }));
-    return [...dbPoints, ...local];
-  }, [dbPoints, queue]);
+    const combined = [...dbPoints, ...local];
+    return livePos ? appendUniquePoint(combined, livePos) : combined;
+  }, [dbPoints, queue, livePos]);
 
   const currentPos = pathPositions.length > 0 
     ? pathPositions[pathPositions.length - 1] 
-    : null;
+    : livePos;
 
   if (pageLoading) {
     return (

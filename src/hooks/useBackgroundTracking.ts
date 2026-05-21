@@ -3,6 +3,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { Network } from "@capacitor/network";
 import { Device } from "@capacitor/device";
 import { useFieldOps } from "./useFieldOps";
+import { Capacitor } from "@capacitor/core";
 
 type TrackingMode = "low" | "normal" | "high";
 
@@ -16,12 +17,34 @@ const BATCH_INTERVAL_MS = 2 * 60 * 1000;
 const STORAGE_KEY = "fieldops_location_queue";
 const MAX_QUEUED_POINTS = 1000;
 
+const isNative = Capacitor.isNativePlatform();
+
 interface QueuedPoint {
   lat: number;
   lng: number;
   accuracy?: number | null;
   recorded_at: string;
   battery_level?: number;
+}
+
+async function getCurrentGpsPoint() {
+  try {
+    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 });
+    return {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      accuracy: pos.coords.accuracy,
+    };
+  } catch (err) {
+    if (!navigator.geolocation) throw err;
+    return new Promise<{ lat: number; lng: number; accuracy?: number | null }>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+        reject,
+        { enableHighAccuracy: true, timeout: 20000 }
+      );
+    });
+  }
 }
 
 function loadQueue(): QueuedPoint[] {
@@ -73,29 +96,42 @@ export function useBackgroundTracking() {
     persist(remaining);
   }, [addLocations, persist]);
 
+  const clearTrackingHandles = useCallback(async () => {
+    if (watchId.current) {
+      if (watchId.current.startsWith("web:")) {
+        navigator.geolocation?.clearWatch(Number(watchId.current.slice(4)));
+      } else {
+        await Geolocation.clearWatch({ id: watchId.current });
+      }
+      watchId.current = null;
+    }
+    if (batchTimer.current) {
+      clearInterval(batchTimer.current);
+      batchTimer.current = null;
+    }
+    if (networkUnsub.current) {
+      await networkUnsub.current();
+      networkUnsub.current = null;
+    }
+  }, []);
+
   const start = useCallback(async (sessionId: string, mode: TrackingMode = "normal") => {
-    if (isTracking) await stop();
+    if (isTracking) {
+      await clearTrackingHandles();
+      await flush();
+    }
 
     sessionRef.current = sessionId;
     modeRef.current = mode;
     const interval = INTERVAL_MS[mode] || INTERVAL_MS.normal;
 
-    // Request permissions step-by-step for "Always Allow"
-    const permStatus = await Geolocation.checkPermissions();
-    if (permStatus.location !== 'granted') {
-      await Geolocation.requestPermissions();
-    }
-    
-    // For Android, we need to specifically ask for background after foreground is granted
-    // Capacitor's requestPermissions doesn't always trigger the background prompt automatically on all versions
-    const secondStatus = await Geolocation.checkPermissions();
-    if (secondStatus.location === 'granted' && secondStatus.coarseLocation === 'granted') {
-       // This will trigger the OS prompt for "Allow all the time" if manifest has ACCESS_BACKGROUND_LOCATION
-       try {
-         await Geolocation.requestPermissions();
-       } catch (e) {
-         console.warn("Background permission request failed or already granted", e);
-       }
+    // Request native permissions only in the Android/iOS shell. On web, Capacitor
+    // permission APIs are unimplemented and can prevent the tracker from starting.
+    if (isNative) {
+      const permStatus = await Geolocation.checkPermissions();
+      if (permStatus.location !== "granted") {
+        await Geolocation.requestPermissions();
+      }
     }
 
     const getBattery = async () => {
@@ -109,34 +145,41 @@ export function useBackgroundTracking() {
       }
     };
 
-    // Watch position (Capacitor keeps running in background more reliably than navigator)
-    watchId.current = await Geolocation.watchPosition({
-      enableHighAccuracy: true,
-      timeout: 20000,
-    }, async (pos, err) => {
-      if (err || !pos) return;
+    const capturePoint = async (coords: { lat: number; lng: number; accuracy?: number | null }) => {
       const battery = await getBattery();
       enqueue({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
+        lat: coords.lat,
+        lng: coords.lng,
+        accuracy: coords.accuracy,
         recorded_at: new Date().toISOString(),
         battery_level: battery,
       });
-    });
+      void flush();
+    };
+
+    // Watch position (native uses Capacitor; web preview uses browser geolocation)
+    if (isNative) {
+      watchId.current = await Geolocation.watchPosition({
+        enableHighAccuracy: true,
+        timeout: 20000,
+      }, async (pos, err) => {
+        if (err || !pos) return;
+        await capturePoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+      });
+    } else if (navigator.geolocation) {
+      const id = navigator.geolocation.watchPosition(
+        (pos) => void capturePoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+        () => undefined,
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+      );
+      watchId.current = `web:${id}`;
+    }
 
     // Polling interval to ensure captures even if watch throttles
     batchTimer.current = setInterval(async () => {
       try {
-        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 });
-        const battery = await getBattery();
-        enqueue({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          recorded_at: new Date().toISOString(),
-          battery_level: battery,
-        });
+        const pos = await getCurrentGpsPoint();
+        await capturePoint(pos);
       } catch {
         // Fallback for battery even if GPS fails
         const battery = await getBattery();
@@ -155,25 +198,14 @@ export function useBackgroundTracking() {
     networkUnsub.current = async () => { const l = await listener; l.remove(); };
 
     setIsTracking(true);
-  }, [enqueue, flush, isTracking]);
+  }, [clearTrackingHandles, enqueue, flush, isTracking]);
 
   const stop = useCallback(async () => {
-    if (watchId.current) {
-      await Geolocation.clearWatch({ id: watchId.current });
-      watchId.current = null;
-    }
-    if (batchTimer.current) {
-      clearInterval(batchTimer.current);
-      batchTimer.current = null;
-    }
-    if (networkUnsub.current) {
-      await networkUnsub.current();
-      networkUnsub.current = null;
-    }
+    await clearTrackingHandles();
     await flush();
     sessionRef.current = null;
     setIsTracking(false);
-  }, [flush]);
+  }, [clearTrackingHandles, flush]);
 
   useEffect(() => {
     return () => { stop(); };

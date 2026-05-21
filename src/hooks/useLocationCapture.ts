@@ -1,5 +1,6 @@
 import { Geolocation } from "@capacitor/geolocation";
 import { Capacitor } from "@capacitor/core";
+import { useCallback } from "react";
 
 export interface LocationPoint {
   lat: number;
@@ -8,7 +9,7 @@ export interface LocationPoint {
 }
 
 export function useLocationCapture() {
-  const ensurePermission = async () => {
+  const ensurePermission = useCallback(async () => {
     if (!Capacitor.isNativePlatform()) return true;
     try {
       const state = await Geolocation.checkPermissions();
@@ -18,9 +19,9 @@ export function useLocationCapture() {
     } catch {
       return false;
     }
-  };
+  }, []);
 
-  const getLocation = async (): Promise<LocationPoint> => {
+  const getLocation = useCallback(async (): Promise<LocationPoint> => {
     await ensurePermission();
     try {
       const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 });
@@ -35,7 +36,7 @@ export function useLocationCapture() {
         );
       });
     }
-  };
+  }, [ensurePermission]);
 
   return { getLocation, ensurePermission };
 }

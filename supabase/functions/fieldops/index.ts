@@ -255,6 +255,10 @@ Deno.serve(async (req) => {
           .insert(accepted);
         if (insErr) throw insErr;
 
+        const { data: liveKm } = await supabase.rpc("compute_session_km", {
+          _session_id: session_id,
+        });
+
         // Update live status on profile with the latest point
         const latest = accepted[accepted.length - 1];
         await supabase.from("profiles").update({
@@ -270,6 +274,7 @@ Deno.serve(async (req) => {
         await supabase.from("duty_sessions").update({
           last_battery: latest.battery_level,
           last_ip: clientIp,
+          total_km: liveKm || 0,
         }).eq("id", session_id);
       }
 
