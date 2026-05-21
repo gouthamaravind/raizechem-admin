@@ -77,12 +77,25 @@ export default function MobileDuty() {
   };
 
   const loadSummary = useCallback(async () => {
-    try { await getTodaySummary(); } catch { /* noop */ }
-  }, [getTodaySummary]);
+    try {
+      const { data } = await getTodaySummary();
+      const summary = data as any;
+      if (summary?.active_session) {
+        setActiveSession({
+          id: summary.active_session.id,
+          start_time: summary.active_session.start_time,
+        });
+        if (!isTracking) startTracking(summary.active_session.id, summary.active_session.tracking_mode || "normal");
+      }
+      if (typeof summary?.live_km === "number") setLiveKm(summary.live_km);
+    } catch { /* noop */ }
+  }, [getTodaySummary, startTracking, isTracking]);
 
   useEffect(() => {
     loadSummary().finally(() => setPageLoading(false));
-  }, [loadSummary]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const handleStart = () => {
     if (!hasConsent()) { setShowConsent(true); return; }
