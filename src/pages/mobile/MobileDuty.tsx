@@ -133,7 +133,26 @@ export default function MobileDuty() {
     return queue.map(p => ({ lat: p.lat, lng: p.lng }));
   }, [queue]);
 
-  const currentPos = pathPositions.length > 0 ? pathPositions[pathPositions.length - 1] : null;
+  const [livePos, setLivePos] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (!activeSession) { setLivePos(null); return; }
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const loc = await getLocation();
+        if (!cancelled) setLivePos({ lat: loc.lat, lng: loc.lng });
+      } catch { /* ignore */ }
+    };
+    tick();
+    const id = setInterval(tick, 15000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [activeSession, getLocation]);
+
+  const currentPos = pathPositions.length > 0
+    ? pathPositions[pathPositions.length - 1]
+    : livePos;
+
 
 
   const handleManualLocation = async () => {
