@@ -83,6 +83,9 @@ export function useFieldOps() {
       if (!session) throw new Error("Not authenticated");
       const url = `${fieldOpsUrl}?action=${encodeURIComponent(action)}`;
       
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const opts: RequestInit = {
         method,
         headers: {
@@ -90,12 +93,18 @@ export function useFieldOps() {
           "Authorization": `Bearer ${session.access_token}`,
           "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
+        signal: controller.signal,
       };
       if (body && method !== "GET") {
         opts.body = JSON.stringify(body);
       }
 
-      const res = await fetch(url, opts);
+      let res: Response;
+      try {
+        res = await fetch(url, opts);
+      } finally {
+        clearTimeout(timeoutId);
+      }
       const data = await res.json();
       
       if (!res.ok) {
