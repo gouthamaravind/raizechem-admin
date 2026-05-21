@@ -213,8 +213,9 @@ export default function MobileDuty() {
             </Button>
           </div>
         )}
-
+        {activeSession ? (
           <div className="space-y-6">
+
             {/* Timer Display */}
             <div className="rounded-[1.9rem] border border-border bg-card p-6 text-center shadow-sm">
               <div className="mb-4 flex items-center justify-center gap-2">
