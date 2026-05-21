@@ -34,11 +34,10 @@ export function getPrimaryRole(roles: AppRole[]): AppRole | null {
 }
 
 export function getMobileShell(roles: AppRole[]): MobileShell {
-  const p = getPrimaryRole(roles);
-  if (p === "admin") return "admin";
-  if (p === "manager") return "manager";
-  if (p === "sales") return "sales";
-  if (p === "fieldops") return "fieldops";
-  // Default for others or empty
+  // STRICT TEMPORARY RESTRICTION: Only fieldops can use the mobile shell
+  if (roles.includes("fieldops")) return "fieldops";
+  
+  // Fallback to fieldops for everyone else too, but they might not have data.
+  // This is safer than showing them the admin dashboard on mobile.
   return "fieldops";
 }

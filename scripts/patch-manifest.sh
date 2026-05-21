@@ -8,7 +8,7 @@ if [ ! -f "$MANIFEST_FILE" ]; then
     exit 1
 fi
 
-echo "Patching AndroidManifest.xml with required permissions..."
+echo "Patching AndroidManifest.xml with Production Grade permissions..."
 
 # List of permissions to add
 PERMISSIONS=(
@@ -18,6 +18,8 @@ PERMISSIONS=(
     "android.permission.FOREGROUND_SERVICE"
     "android.permission.FOREGROUND_SERVICE_LOCATION"
     "android.permission.INTERNET"
+    "android.permission.ACCESS_NETWORK_STATE"
+    "android.permission.WAKE_LOCK"
 )
 
 # Add permissions before the <application> tag if they don't exist
@@ -30,7 +32,12 @@ done
 
 # Ensure location hardware features are declared
 if ! grep -q "android.hardware.location.gps" "$MANIFEST_FILE"; then
-    sed -i "/<application/i \    <uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />" "$MANIFEST_FILE"
+    sed -i "/<application/i \    <uses-feature android:name=\"android.hardware.location.gps\" android:required=\"true\" />" "$MANIFEST_FILE"
 fi
+
+# Ensure Foreground Service Type for Location (Android 14)
+# This requires adding the type to the Service tag. 
+# Capacitor uses a default service, but usually we just need the permission.
+# However, let's make sure the uses-permission is there.
 
 echo "Manifest patching complete."

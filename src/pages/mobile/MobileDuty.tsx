@@ -39,6 +39,7 @@ export default function MobileDuty() {
       const info = await Device.getBatteryInfo();
       if (info.batteryLevel === undefined) return undefined;
       // Force whole number conversion (0-100)
+      // On some platforms level is 0.90, on others it might be 90.
       const level = info.batteryLevel <= 1 ? info.batteryLevel * 100 : info.batteryLevel;
       return Math.round(level);
     } catch {
@@ -46,49 +47,29 @@ export default function MobileDuty() {
     }
   };
 
-  const loadSummary = useCallback(async () => {
-    const { data } = await getTodaySummary();
-    const d = data as any;
-    if (d) {
-      setActiveSession(d.active_session || null);
-      setLiveKm(d.live_km || 0);
+  const getDeviceInfo = async () => {
+    try {
+      const info = await Device.getInfo();
+      return `${info.manufacturer} ${info.model}`;
+    } catch {
+      return "Unknown Android";
     }
-    setPageLoading(false);
-  }, [getTodaySummary]);
-
-  useEffect(() => {
-    loadSummary();
-    return () => undefined;
-  }, [loadSummary]);
-
-  const handleStart = async () => {
-    if (!hasConsent()) {
-      setShowConsent(true);
-      return;
-    }
-    setPendingStart(true);
-    await doStart();
-    setPendingStart(false);
-  };
-
-  const handleConsentAccept = async () => {
-    localStorage.setItem(CONSENT_KEY, "true");
-    setShowConsent(false);
-    await doStart();
   };
 
   const doStart = async () => {
     try {
       const loc = await getLocation();
       const battery = await getBattery();
-      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery);
+      const device = await getDeviceInfo();
+      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, "normal");
       toast({ title: "Duty Started" });
     } catch {
       const battery = await getBattery();
-      const { data, error } = await startDuty(undefined, undefined, "normal", battery);
+      const device = await getDeviceInfo();
+      const { data, error } = await startDuty(undefined, undefined, "normal", battery, device);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, "normal");
@@ -188,21 +169,11 @@ export default function MobileDuty() {
               <p className="mt-2 text-sm font-medium text-primary">{liveKm} km traveled</p>
               <div className="mt-4 grid grid-cols-1">
                 <div className="rounded-2xl border border-border bg-background px-4 py-3 text-center">
-                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Location Pings Queued</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">{queue.length}</p>
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Automatic Tracking Status</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">Active ({queue.length} pings)</p>
                 </div>
               </div>
             </div>
-
-            <Button
-              onClick={handleManualLocation}
-              variant="outline"
-              className="w-full h-14 text-base gap-2"
-              disabled={loading}
-            >
-              <Navigation className="h-5 w-5" />
-              Add Location Now
-            </Button>
 
             <Button
               onClick={handleStop}

@@ -122,7 +122,7 @@ import { getMobileShell } from "@/types/roles";
 
 const P = ({ children }: { children: React.ReactNode }) => {
   const isNative = Capacitor.isNativePlatform();
-  const { session, userRoles, loading } = useAuth();
+  const { session, loading } = useAuth();
   
   if (loading) {
     return (
@@ -133,8 +133,7 @@ const P = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (isNative && session) {
-    const shell = getMobileShell(userRoles);
-    return <Navigate to={`/m/${shell}/home`} replace />;
+    return <Navigate to="/m/fieldops/home" replace />;
   }
 
   return <ProtectedRoute>{children}</ProtectedRoute>;

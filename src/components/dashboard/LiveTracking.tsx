@@ -198,7 +198,7 @@ export function LiveTracking() {
               ...e,
               lastIp: t.last_ip || t.start_ip || null,
               lastDevice: t.last_device || t.start_device || null,
-              batteryLevel: t.last_battery != null ? Number(t.last_battery) / 100 : e.batteryLevel,
+              batteryLevel: t.last_battery != null ? Number(t.last_battery) : e.batteryLevel,
             }
           : e;
       });

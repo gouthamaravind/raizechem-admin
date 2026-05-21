@@ -80,7 +80,23 @@ export function useBackgroundTracking() {
     modeRef.current = mode;
     const interval = INTERVAL_MS[mode] || INTERVAL_MS.normal;
 
-    await Geolocation.requestPermissions();
+    // Request permissions step-by-step for "Always Allow"
+    const permStatus = await Geolocation.checkPermissions();
+    if (permStatus.location !== 'granted') {
+      await Geolocation.requestPermissions();
+    }
+    
+    // For Android, we need to specifically ask for background after foreground is granted
+    // Capacitor's requestPermissions doesn't always trigger the background prompt automatically on all versions
+    const secondStatus = await Geolocation.checkPermissions();
+    if (secondStatus.location === 'granted' && secondStatus.coarseLocation === 'granted') {
+       // This will trigger the OS prompt for "Allow all the time" if manifest has ACCESS_BACKGROUND_LOCATION
+       try {
+         await Geolocation.requestPermissions();
+       } catch (e) {
+         console.warn("Background permission request failed or already granted", e);
+       }
+    }
 
     const getBattery = async () => {
       try {
