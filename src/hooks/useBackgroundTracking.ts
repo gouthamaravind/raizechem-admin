@@ -96,8 +96,30 @@ export function useBackgroundTracking() {
     persist(remaining);
   }, [addLocations, persist]);
 
+  const clearTrackingHandles = useCallback(async () => {
+    if (watchId.current) {
+      if (watchId.current.startsWith("web:")) {
+        navigator.geolocation?.clearWatch(Number(watchId.current.slice(4)));
+      } else {
+        await Geolocation.clearWatch({ id: watchId.current });
+      }
+      watchId.current = null;
+    }
+    if (batchTimer.current) {
+      clearInterval(batchTimer.current);
+      batchTimer.current = null;
+    }
+    if (networkUnsub.current) {
+      await networkUnsub.current();
+      networkUnsub.current = null;
+    }
+  }, []);
+
   const start = useCallback(async (sessionId: string, mode: TrackingMode = "normal") => {
-    if (isTracking) await stop();
+    if (isTracking) {
+      await clearTrackingHandles();
+      await flush();
+    }
 
     sessionRef.current = sessionId;
     modeRef.current = mode;
@@ -176,29 +198,14 @@ export function useBackgroundTracking() {
     networkUnsub.current = async () => { const l = await listener; l.remove(); };
 
     setIsTracking(true);
-  }, [enqueue, flush, isTracking]);
+  }, [clearTrackingHandles, enqueue, flush, isTracking]);
 
   const stop = useCallback(async () => {
-    if (watchId.current) {
-      if (watchId.current.startsWith("web:")) {
-        navigator.geolocation?.clearWatch(Number(watchId.current.slice(4)));
-      } else {
-        await Geolocation.clearWatch({ id: watchId.current });
-      }
-      watchId.current = null;
-    }
-    if (batchTimer.current) {
-      clearInterval(batchTimer.current);
-      batchTimer.current = null;
-    }
-    if (networkUnsub.current) {
-      await networkUnsub.current();
-      networkUnsub.current = null;
-    }
+    await clearTrackingHandles();
     await flush();
     sessionRef.current = null;
     setIsTracking(false);
-  }, [flush]);
+  }, [clearTrackingHandles, flush]);
 
   useEffect(() => {
     return () => { stop(); };
