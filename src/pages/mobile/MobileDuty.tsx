@@ -60,22 +60,43 @@ export default function MobileDuty() {
     try {
       const loc = await getLocation();
       const battery = await getBattery();
-      const device = await getDeviceInfo();
-      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery, device);
+      await getDeviceInfo();
+      const { data, error } = await startDuty(loc.lat, loc.lng, "normal", battery);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, "normal");
       toast({ title: "Duty Started" });
     } catch {
       const battery = await getBattery();
-      const device = await getDeviceInfo();
-      const { data, error } = await startDuty(undefined, undefined, "normal", battery, device);
+      const { data, error } = await startDuty(undefined, undefined, "normal", battery);
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       setActiveSession((data as any).session);
       startTracking((data as any).session.id, "normal");
       toast({ title: "Duty Started", description: "Location unavailable" });
     }
   };
+
+  const loadSummary = useCallback(async () => {
+    try { await getTodaySummary(); } catch { /* noop */ }
+  }, [getTodaySummary]);
+
+  useEffect(() => {
+    loadSummary().finally(() => setPageLoading(false));
+  }, [loadSummary]);
+
+  const handleStart = () => {
+    if (!hasConsent()) { setShowConsent(true); return; }
+    setPendingStart(true);
+    doStart().finally(() => setPendingStart(false));
+  };
+
+  const handleConsentAccept = () => {
+    localStorage.setItem(CONSENT_KEY, "true");
+    setShowConsent(false);
+    setPendingStart(true);
+    doStart().finally(() => setPendingStart(false));
+  };
+
 
   const handleStop = async () => {
     if (!activeSession) return;
