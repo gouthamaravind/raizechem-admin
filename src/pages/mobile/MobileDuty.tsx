@@ -209,7 +209,38 @@ export default function MobileDuty() {
           </div>
         )}
 
-        {activeSession ? (
+        {activeSession && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 text-xs text-muted-foreground shadow-sm">
+              <Activity className="h-3.5 w-3.5 text-primary" />
+              <span>{isTracking ? "Background tracking active" : "Live location"}</span>
+              <span className="rounded-full bg-accent px-2 py-0.5 ml-auto text-[10px]">pings: {queue.length}</span>
+            </div>
+
+            {/* Path Map */}
+            <div className="h-64 w-full rounded-2xl overflow-hidden border border-border shadow-sm relative">
+              <GMap
+                height="100%"
+                center={currentPos || { lat: 17.385, lng: 78.4867 }}
+                zoom={15}
+                fitBounds={false}
+                markers={currentPos ? [{ id: "me", lat: currentPos.lat, lng: currentPos.lng, color: "hsl(var(--primary))" }] : []}
+                polylines={pathPositions.length > 1 ? [{ path: pathPositions, color: "hsl(var(--primary))" }] : []}
+              />
+
+              <div className="absolute bottom-2 right-2 z-[1000]">
+                <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-[10px] py-0 px-2 h-5">
+                  <MapIcon className="h-2.5 w-2.5 mr-1" /> Live Path
+                </Badge>
+              </div>
+            </div>
+
+            <Button variant="outline" size="sm" onClick={handleManualLocation} className="gap-2">
+              <Navigation className="h-4 w-4" /> Capture Location Now
+            </Button>
+          </div>
+        )}
+
           <div className="space-y-6">
             {/* Timer Display */}
             <div className="rounded-[1.9rem] border border-border bg-card p-6 text-center shadow-sm">
