@@ -3,6 +3,7 @@ import { Geolocation } from "@capacitor/geolocation";
 import { Network } from "@capacitor/network";
 import { Device } from "@capacitor/device";
 import { useFieldOps } from "./useFieldOps";
+import { Capacitor } from "@capacitor/core";
 
 type TrackingMode = "low" | "normal" | "high";
 
@@ -15,6 +16,8 @@ const INTERVAL_MS: Record<TrackingMode, number> = {
 const BATCH_INTERVAL_MS = 2 * 60 * 1000;
 const STORAGE_KEY = "fieldops_location_queue";
 const MAX_QUEUED_POINTS = 1000;
+
+const isNative = Capacitor.isNativePlatform();
 
 interface QueuedPoint {
   lat: number;
@@ -80,22 +83,13 @@ export function useBackgroundTracking() {
     modeRef.current = mode;
     const interval = INTERVAL_MS[mode] || INTERVAL_MS.normal;
 
-    // Request permissions step-by-step for "Always Allow"
-    const permStatus = await Geolocation.checkPermissions();
-    if (permStatus.location !== 'granted') {
-      await Geolocation.requestPermissions();
-    }
-    
-    // For Android, we need to specifically ask for background after foreground is granted
-    // Capacitor's requestPermissions doesn't always trigger the background prompt automatically on all versions
-    const secondStatus = await Geolocation.checkPermissions();
-    if (secondStatus.location === 'granted' && secondStatus.coarseLocation === 'granted') {
-       // This will trigger the OS prompt for "Allow all the time" if manifest has ACCESS_BACKGROUND_LOCATION
-       try {
-         await Geolocation.requestPermissions();
-       } catch (e) {
-         console.warn("Background permission request failed or already granted", e);
-       }
+    // Request native permissions only in the Android/iOS shell. On web, Capacitor
+    // permission APIs are unimplemented and can prevent the tracker from starting.
+    if (isNative) {
+      const permStatus = await Geolocation.checkPermissions();
+      if (permStatus.location !== "granted") {
+        await Geolocation.requestPermissions();
+      }
     }
 
     const getBattery = async () => {
