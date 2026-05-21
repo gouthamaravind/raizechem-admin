@@ -166,8 +166,9 @@ export function useFieldOps() {
 
   const getDeviceName = useCallback(() => {
     if (typeof navigator === "undefined") return "unknown";
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
     const ua = navigator.userAgent || "";
-    const platform = (navigator as any).userAgentData?.platform || (navigator as any).platform || "";
+    const platform = nav.userAgentData?.platform || nav.platform || "";
     return `${platform} • ${ua}`.slice(0, 240);
   }, []);
 
