@@ -128,7 +128,7 @@ export default function MobileDuty() {
           setLiveKm(summary.live_km);
         }
       } catch { /* noop */ }
-    }, 60000);
+    }, 20000);
     return () => clearInterval(interval);
   }, [activeSession, getTodaySummary]);
 
