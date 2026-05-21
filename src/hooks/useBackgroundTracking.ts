@@ -27,6 +27,26 @@ interface QueuedPoint {
   battery_level?: number;
 }
 
+async function getCurrentGpsPoint() {
+  try {
+    const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 });
+    return {
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude,
+      accuracy: pos.coords.accuracy,
+    };
+  } catch (err) {
+    if (!navigator.geolocation) throw err;
+    return new Promise<{ lat: number; lng: number; accuracy?: number | null }>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+        reject,
+        { enableHighAccuracy: true, timeout: 20000 }
+      );
+    });
+  }
+}
+
 function loadQueue(): QueuedPoint[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -103,34 +123,41 @@ export function useBackgroundTracking() {
       }
     };
 
-    // Watch position (Capacitor keeps running in background more reliably than navigator)
-    watchId.current = await Geolocation.watchPosition({
-      enableHighAccuracy: true,
-      timeout: 20000,
-    }, async (pos, err) => {
-      if (err || !pos) return;
+    const capturePoint = async (coords: { lat: number; lng: number; accuracy?: number | null }) => {
       const battery = await getBattery();
       enqueue({
-        lat: pos.coords.latitude,
-        lng: pos.coords.longitude,
-        accuracy: pos.coords.accuracy,
+        lat: coords.lat,
+        lng: coords.lng,
+        accuracy: coords.accuracy,
         recorded_at: new Date().toISOString(),
         battery_level: battery,
       });
-    });
+      void flush();
+    };
+
+    // Watch position (native uses Capacitor; web preview uses browser geolocation)
+    if (isNative) {
+      watchId.current = await Geolocation.watchPosition({
+        enableHighAccuracy: true,
+        timeout: 20000,
+      }, async (pos, err) => {
+        if (err || !pos) return;
+        await capturePoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+      });
+    } else if (navigator.geolocation) {
+      const id = navigator.geolocation.watchPosition(
+        (pos) => void capturePoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
+        () => undefined,
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 5000 }
+      );
+      watchId.current = `web:${id}`;
+    }
 
     // Polling interval to ensure captures even if watch throttles
     batchTimer.current = setInterval(async () => {
       try {
-        const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true, timeout: 20000 });
-        const battery = await getBattery();
-        enqueue({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          recorded_at: new Date().toISOString(),
-          battery_level: battery,
-        });
+        const pos = await getCurrentGpsPoint();
+        await capturePoint(pos);
       } catch {
         // Fallback for battery even if GPS fails
         const battery = await getBattery();
