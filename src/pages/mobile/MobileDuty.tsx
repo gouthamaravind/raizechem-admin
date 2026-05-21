@@ -184,6 +184,8 @@ export default function MobileDuty() {
       if (error) { toast({ title: "Error", description: error, variant: "destructive" }); return; }
       const session = (data as any).session;
       setActiveSession(session);
+      setLivePos({ lat: loc.lat, lng: loc.lng });
+      setDbPoints([{ lat: loc.lat, lng: loc.lng }]);
       startTracking(session.id, "normal");
       toast({ title: "Duty Started" });
     } catch (e: any) {
@@ -218,12 +220,13 @@ export default function MobileDuty() {
 
   const pathPositions = useMemo(() => {
     const local = queue.map(p => ({ lat: p.lat, lng: p.lng }));
-    return [...dbPoints, ...local];
-  }, [dbPoints, queue]);
+    const combined = [...dbPoints, ...local];
+    return livePos ? appendUniquePoint(combined, livePos) : combined;
+  }, [dbPoints, queue, livePos]);
 
   const currentPos = pathPositions.length > 0 
     ? pathPositions[pathPositions.length - 1] 
-    : null;
+    : livePos;
 
   if (pageLoading) {
     return (
