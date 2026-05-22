@@ -11,9 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { Search, Check, X } from "lucide-react";
+import { Search, Check, X, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
+
+const statusLabels: Record<string, string> = {
+  pending: "Pending review",
+  converted: "Approved → Sales Order",
+  rejected: "Rejected",
+};
 
 const statusColors: Record<string, string> = {
   pending: "bg-warning/10 text-warning",
@@ -137,7 +144,7 @@ export default function FieldOpsFieldOrders() {
                             </div>
                           </TableCell>
                           <TableCell className="font-semibold">₹{total.toLocaleString("en-IN")}</TableCell>
-                          <TableCell><Badge className={statusColors[o.status] || ""}>{o.status}</Badge></TableCell>
+                          <TableCell><Badge className={statusColors[o.status] || ""}>{statusLabels[o.status] || o.status}</Badge></TableCell>
                           {isAdminOrSales && (
                             <TableCell>
                               {o.status === "pending" && (
@@ -151,7 +158,11 @@ export default function FieldOpsFieldOrders() {
                                 </div>
                               )}
                               {o.status === "converted" && o.approved_order_id && (
-                                <span className="text-xs text-muted-foreground">→ Order linked</span>
+                                <Button asChild size="sm" variant="outline">
+                                  <Link to={`/sales/orders?highlight=${o.approved_order_id}`}>
+                                    View Sales Order <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                                  </Link>
+                                </Button>
                               )}
                             </TableCell>
                           )}
