@@ -144,7 +144,7 @@ export default function FieldOpsFieldOrders() {
                             </div>
                           </TableCell>
                           <TableCell className="font-semibold">₹{total.toLocaleString("en-IN")}</TableCell>
-                          <TableCell><Badge className={statusColors[o.status] || ""}>{o.status}</Badge></TableCell>
+                          <TableCell><Badge className={statusColors[o.status] || ""}>{statusLabels[o.status] || o.status}</Badge></TableCell>
                           {isAdminOrSales && (
                             <TableCell>
                               {o.status === "pending" && (
@@ -158,7 +158,11 @@ export default function FieldOpsFieldOrders() {
                                 </div>
                               )}
                               {o.status === "converted" && o.approved_order_id && (
-                                <span className="text-xs text-muted-foreground">→ Order linked</span>
+                                <Button asChild size="sm" variant="outline">
+                                  <Link to={`/sales/orders?highlight=${o.approved_order_id}`}>
+                                    View Sales Order <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                                  </Link>
+                                </Button>
                               )}
                             </TableCell>
                           )}
