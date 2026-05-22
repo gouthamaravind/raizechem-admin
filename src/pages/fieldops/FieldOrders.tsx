@@ -11,9 +11,16 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
-import { Search, Check, X } from "lucide-react";
+import { Search, Check, X, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
+
+const statusLabels: Record<string, string> = {
+  pending: "Pending review",
+  converted: "Approved → Sales Order",
+  rejected: "Rejected",
+};
 
 const statusColors: Record<string, string> = {
   pending: "bg-warning/10 text-warning",
