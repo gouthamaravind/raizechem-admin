@@ -71,14 +71,12 @@
 - **Priority:** MEDIUM (only matters at scale)
 - **Fix:** Add server-side pagination with `.range()`.
 
-### 3.2 No Line-Level Discounts
-- **Issue:** No discount field on invoice/order items.
-- **Impact:** Cannot offer item-specific discounts.
-- **Fix:** Add `discount_percent` / `discount_amount` columns.
+### 3.2 Line-Level Discounts
+- **Status:** ✅ **Implemented** (May 2026). Support added to `create_invoice_atomic`, `create_order_atomic`, and `create_purchase_invoice_atomic` RPCs.
 
 ### 3.3 No Invoice/Payment Edit
 - **Issue:** Only void is supported. Small corrections require void + recreate.
-- **Note:** By design for audit integrity. Consider draft editing.
+- **Note:** By design for audit integrity.
 
 ### 3.4 No Search/Filter on Some Tables
 - **Issue:** Some pages lack search/status filters (most now have them).
@@ -93,7 +91,6 @@
 | Excessive `as any` casting | Payment allocation, inventory txn, invoice creation | Medium |
 | No TypeScript interfaces for query results | Most page components use `(p: any)` | Medium |
 | Large monolithic page components | `Invoices.tsx`, `Payments.tsx`, `Dealers.tsx` (300+ lines each) | Low |
-| No error boundaries | App-wide — a single component crash shows blank screen | Medium |
 | No loading skeletons on most pages | Only Dashboard has skeletons; others show plain "Loading..." text | Low |
 | Mobile app has no offline support | Field ops requires connectivity; IndexedDB sync not implemented | Low |
 
