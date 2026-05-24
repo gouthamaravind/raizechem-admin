@@ -2,6 +2,9 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,15 +39,17 @@ export default function Returns() {
   const [invoiceId, setInvoiceId] = useState("");
   const [reason, setReason] = useState("");
   const [items, setItems] = useState<ReturnItem[]>([]);
+  const pg = usePagination(50);
 
-  const { data: creditNotes = [], isLoading } = useQuery({
-    queryKey: ["credit-notes"],
+  const { data: creditNotesRaw = [], isLoading } = useQuery({
+    queryKey: ["credit-notes", pg.page],
     queryFn: async () => {
-      const { data, error } = await supabase.from("credit_notes").select("*, dealers(name), invoices(invoice_number)").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("credit_notes").select("*, dealers(name), invoices(invoice_number)").order("created_at", { ascending: false }).range(pg.range.from, pg.range.to + 1);
       if (error) throw error;
-      return data;
+      return data as any[]; // casting to any[] for now to avoid cascading type fixes
     },
   });
+  const creditNotes = creditNotesRaw.slice(0, pg.pageSize);
 
   const { data: invoices = [] } = useQuery({
     queryKey: ["invoices-for-return"],
@@ -195,31 +200,40 @@ export default function Returns() {
         <Card>
           <CardHeader className="pb-3"><div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search credit notes..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div></CardHeader>
           <CardContent>
-            {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No credit notes yet.</p> : (
-              <Table>
-                <TableHeader><TableRow><TableHead>CN #</TableHead><TableHead>Invoice</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead>Reason</TableHead><TableHead></TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {filtered.map((cn: any) => (
-                    <TableRow key={cn.id}>
-                      <TableCell className="font-medium">{cn.credit_note_number}</TableCell>
-                      <TableCell>{cn.invoices?.invoice_number}</TableCell>
-                      <TableCell>{cn.dealers?.name}</TableCell>
-                      <TableCell>{cn.credit_date}</TableCell>
-                      <TableCell>₹{Number(cn.total_amount).toLocaleString("en-IN")}</TableCell>
-                      <TableCell><Badge variant={cn.status === "void" ? "destructive" : "default"}>{cn.status || "active"}</Badge></TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{cn.reason || "—"}</TableCell>
-                      <TableCell className="flex gap-1">
-                        {isAdmin && cn.status !== "void" && (
-                          <AlterButton onClick={() => setAlterTarget({ id: cn.id, label: cn.credit_note_number })} />
-                        )}
-                        {canVoid && cn.status !== "void" && (
-                          <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: cn.id, label: cn.credit_note_number })}><Ban className="h-4 w-4" /></Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            {isLoading ? <TableSkeleton columns={8} /> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No credit notes yet.</p> : (
+              <div className="space-y-4">
+                <Table>
+                  <TableHeader><TableRow><TableHead>CN #</TableHead><TableHead>Invoice</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead>Reason</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                  <TableBody>
+                    {filtered.map((cn: any) => (
+                      <TableRow key={cn.id}>
+                        <TableCell className="font-medium">{cn.credit_note_number}</TableCell>
+                        <TableCell>{cn.invoices?.invoice_number}</TableCell>
+                        <TableCell>{cn.dealers?.name}</TableCell>
+                        <TableCell>{cn.credit_date}</TableCell>
+                        <TableCell>₹{Number(cn.total_amount).toLocaleString("en-IN")}</TableCell>
+                        <TableCell><Badge variant={cn.status === "void" ? "destructive" : "default"}>{cn.status || "active"}</Badge></TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">{cn.reason || "—"}</TableCell>
+                        <TableCell className="flex gap-1">
+                          {isAdmin && cn.status !== "void" && (
+                            <AlterButton onClick={() => setAlterTarget({ id: cn.id, label: cn.credit_note_number })} />
+                          )}
+                          {canVoid && cn.status !== "void" && (
+                            <Button variant="ghost" size="icon" className="text-destructive" onClick={() => setVoidTarget({ id: cn.id, label: cn.credit_note_number })}><Ban className="h-4 w-4" /></Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination 
+                  page={pg.page} 
+                  pageSize={pg.pageSize} 
+                  totalFetched={creditNotesRaw.length} 
+                  onPrev={pg.prevPage} 
+                  onNext={pg.nextPage} 
+                />
+              </div>
             )}
           </CardContent>
         </Card>
