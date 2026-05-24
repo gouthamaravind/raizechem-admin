@@ -1,0 +1,36 @@
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+interface TableSkeletonProps {
+  columns: number;
+  rows?: number;
+}
+
+export function TableSkeleton({ columns, rows = 5 }: TableSkeletonProps) {
+  return (
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {Array.from({ length: columns }).map((_, i) => (
+              <TableHead key={i}>
+                <Skeleton className="h-4 w-[80%]" />
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {Array.from({ length: rows }).map((_, i) => (
+            <TableRow key={i}>
+              {Array.from({ length: columns }).map((_, j) => (
+                <TableCell key={j}>
+                  <Skeleton className="h-4 w-[90%]" />
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}

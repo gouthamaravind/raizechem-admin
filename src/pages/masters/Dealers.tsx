@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useBranch } from "@/hooks/useBranch";
 import { useAuth } from "@/hooks/useAuth";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +26,11 @@ import { DIVISIONS } from "@/lib/divisions";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { cn } from "@/lib/utils";
+import { Database } from "@/integrations/supabase/types";
+
+type Dealer = Database["public"]["Tables"]["dealers"]["Row"];
 
 const INDIAN_STATES = [
   { code: "01", name: "Jammu & Kashmir" }, { code: "02", name: "Himachal Pradesh" },
@@ -119,20 +125,26 @@ export default function Dealers() {
   const { branchId } = useBranch();
   const { hasRole } = useAuth();
   const { isOverdue, getOverdue } = useDealerOverdue();
+  const pg = usePagination(50);
   const canManageAssignments = hasRole("admin");
   const [assignmentDealer, setAssignmentDealer] = useState<{ id: string; name: string } | null>(null);
   const [selectedFieldUserId, setSelectedFieldUserId] = useState("");
 
-  const { data: dealers = [], isLoading } = useQuery({
-    queryKey: ["dealers", branchId],
+  const { data: dealersRaw = [], isLoading } = useQuery({
+    queryKey: ["dealers", branchId, search, statusFilter, pg.page],
     queryFn: async () => {
-      let q = supabase.from("dealers").select("*").order("name");
+      let q = supabase.from("dealers").select("*").order("name").range(pg.range.from, pg.range.to + 1);
       if (branchId) q = q.eq("branch_id", branchId);
+      if (statusFilter !== "all") q = q.eq("status", statusFilter);
+      if (search) {
+        q = q.or(`name.ilike.%${search}%,city.ilike.%${search}%,gst_number.ilike.%${search}%,contact_person.ilike.%${search}%,division.ilike.%${search}%`);
+      }
       const { data, error } = await q;
       if (error) throw error;
-      return data;
+      return data as Dealer[];
     },
   });
+  const dealers = dealersRaw.slice(0, pg.pageSize);
 
   const { data: priceLevels = [] } = useQuery({
     queryKey: ["price_levels"],
@@ -245,12 +257,6 @@ export default function Dealers() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const filtered = dealers.filter((d: any) => {
-    const s = search.toLowerCase();
-    const match = d.name?.toLowerCase().includes(s) || d.city?.toLowerCase().includes(s) || d.gst_number?.toLowerCase().includes(s) || d.contact_person?.toLowerCase().includes(s) || d.division?.toLowerCase().includes(s);
-    return match && (statusFilter === "all" || d.status === statusFilter);
-  });
-
   const openEdit = (d: any) => {
     setEditId(d.id);
     setForm({
@@ -342,7 +348,7 @@ export default function Dealers() {
   };
 
   const handleExport = () => {
-    exportToCsv("dealers.csv", filtered, [
+    exportToCsv("dealers.csv", dealers, [
       { key: "name", label: "Name" }, { key: "gst_number", label: "GSTIN" },
       { key: "contact_person", label: "Contact Person" }, { key: "phone", label: "Phone" },
       { key: "email", label: "Email" }, { key: "city", label: "City" },
@@ -374,7 +380,7 @@ export default function Dealers() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Dealers</h1>
-            <p className="text-muted-foreground">Manage your dealer network ({filtered.length} of {dealers.length})</p>
+            <p className="text-muted-foreground">Manage your dealer network</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}><Download className="h-4 w-4 mr-2" />CSV</Button>
@@ -614,13 +620,13 @@ export default function Dealers() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-4">
-              <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name, city, GSTIN, contact..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select>
+              <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name, city, GSTIN, contact..." className="pl-8" value={search} onChange={(e) => { setSearch(e.target.value); pg.resetPage(); }} /></div>
+              <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); pg.resetPage(); }}><SelectTrigger className="w-36"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">All Status</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem></SelectContent></Select>
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No dealers found.</p> : (
-              <div className="overflow-x-auto">
+            {isLoading ? <TableSkeleton columns={9} /> : dealers.length === 0 ? <p className="text-muted-foreground text-center py-8">No dealers found.</p> : (
+              <div className="overflow-x-auto space-y-4">
                 <Table>
                   <TableHeader><TableRow>
                      <TableHead>Name</TableHead><TableHead>GSTIN</TableHead><TableHead>Contact</TableHead>
@@ -628,7 +634,7 @@ export default function Dealers() {
                      <TableHead>Terms</TableHead><TableHead>Assigned Reps</TableHead><TableHead>Status</TableHead><TableHead className="w-10"></TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {filtered.map((d: any) => (
+                    {dealers.map((d) => (
                       <TableRow key={d.id}>
                         <TableCell className="font-medium">
                           <span className="flex items-center gap-1.5">
@@ -695,6 +701,13 @@ export default function Dealers() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination
+                  page={pg.page}
+                  pageSize={pg.pageSize}
+                  totalFetched={dealersRaw.length}
+                  onPrev={pg.prevPage}
+                  onNext={pg.nextPage}
+                />
               </div>
             )}
           </CardContent>

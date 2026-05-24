@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { useBranch } from "@/hooks/useBranch";
+import { usePagination } from "@/hooks/usePagination";
+import { TablePagination } from "@/components/TablePagination";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +21,10 @@ import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProductPacksDialog } from "@/components/products/ProductPacksDialog";
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { Database } from "@/integrations/supabase/types";
+
+type Product = Database["public"]["Tables"]["products"]["Row"];
 
 const emptyForm = {
   name: "", slug: "", hsn_code: "", unit: "KG", gst_rate: 18,
@@ -44,6 +50,7 @@ export default function Products() {
   const [packsProduct, setPacksProduct] = useState<any | null>(null);
   const qc = useQueryClient();
   const { branchId } = useBranch();
+  const pg = usePagination(50);
 
   // Fetch price levels
   const { data: priceLevels = [] } = useQuery({
@@ -65,16 +72,21 @@ export default function Products() {
     },
   });
 
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products", branchId],
+  const { data: productsRaw = [], isLoading } = useQuery({
+    queryKey: ["products", branchId, search, catFilter, pg.page],
     queryFn: async () => {
-      let q = supabase.from("products").select("*").order("name");
+      let q = supabase.from("products").select("*").order("name").range(pg.range.from, pg.range.to + 1);
       if (branchId) q = q.eq("branch_id", branchId);
+      if (catFilter !== "all") q = q.eq("category", catFilter);
+      if (search) {
+        q = q.or(`name.ilike.%${search}%,hsn_code.ilike.%${search}%,category.ilike.%${search}%,brand.ilike.%${search}%`);
+      }
       const { data, error } = await q;
       if (error) throw error;
-      return data;
+      return data as Product[];
     },
   });
+  const products = productsRaw.slice(0, pg.pageSize);
 
   const { data: packCounts = {} } = useQuery({
     queryKey: ["product_packs_count"],
@@ -178,12 +190,6 @@ export default function Products() {
     setLevelPrices(existing);
   };
 
-  const filtered = products.filter((p: any) => {
-    const s = search.toLowerCase();
-    const match = p.name?.toLowerCase().includes(s) || p.hsn_code?.toLowerCase().includes(s) || p.category?.toLowerCase().includes(s);
-    return match && (catFilter === "all" || p.category === catFilter);
-  });
-
   const openEdit = (p: any) => {
     setEditId(p.id);
     setForm({
@@ -222,10 +228,10 @@ export default function Products() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Products</h1>
-            <p className="text-muted-foreground">Manage your product catalog ({filtered.length} of {products.length})</p>
+            <p className="text-muted-foreground">Manage your product catalog</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => exportToCsv("products.csv", filtered, [
+            <Button variant="outline" onClick={() => exportToCsv("products.csv", products, [
               { key: "name", label: "Name" }, { key: "hsn_code", label: "HSN" }, { key: "unit", label: "Unit" },
               { key: "gst_rate", label: "GST %" }, { key: "sale_price", label: "Sale Price" },
               { key: "purchase_price_default", label: "Purchase Price" }, { key: "category", label: "Category" },
@@ -354,13 +360,13 @@ export default function Products() {
         <Card>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-4">
-              <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name, HSN, or category..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-              <Select value={catFilter} onValueChange={setCatFilter}><SelectTrigger className="w-40"><SelectValue placeholder="All Categories" /></SelectTrigger><SelectContent><SelectItem value="all">All Categories</SelectItem>{categories.map((c: any) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
+              <div className="relative flex-1"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search by name, HSN, or category..." className="pl-8" value={search} onChange={(e) => { setSearch(e.target.value); pg.resetPage(); }} /></div>
+              <Select value={catFilter} onValueChange={(v) => { setCatFilter(v); pg.resetPage(); }}><SelectTrigger className="w-40"><SelectValue placeholder="All Categories" /></SelectTrigger><SelectContent><SelectItem value="all">All Categories</SelectItem>{CATEGORIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
             </div>
           </CardHeader>
           <CardContent>
-            {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No products found.</p> : (
-              <div className="overflow-x-auto">
+            {isLoading ? <TableSkeleton columns={10} /> : products.length === 0 ? <p className="text-muted-foreground text-center py-8">No products found.</p> : (
+              <div className="overflow-x-auto space-y-4">
                 <Table>
                    <TableHeader><TableRow>
                      <TableHead>Name</TableHead><TableHead>Brand</TableHead><TableHead>HSN</TableHead><TableHead>Unit</TableHead>
@@ -369,7 +375,7 @@ export default function Products() {
                      <TableHead className="w-20"></TableHead>
                    </TableRow></TableHeader>
                    <TableBody>
-                     {filtered.map((p: any) => {
+                     {products.map((p) => {
                        const productPriceCount = allProductPrices.filter((pp: any) => pp.product_id === p.id).length;
                        return (
                        <TableRow key={p.id} className={!p.is_active ? "opacity-50" : ""}>
@@ -432,6 +438,13 @@ export default function Products() {
                      );})}
                    </TableBody>
                  </Table>
+                 <TablePagination
+                   page={pg.page}
+                   pageSize={pg.pageSize}
+                   totalFetched={productsRaw.length}
+                   onPrev={pg.prevPage}
+                   onNext={pg.nextPage}
+                 />
                </div>
              )}
            </CardContent>

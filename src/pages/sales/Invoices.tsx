@@ -25,7 +25,15 @@ import { VoidDialog } from "@/components/VoidDialog";
 import { AlterButton } from "@/components/tally/AlterButton";
 import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
 
-type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number };
+import { TableSkeleton } from "@/components/ui/TableSkeleton";
+import { Database } from "@/integrations/supabase/types";
+
+type Dealer = Database["public"]["Tables"]["dealers"]["Row"];
+type Product = Database["public"]["Tables"]["products"]["Row"];
+type Batch = Database["public"]["Tables"]["product_batches"]["Row"];
+type Invoice = Database["public"]["Tables"]["invoices"]["Row"] & { dealers: { name: string } | null };
+
+type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number; pack_id?: string | null };
 
 export default function Invoices() {
   const { user, hasRole, isAdmin } = useAuth();
@@ -66,15 +74,15 @@ export default function Invoices() {
       if (branchId) q = q.eq("branch_id", branchId);
       const { data, error } = await q;
       if (error) throw error;
-      return data;
+      return data as Invoice[];
     },
   });
   const invoices = invoicesRaw.slice(0, pg.pageSize);
 
-  const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
+  const { data: dealers = [] } = useQuery<Dealer[]>({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
   const { data: companySettings } = useQuery({ queryKey: ["company-settings"], queryFn: async () => { const { data } = await supabase.from("company_settings").select("state_code, state").limit(1).single(); return data; } });
-  const { data: products = [] } = useQuery({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
-  const { data: batches = [] } = useQuery({ queryKey: ["batches-available", branchId], queryFn: async () => { let q = supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); if (branchId) q = q.or(`branch_id.eq.${branchId},branch_id.is.null`); const { data } = await q; return data || []; } });
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
+  const { data: batches = [] } = useQuery<Batch[]>({ queryKey: ["batches-available", branchId], queryFn: async () => { let q = supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); if (branchId) q = q.or(`branch_id.eq.${branchId},branch_id.is.null`); const { data } = await q; return data || []; } });
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
 
   // Dealer advance balance
@@ -83,12 +91,12 @@ export default function Invoices() {
     enabled: !!dealerId,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("advance_receipts" as any)
+        .from("advance_receipts")
         .select("balance_amount")
         .eq("dealer_id", dealerId)
         .eq("status", "OPEN");
       if (error) return 0;
-      return (data || []).reduce((sum: number, r: any) => sum + Number(r.balance_amount), 0);
+      return (data || []).reduce((sum: number, r) => sum + Number(r.balance_amount), 0);
     },
   });
 
@@ -125,7 +133,7 @@ export default function Invoices() {
     }
   }, [location.state, products.length]);
 
-  const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
+  const selectedDealer = dealers.find((d) => d.id === dealerId);
 
   const computedItems = items.map((item) => {
     const grossAmount = item.qty * item.rate;
@@ -399,7 +407,7 @@ export default function Invoices() {
         <Card>
           <CardHeader className="pb-3"><div className="relative"><Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search invoices..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} /></div></CardHeader>
           <CardContent>
-            {isLoading ? <p className="text-muted-foreground text-center py-8">Loading...</p> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No invoices yet.</p> : (
+            {isLoading ? <TableSkeleton columns={10} /> : filtered.length === 0 ? <p className="text-muted-foreground text-center py-8">No invoices yet.</p> : (
               <>
               <Table>
                 <TableHeader><TableRow><TableHead>Invoice #</TableHead><TableHead>Dealer</TableHead><TableHead>Date</TableHead><TableHead>Subtotal</TableHead><TableHead>CGST</TableHead><TableHead>SGST</TableHead><TableHead>IGST</TableHead><TableHead>Total</TableHead><TableHead>Status</TableHead><TableHead></TableHead></TableRow></TableHeader>
