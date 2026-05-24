@@ -112,6 +112,7 @@ import Approvals from "./pages/approvals/Approvals";
 import Unsubscribe from "./pages/Unsubscribe";
 import WarehouseHome from "./pages/warehouse/WarehouseHome";
 import WaybillLog from "./pages/warehouse/WaybillLog";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const MAINTENANCE_MODE = false;
 
@@ -136,9 +137,17 @@ const P = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/m/fieldops/home" replace />;
   }
 
-  return <ProtectedRoute>{children}</ProtectedRoute>;
+  return (
+    <ErrorBoundary>
+      <ProtectedRoute>{children}</ProtectedRoute>
+    </ErrorBoundary>
+  );
 };
-const M = ({ children }: { children: React.ReactNode }) => <MobileGuard>{children}</MobileGuard>;
+const M = ({ children }: { children: React.ReactNode }) => (
+  <ErrorBoundary>
+    <MobileGuard>{children}</MobileGuard>
+  </ErrorBoundary>
+);
 
 const App = () => {
   if (MAINTENANCE_MODE) {
