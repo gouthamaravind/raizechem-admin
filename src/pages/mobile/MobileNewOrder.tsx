@@ -155,10 +155,13 @@ export default function MobileNewOrder() {
 
         {/* Total */}
         {items.length > 0 && (
-          <div className="bg-accent rounded-lg p-3 flex justify-between items-center">
-            <span className="text-sm font-medium text-accent-foreground">Total</span>
-            <span className="text-lg font-bold text-primary">
-              ₹{items.reduce((s, i) => s + i.qty * i.expected_rate, 0).toLocaleString()}
+          <div className="bg-accent/50 rounded-2xl p-4 flex justify-between items-center border border-border">
+            <div className="space-y-0.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Order Total</span>
+              <p className="text-xs text-muted-foreground">{items.length} items</p>
+            </div>
+            <span className="text-2xl font-bold text-primary">
+              ₹{Math.round(items.reduce((s, i) => s + (i.qty * i.expected_rate), 0) * 100) / 100}
             </span>
           </div>
         )}
