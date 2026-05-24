@@ -62,6 +62,7 @@ export default function FieldOpsFieldOrders() {
       if (error) throw error;
       return data || [];
     },
+    refetchInterval: 30000,
   });
   const orders = ordersRaw.slice(0, pg.pageSize);
 

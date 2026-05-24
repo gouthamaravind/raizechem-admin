@@ -67,6 +67,8 @@ type ActiveDutyRow = {
     accuracy?: number | null;
     recorded_at?: string | null;
   } | null;
+  battery_level?: number | null;
+  last_device?: string | null;
 };
 
 type RecentVisitRow = {
@@ -115,6 +117,7 @@ export function LiveTracking() {
           accuracy: last.accuracy ?? null,
           lastUpdated: last.recorded_at || null,
           batteryLevel: row.battery_level ?? null,
+          lastDevice: row.last_device || null,
         } as ActiveEmployee;
       });
     },

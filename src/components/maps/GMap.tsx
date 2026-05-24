@@ -100,9 +100,9 @@ export function GMap({
     let hasPoints = false;
 
     for (const m of markers) {
-      if (!m.lat || !m.lng) continue;
+      if (!m.lat || !m.lng || isNaN(Number(m.lat)) || isNaN(Number(m.lng))) continue;
       hasPoints = true;
-      const pos = { lat: m.lat, lng: m.lng };
+      const pos = { lat: Number(m.lat), lng: Number(m.lng) };
       const color = m.color || "#3b82f6";
       const marker = new maps.Marker({
         position: pos,
@@ -129,7 +129,7 @@ export function GMap({
       if (m.accuracy && m.accuracy > 0) {
         const circle = new maps.Circle({
           center: pos,
-          radius: Math.min(m.accuracy, 200),
+          radius: Math.min(Number(m.accuracy), 200),
           map: mapRef.current,
           strokeColor: color,
           strokeOpacity: 0.6,
@@ -144,8 +144,14 @@ export function GMap({
 
     for (const pl of polylines) {
       if (!pl.path?.length) continue;
+      const validPath = pl.path
+        .filter(p => p.lat && p.lng && !isNaN(Number(p.lat)) && !isNaN(Number(p.lng)))
+        .map(p => ({ lat: Number(p.lat), lng: Number(p.lng) }));
+      
+      if (validPath.length < 1) continue;
+      
       const line = new maps.Polyline({
-        path: pl.path,
+        path: validPath,
         map: mapRef.current,
         strokeColor: pl.color || "#3b82f6",
         strokeOpacity: pl.dashed ? 0 : 0.85,
@@ -155,7 +161,7 @@ export function GMap({
           : undefined,
       });
       overlayRefs.current.push(line);
-      pl.path.forEach((p) => { bounds.extend(p); hasPoints = true; });
+      validPath.forEach((p) => { bounds.extend(p); hasPoints = true; });
     }
 
     if (fitBounds && hasPoints && !bounds.isEmpty()) {

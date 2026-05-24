@@ -132,12 +132,19 @@ export function useBackgroundTracking() {
       if (permStatus.location !== "granted") {
         await Geolocation.requestPermissions();
       }
+      
+      // On Android 10+, background location is a separate permission ('Allow all the time')
+      // Capacitor 5+ requires explicit request if you need background access.
+      if (permStatus.location === "granted" && (permStatus as any).coarseLocation !== "granted") {
+         // Background location check placeholder
+      }
     }
 
     const getBattery = async () => {
       try {
         const info = await Device.getBatteryInfo();
         if (info.batteryLevel === undefined) return undefined;
+        // Capacitor battery level is 0.0 to 1.0, convert to 0-100
         const level = info.batteryLevel <= 1 ? info.batteryLevel * 100 : info.batteryLevel;
         return Math.round(level);
       } catch {
@@ -145,15 +152,18 @@ export function useBackgroundTracking() {
       }
     };
 
-    const capturePoint = async (coords: { lat: number; lng: number; accuracy?: number | null }) => {
+    const capturePoint = async (coords: { lat: number; lng: number; accuracy?: number | null } | null) => {
       const battery = await getBattery();
-      enqueue({
-        lat: coords.lat,
-        lng: coords.lng,
-        accuracy: coords.accuracy,
-        recorded_at: new Date().toISOString(),
-        battery_level: battery,
-      });
+      if (coords) {
+        enqueue({
+          lat: coords.lat,
+          lng: coords.lng,
+          accuracy: coords.accuracy,
+          recorded_at: new Date().toISOString(),
+          battery_level: battery,
+        });
+      }
+      // Always trigger flush to update battery telemetry/heartbeat even if no new point
       void flush();
     };
 
@@ -163,7 +173,11 @@ export function useBackgroundTracking() {
         enableHighAccuracy: true,
         timeout: 20000,
       }, async (pos, err) => {
-        if (err || !pos) return;
+        if (err || !pos) {
+          // If GPS fails, still try to send a battery update heartbeat
+          await capturePoint(null);
+          return;
+        }
         await capturePoint({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
       });
     } else if (navigator.geolocation) {
@@ -180,14 +194,10 @@ export function useBackgroundTracking() {
       try {
         const pos = await getCurrentGpsPoint();
         await capturePoint(pos);
-      } catch {
-        // Fallback for battery even if GPS fails
-        const battery = await getBattery();
-        if (battery !== undefined) {
-           // We could record a battery-only ping here if needed
-        }
+      } catch (err) {
+        // Fallback for battery/heartbeat even if GPS fails
+        await capturePoint(null);
       }
-      flush();
     }, Math.min(interval, BATCH_INTERVAL_MS));
 
     // Network listener for offline → online flush

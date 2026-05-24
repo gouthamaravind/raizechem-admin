@@ -266,8 +266,8 @@ export default function MobileDuty() {
                 center={currentPos || { lat: 17.385, lng: 78.4867 }}
                 zoom={15}
                 fitBounds={false}
-                markers={currentPos ? [{ id: "me", lat: currentPos.lat, lng: currentPos.lng, color: "hsl(var(--primary))" }] : []}
-                polylines={pathPositions.length > 1 ? [{ path: pathPositions, color: "hsl(var(--primary))" }] : []}
+                markers={currentPos ? [{ id: "me", lat: currentPos.lat, lng: currentPos.lng, color: "#3b82f6" }] : []}
+                polylines={pathPositions.length > 1 ? [{ path: pathPositions, color: "#3b82f6" }] : []}
               />
               <div className="absolute bottom-2 right-2 z-[1000]">
                 <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-[10px] py-0 px-2 h-5">

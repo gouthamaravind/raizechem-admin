@@ -49,6 +49,7 @@ export default function FieldOpsSessions() {
       const totalPayments = (payments.data || []).reduce((s, p) => s + Number(p.amount || 0), 0);
       return { activeSessions, totalKm: totalKm.toFixed(1), totalOrders: orders.count || 0, totalPayments };
     },
+    refetchInterval: 30000,
   });
 
   const { data: employees = [] } = useQuery({
@@ -71,6 +72,7 @@ export default function FieldOpsSessions() {
       if (error) throw error;
       return data || [];
     },
+    refetchInterval: 30000,
   });
 
   // Map user_id to employee name
@@ -197,6 +199,21 @@ export default function FieldOpsSessions() {
               <div className="flex justify-between"><span className="text-muted-foreground">Distance</span><span>{Number(detailSession.total_km).toFixed(2)} km</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Incentive</span><span className="font-semibold text-primary">{formatCurrency(Number(detailSession.incentive_amount))}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Status</span><Badge variant={detailSession.status === "active" ? "default" : "secondary"}>{detailSession.status}</Badge></div>
+              
+              <div className="border-t pt-2 mt-2 space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Device Telemetry</p>
+                <div className="flex justify-between"><span className="text-muted-foreground">Battery</span><span>{detailSession.start_battery ? `${detailSession.start_battery}% → ` : ""}{detailSession.last_battery || detailSession.end_battery || "?"}%</span></div>
+                {detailSession.start_device && (
+                  <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Start Device</span><span className="text-right truncate">{detailSession.start_device}</span></div>
+                )}
+                {detailSession.last_device && detailSession.last_device !== detailSession.start_device && (
+                  <div className="flex justify-between gap-4"><span className="text-muted-foreground shrink-0">Current Device</span><span className="text-right truncate">{detailSession.last_device}</span></div>
+                )}
+                {detailSession.last_ip && (
+                  <div className="flex justify-between"><span className="text-muted-foreground">Last IP</span><span className="font-mono text-[10px]">{detailSession.last_ip}</span></div>
+                )}
+              </div>
+
               {detailSession.start_location && (
                 <div className="flex justify-between"><span className="text-muted-foreground">Start Location</span><span className="text-xs">{JSON.stringify(detailSession.start_location)}</span></div>
               )}
