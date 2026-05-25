@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Whitebooks base. Production: https://api.whitebooks.in  Sandbox: https://apisandbox.whitebooks.in
-const RAW_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://apisandbox.whitebooks.in";
+const RAW_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://api.whitebooks.in";
 // Strip any path the user pasted; we always append the canonical wrapper path.
 const ORIGIN = RAW_BASE
   .replace(/\/+$/, "")
