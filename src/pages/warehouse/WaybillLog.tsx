@@ -273,11 +273,33 @@ export default function WaybillLog() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div><Label>Vehicle No</Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" /></div>
                   <div><Label>Distance (km)</Label><Input type="number" value={distance} onChange={(e) => setDistance(e.target.value)} /></div>
-                  <div><Label>Transporter</Label><Input value={transporter} onChange={(e) => setTransporter(e.target.value)} /></div>
                 </div>
+                <div>
+                  <Label>Transporter</Label>
+                  <TransporterPicker
+                    value={transporterId}
+                    branchId={branchId}
+                    onChange={(id, t: TransporterOption | null) => {
+                      setTransporterId(id);
+                      setTransporterName(t?.name || "");
+                      setTransporterGstin(t?.gst_number || "");
+                    }}
+                  />
+                </div>
+                {branchMissing.length > 0 && (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-destructive">Branch is missing {branchMissing.join(" & ")}</p>
+                      <p className="text-muted-foreground mt-0.5">
+                        NIC will reject. Set it in <button type="button" onClick={() => navigate("/settings/company")} className="underline">Settings → Branches</button> (use Auto-fill from GSTIN).
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <Button className="w-full" onClick={() => createWb.mutate()} disabled={createWb.isPending || generate.isPending}>
                   <Send className="h-4 w-4 mr-2" />
                   {createWb.isPending || generate.isPending ? "Generating…" : "Create & Push to NIC"}
