@@ -16,6 +16,9 @@ const ORIGIN = RAW_BASE
   .replace(/\/eway\/?.*$/i, "");
 // Whitebooks simplified e-Way Bill wrapper path (matches their Swagger / Postman collection)
 const WHITEBOOKS_BASE = `${ORIGIN}/ewaybillapi/v1.03/`;
+const WHITEBOOKS_AUTH_ENDPOINT = `${WHITEBOOKS_BASE}authenticate`;
+const WHITEBOOKS_GENERATE_ENDPOINT = `${WHITEBOOKS_BASE}ewayapi/genewaybill`;
+const WHITEBOOKS_CANCEL_ENDPOINT = `${WHITEBOOKS_BASE}ewayapi/canewb`;
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
@@ -43,7 +46,7 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
-  const res = await fetch(`${WHITEBOOKS_BASE}authenticate`, {
+  const res = await fetch(WHITEBOOKS_AUTH_ENDPOINT, {
     method: "GET",
     headers: baseHeaders(),
   });
@@ -74,7 +77,7 @@ async function getAuthToken(): Promise<string> {
       raw: rawText.slice(0, 800),
       response_headers: respHeaders,
       sent_headers: sentMasked,
-      url: `${WHITEBOOKS_BASE}authenticate`,
+      url: WHITEBOOKS_AUTH_ENDPOINT,
     }));
   }
   cachedAuthToken = token;
@@ -85,6 +88,16 @@ async function getAuthToken(): Promise<string> {
 async function getHeaders() {
   const authToken = await getAuthToken();
   return { ...baseHeaders(), authtoken: authToken };
+}
+
+async function readWhitebooksJson(response: Response) {
+  const raw = await response.text();
+  if (!raw.trim()) return { raw, json: {} };
+  try {
+    return { raw, json: JSON.parse(raw) };
+  } catch {
+    return { raw, json: { status_cd: "0", error: { message: raw.slice(0, 500) } } };
+  }
 }
 
 
@@ -190,13 +203,13 @@ Deno.serve(async (req) => {
       };
 
       // 4. Call Whitebooks API
-      const response = await fetch(`${WHITEBOOKS_BASE}generateewaybill`, {
+      const response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const { raw, json: result } = await readWhitebooksJson(response);
       const data = result?.data ?? result;
       const ewbNo = data?.ewayBillNo ?? data?.ewbNo;
       const isOk = response.ok && (result?.status === 1 || result?.status_cd === 1 || ewbNo);
@@ -206,7 +219,9 @@ Deno.serve(async (req) => {
           || (Array.isArray(result?.error) ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ") : null)
           || result?.message
           || data?.message
-          || JSON.stringify(result).slice(0, 500);
+          || raw.slice(0, 500)
+          || JSON.stringify(result).slice(0, 500)
+          || `WhiteBooks returned HTTP ${response.status} with an empty response`;
         await supabase.from("waybills").update({
           status: "failed",
           error_msg: errorMsg,
@@ -239,13 +254,13 @@ Deno.serve(async (req) => {
         cancelRmrk: reason || "Cancelled from ERP",
       };
 
-      const response = await fetch(`${WHITEBOOKS_BASE}cancelewaybill`, {
+      const response = await fetch(WHITEBOOKS_CANCEL_ENDPOINT, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const { json: result } = await readWhitebooksJson(response);
 
       if (!response.ok || result.error) {
         return new Response(JSON.stringify({ error: result.error?.message || "Cancel failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });

@@ -404,7 +404,11 @@ Set these in Supabase secrets for the `whitebooks-ewaybill` function:
 - `WHITEBOOKS_CLIENT_ID` — Your Whitebooks Client ID
 - `WHITEBOOKS_CLIENT_SECRET` — Your Whitebooks Client Secret
 - `WHITEBOOKS_GSTIN` — The GSTIN of the taxpayer
-- `WHITEBOOKS_BASE_URL` — API Base URL (Default: `https://apisandbox.whitebooks.in/api/ewaybill/v1.0/`)
+- `WHITEBOOKS_EMAIL` — WhiteBooks account email
+- `WHITEBOOKS_EWB_USERNAME` — NIC e-Way Bill GSP API username
+- `WHITEBOOKS_EWB_PASSWORD` — NIC e-Way Bill GSP API password
+- `WHITEBOOKS_IP_ADDRESS` — Registered/request IP for WhiteBooks API calls
+- `WHITEBOOKS_BASE_URL` — API Base URL (production default: `https://api.whitebooks.in`)
 
 ### Deployment
 - **Frontend**: Click "Publish" in Lovable → "Update" to deploy
