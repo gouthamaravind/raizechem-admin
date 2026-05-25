@@ -61,6 +61,7 @@ export default function Invoices() {
   const [vehicleNo, setVehicleNo] = useState("");
   const [dispatchFrom, setDispatchFrom] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
+  const [transporterId, setTransporterId] = useState("");
   // Advance adjustment
   const [adjustAdvance, setAdjustAdvance] = useState(false);
   const [advanceAdjustAmount, setAdvanceAdjustAmount] = useState(0);
