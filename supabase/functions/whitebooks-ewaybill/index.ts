@@ -27,17 +27,30 @@ const GST_USERNAME = Deno.env.get("WHITEBOOKS_EWB_USERNAME") ?? ""; // NIC API u
 const GST_PASSWORD = Deno.env.get("WHITEBOOKS_EWB_PASSWORD") ?? "";
 const IP_ADDRESS = Deno.env.get("WHITEBOOKS_IP_ADDRESS") ?? "127.0.0.1";
 
-// Per Whitebooks docs, every wrapper call (including auth) accepts these headers.
-function baseHeaders(): Record<string, string> {
+// Per Whitebooks docs:
+// - Auth endpoint takes email/username/password as QUERY params and
+//   ip_address/client_id/client_secret/gstin as HEADERS.
+// - Subsequent calls reuse the header set plus an `authtoken` header.
+function authHeaders(): Record<string, string> {
   return {
-    "Content-Type": "application/json",
-    "email": EMAIL,
-    "gst_username": GST_USERNAME,
-    "password": GST_PASSWORD,
+    "accept": "*/*",
     "ip_address": IP_ADDRESS,
     "client_id": CLIENT_ID,
     "client_secret": CLIENT_SECRET,
-    "Gstin": GSTIN,
+    "gstin": GSTIN,
+  };
+}
+
+function apiHeaders(authToken: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "accept": "*/*",
+    "ip_address": IP_ADDRESS,
+    "client_id": CLIENT_ID,
+    "client_secret": CLIENT_SECRET,
+    "gstin": GSTIN,
+    "gst_username": GST_USERNAME,
+    "authtoken": authToken,
   };
 }
 
@@ -46,10 +59,15 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
-  const res = await fetch(WHITEBOOKS_AUTH_ENDPOINT, {
+  const url = new URL(WHITEBOOKS_AUTH_ENDPOINT);
+  url.searchParams.set("email", EMAIL);
+  url.searchParams.set("username", GST_USERNAME);
+  url.searchParams.set("password", GST_PASSWORD);
+  const res = await fetch(url.toString(), {
     method: "GET",
-    headers: baseHeaders(),
+    headers: authHeaders(),
   });
+
   const rawText = await res.text();
   let json: any = {};
   try { json = JSON.parse(rawText); } catch { /* keep raw */ }
