@@ -185,10 +185,11 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = url.searchParams.get("action") ?? (body as any).action ?? "generate";
 
-    if (action === "auth_test") {
+    if (action === "auth_test" || action === "reauth") {
       try {
+        if (action === "reauth") { cachedAuthToken = null; cachedAuthExpiry = 0; }
         const token = await getAuthToken();
-        return new Response(JSON.stringify({ ok: true, token_preview: token.slice(0, 12) + "...", base: ORIGIN }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ ok: true, reauthed: action === "reauth", token_preview: token.slice(0, 12) + "...", base: ORIGIN }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       } catch (e) {
         return new Response(JSON.stringify({ ok: false, error: String(e), base: ORIGIN }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
