@@ -72,30 +72,32 @@ async function getAuthToken(): Promise<string> {
   let json: any = {};
   try { json = JSON.parse(rawText); } catch { /* keep raw */ }
   const status_cd = String(json?.status_cd ?? "");
+  // Whitebooks /authenticate validates creds but does NOT return an authtoken.
+  // Some deployments echo one in data.authtoken; otherwise treat status_cd=="1" as success.
   const token =
     json?.authtoken ||
     json?.data?.authtoken ||
     json?.AuthToken ||
-    json?.result?.authtoken;
+    json?.result?.authtoken ||
+    (status_cd === "1" ? "VALIDATED" : null);
   if (!res.ok || status_cd !== "1" || !token) {
     const respHeaders: Record<string, string> = {};
     res.headers.forEach((v, k) => { respHeaders[k] = v; });
-    const sentMasked = {
-      email: EMAIL,
-      username: GST_USERNAME,
-      password_len: GST_PASSWORD.length,
-      client_id_preview: CLIENT_ID.slice(0, 6) + "...",
-      client_secret_len: CLIENT_SECRET.length,
-      gstin: GSTIN,
-      ip_address: IP_ADDRESS,
-    };
     throw new Error(JSON.stringify({
       msg: "Whitebooks auth failed",
       status: res.status,
       status_cd,
       raw: rawText.slice(0, 800),
       response_headers: respHeaders,
-      sent: sentMasked,
+      sent: {
+        email: EMAIL,
+        username: GST_USERNAME,
+        password_len: GST_PASSWORD.length,
+        client_id_preview: CLIENT_ID.slice(0, 6) + "...",
+        client_secret_len: CLIENT_SECRET.length,
+        gstin: GSTIN,
+        ip_address: IP_ADDRESS,
+      },
       url: url.toString().replace(GST_PASSWORD, "***"),
     }));
   }
@@ -106,8 +108,11 @@ async function getAuthToken(): Promise<string> {
 
 async function getHeaders() {
   const authToken = await getAuthToken();
-  return apiHeaders(authToken);
+  const h = apiHeaders(authToken);
+  if (authToken === "VALIDATED") delete (h as any).authtoken;
+  return h;
 }
+
 
 
 async function readWhitebooksJson(response: Response) {
