@@ -279,8 +279,8 @@ export default function WaybillLog() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Vehicle No</Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" /></div>
-                  <div><Label>Distance (km)</Label><Input type="number" value={distance} onChange={(e) => setDistance(e.target.value)} /></div>
+                  <div><Label>Vehicle No <span className="text-destructive">*</span></Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" required /></div>
+                  <div><Label>Distance (km) <span className="text-destructive">*</span></Label><Input type="number" min={1} max={4000} value={distance} onChange={(e) => setDistance(e.target.value)} placeholder="1–4000" required /></div>
                 </div>
                 <div>
                   <Label>Transporter</Label>
