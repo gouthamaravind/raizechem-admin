@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
       };
 
       // 4. Call Whitebooks API
-      const response = await fetch(`${WHITEBOOKS_BASE}generateewaybill`, {
+      const response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
         cancelRmrk: reason || "Cancelled from ERP",
       };
 
-      const response = await fetch(`${WHITEBOOKS_BASE}cancelewaybill`, {
+      const response = await fetch(WHITEBOOKS_CANCEL_ENDPOINT, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
