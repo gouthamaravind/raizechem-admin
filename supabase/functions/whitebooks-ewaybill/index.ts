@@ -326,11 +326,14 @@ Deno.serve(async (req) => {
 
 
     if (action === "cancel") {
-      const { reason } = body;
+      const { reason, cancel_reason_code } = body;
+      if (!wb.ewb_number) {
+        return new Response(JSON.stringify({ error: "Waybill has no EWB number to cancel" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const payload = {
         ewbNo: Number(wb.ewb_number),
-        cancelRsnCode: 4, // 4 = Data entry error
-        cancelRmrk: reason || "Cancelled from ERP",
+        cancelRsnCode: Number(cancel_reason_code || 4), // 1=Duplicate, 2=Order Cancelled, 3=Data Entry Mistake, 4=Others
+        cancelRmrk: (reason || "Cancelled from ERP").slice(0, 100),
       };
 
       const response = await fetch(WHITEBOOKS_CANCEL_ENDPOINT, {
@@ -339,20 +342,26 @@ Deno.serve(async (req) => {
         body: JSON.stringify(payload),
       });
 
-      const { json: result } = await readWhitebooksJson(response);
-
-      if (!response.ok || result.error) {
-        return new Response(JSON.stringify({ error: result.error?.message || "Cancel failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { raw, json: result } = await readWhitebooksJson(response);
+      const statusCd = String(result?.status_cd ?? result?.status ?? "");
+      const okCancel = response.ok && (statusCd === "1" || result?.data?.cancelDate);
+      if (!okCancel) {
+        const errs = Array.isArray(result?.error)
+          ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ")
+          : (result?.error?.message || result?.errorDesc || result?.message);
+        return new Response(JSON.stringify({ error: errs || raw.slice(0, 500) || "Cancel failed", raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       await supabase.from("waybills").update({
         status: "cancelled",
         cancelled_at: new Date().toISOString(),
         cancel_reason: reason,
+        gsp_response: result,
       }).eq("id", wb.id);
 
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
