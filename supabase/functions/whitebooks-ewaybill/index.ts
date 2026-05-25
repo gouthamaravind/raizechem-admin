@@ -53,6 +53,8 @@ function authHeaders(): Record<string, string> {
 }
 
 function apiHeaders(authToken: string): Record<string, string> {
+  // Per Whitebooks Swagger (genewaybill): only ip_address, client_id, client_secret,
+  // gstin and authtoken are accepted as headers. Do NOT send username/gst_username here.
   return {
     "Content-Type": "application/json",
     "accept": "*/*",
@@ -60,10 +62,14 @@ function apiHeaders(authToken: string): Record<string, string> {
     "client_id": CLIENT_ID,
     "client_secret": CLIENT_SECRET,
     "gstin": GSTIN,
-    "gst_username": GST_USERNAME,
-    "username": GST_USERNAME,
     "authtoken": authToken,
   };
+}
+
+function withEmail(endpoint: string): string {
+  const u = new URL(endpoint);
+  if (EMAIL) u.searchParams.set("email", EMAIL);
+  return u.toString();
 }
 
 let cachedAuthToken: string | null = null;
