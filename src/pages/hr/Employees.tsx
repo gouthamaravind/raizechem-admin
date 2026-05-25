@@ -272,6 +272,23 @@ export default function Employees() {
             )}
           </CardContent>
         </Card>
+        </Card>
+        <ConfirmDialog
+          open={!!confirmAction}
+          onOpenChange={(v) => { if (!v) setConfirmAction(null); }}
+          onConfirm={() => {
+            if (!confirmAction) return;
+            if (confirmAction.type === "toggle") toggleStatus.mutate(confirmAction.emp);
+            else deleteEmp.mutate(confirmAction.emp);
+          }}
+          title={confirmAction?.type === "delete" ? "Remove employee?" : `${confirmAction?.emp?.status === "active" ? "Deactivate" : "Activate"} employee?`}
+          description={confirmAction?.type === "delete"
+            ? `This permanently removes ${confirmAction?.emp?.name}. This cannot be undone.`
+            : `${confirmAction?.emp?.name} will be marked ${confirmAction?.emp?.status === "active" ? "inactive" : "active"}.`}
+          confirmText={confirmAction?.type === "delete" ? "Remove" : "Confirm"}
+          variant={confirmAction?.type === "delete" ? "destructive" : "warning"}
+          isPending={toggleStatus.isPending || deleteEmp.isPending}
+        />
       </div>
     </DashboardLayout>
   );
