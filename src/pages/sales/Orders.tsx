@@ -22,7 +22,7 @@ import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
 import { AlterButton } from "@/components/tally/AlterButton";
 
-type LineItem = { product_id: string; qty: number; rate: number; discount_pct: number; discount_amount: number };
+type LineItem = { product_id: string; pack_id: string; qty: number; rate: number };
 
 export default function Orders() {
   const { user } = useAuth();
@@ -35,7 +35,9 @@ export default function Orders() {
   const [alterReason, setAlterReason] = useState("");
   const [dealerId, setDealerId] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+  const [items, setItems] = useState<LineItem[]>([{ product_id: "", pack_id: "", qty: 1, rate: 0 }]);
+  const [priceLevelOverride, setPriceLevelOverride] = useState<string>("default");
+  const [createdOrder, setCreatedOrder] = useState<{ id: string; number: string; total: number } | null>(null);
 
   const { isOverdue, getOverdue } = useDealerOverdue();
   const { branchId } = useBranch();
@@ -84,9 +86,30 @@ export default function Orders() {
     (invoiceWaybills as any[]).find((w: any) => w.source_id === invoiceId && w.status === "generated");
 
   const { data: dealers = [] } = useQuery({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
-  const { data: products = [] } = useQuery({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
+  const { data: products = [] } = useQuery({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, brand, sale_price, unit, gst_rate").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
+  const { data: packs = [] } = useQuery({ queryKey: ["product-packs-all"], queryFn: async () => { const { data } = await supabase.from("product_packs").select("id, product_id, pack_label, units_per_case, unit_size, unit_uom, price_finished_goods, mrp").eq("is_active", true).order("sort_order"); return data || []; } });
+  const { data: priceLevels = [] } = useQuery({ queryKey: ["price-levels"], queryFn: async () => { const { data } = await supabase.from("price_levels").select("id, name").order("sort_order"); return data || []; } });
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
   const selectedDealer = dealers.find((d: any) => d.id === dealerId) as any;
+  const effectivePriceLevelId = priceLevelOverride && priceLevelOverride !== "default" ? priceLevelOverride : selectedDealer?.price_level_id;
+
+  const productLabel = (p: any) => p.brand ? `${p.brand} — ${p.name}` : p.name;
+  const packLabel = (pk: any) => {
+    const size = pk.unit_size ? `${pk.unit_size}${pk.unit_uom || ""}` : pk.pack_label;
+    return `${pk.pack_label} · ${size} × ${pk.units_per_case}/case`;
+  };
+  const packsFor = (productId: string) => packs.filter((p: any) => p.product_id === productId);
+  const resolveRate = (productId: string, packId: string) => {
+    const pk = packs.find((p: any) => p.id === packId) as any;
+    if (effectivePriceLevelId) {
+      const plPrice = priceLevelPrices.find((pp: any) => pp.product_id === productId && pp.price_level_id === effectivePriceLevelId) as any;
+      if (plPrice && pk) return Number(plPrice.price) * Number(pk.units_per_case || 1);
+      if (plPrice) return Number(plPrice.price);
+    }
+    if (pk) return Number(pk.price_finished_goods) || 0;
+    const p = products.find((x: any) => x.id === productId) as any;
+    return p ? Number(p.sale_price) || 0 : 0;
+  };
 
   const saveOrder = useMutation({
     mutationFn: async () => {
@@ -100,10 +123,9 @@ export default function Orders() {
 
       const p_items = validItems.map((i) => ({
         product_id: i.product_id,
+        pack_id: i.pack_id || null,
         qty: i.qty,
         rate: i.rate,
-        discount_pct: i.discount_pct,
-        discount_amount: i.discount_amount,
       }));
 
       if (alterId) {
@@ -130,11 +152,17 @@ export default function Orders() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ["orders"] });
-      setDialogOpen(false); setAlterId(null); setAlterReason("");
-      setDealerId(""); setNotes(""); setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
-      toast.success(alterId ? "Order altered" : "Order created");
+      if (alterId) {
+        setDialogOpen(false); setAlterId(null); setAlterReason("");
+        setDealerId(""); setNotes(""); setItems([{ product_id: "", pack_id: "", qty: 1, rate: 0 }]);
+        toast.success("Order altered");
+      } else {
+        setDialogOpen(false);
+        setCreatedOrder({ id: data?.order_id, number: data?.order_number, total: Number(data?.total_amount || 0) });
+        toast.success("Order created");
+      }
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -145,9 +173,9 @@ export default function Orders() {
     setDealerId(o.dealer_id);
     setNotes(o.notes || "");
     setAlterReason("");
+    setPriceLevelOverride("default");
     setItems((rows || []).map((r: any) => ({
-      product_id: r.product_id, qty: Number(r.qty), rate: Number(r.rate),
-      discount_pct: Number(r.discount_pct || 0), discount_amount: Number(r.discount_amount || 0),
+      product_id: r.product_id, pack_id: r.pack_id || "", qty: Number(r.qty), rate: Number(r.rate),
     })));
     setDialogOpen(true);
   };
@@ -155,7 +183,8 @@ export default function Orders() {
   const openCreate = () => {
     setAlterId(null); setAlterReason("");
     setDealerId(""); setNotes("");
-    setItems([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+    setPriceLevelOverride("default");
+    setItems([{ product_id: "", pack_id: "", qty: 1, rate: 0 }]);
     setDialogOpen(true);
   };
 
@@ -168,8 +197,18 @@ export default function Orders() {
   });
 
   const handleConvertToInvoice = (order: any) => {
-    // Navigate to invoices page with order data in state
     navigate("/sales/invoices", { state: { convertOrder: order } });
+  };
+
+  // Confirm draft → confirmed → navigate to invoice page (optionally with waybill intent)
+  const confirmAndInvoice = async (withWaybill: boolean) => {
+    if (!createdOrder) return;
+    const { error } = await supabase.from("orders").update({ status: "confirmed" as any }).eq("id", createdOrder.id);
+    if (error) { toast.error(error.message); return; }
+    const { data: full } = await supabase.from("orders").select("*, dealers(*)").eq("id", createdOrder.id).single();
+    setCreatedOrder(null);
+    setDealerId(""); setNotes(""); setItems([{ product_id: "", pack_id: "", qty: 1, rate: 0 }]);
+    navigate("/sales/invoices", { state: { convertOrder: full, autoWaybill: withWaybill } });
   };
 
   const filtered = orders.filter((o: any) => {
@@ -178,11 +217,20 @@ export default function Orders() {
     return match && (statusFilter === "all" || o.status === statusFilter);
   });
 
-  const addItem = () => setItems([...items, { product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+  const addItem = () => setItems([...items, { product_id: "", pack_id: "", qty: 1, rate: 0 }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i: number, field: string, val: any) => { const n = [...items]; (n[i] as any)[field] = val; setItems(n); };
 
   const statusColors: Record<string, string> = { draft: "secondary", confirmed: "default", dispatched: "outline", delivered: "default", cancelled: "destructive" };
+
+  const previewLines = createdOrder ? items.filter(i => i.product_id && i.qty > 0).map((it) => {
+    const p = products.find((x: any) => x.id === it.product_id) as any;
+    const pk = packs.find((x: any) => x.id === it.pack_id) as any;
+    const gstRate = Number(p?.gst_rate || 0);
+    const lineBase = it.qty * it.rate;
+    const lineGst = lineBase * gstRate / 100;
+    return { name: p ? productLabel(p) : "—", pack: pk ? packLabel(pk) : "—", qty: it.qty, rate: it.rate, gstRate, gst: lineGst, total: lineBase + lineGst };
+  }) : [];
 
   return (
     <DashboardLayout>
@@ -193,13 +241,23 @@ export default function Orders() {
             <Button variant="outline" onClick={() => exportToCsv("orders.csv", filtered.map((o: any) => ({ order_number: o.order_number, dealer: o.dealers?.name, date: o.order_date, status: o.status, total: o.total_amount })), [{ key: "order_number", label: "Order #" }, { key: "dealer", label: "Dealer" }, { key: "date", label: "Date" }, { key: "status", label: "Status" }, { key: "total", label: "Total" }])}><Download className="h-4 w-4 mr-2" />CSV</Button>
             <Dialog open={dialogOpen} onOpenChange={(o) => { setDialogOpen(o); if (!o) { setAlterId(null); setAlterReason(""); } }}>
               <DialogTrigger asChild><Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" />Create</Button></DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+              <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader><DialogTitle>{alterId ? "Alter Order" : "Create Order"}</DialogTitle></DialogHeader>
                 <form onSubmit={(e) => { e.preventDefault(); saveOrder.mutate(); }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Dealer *</Label>
                       <Select value={dealerId} onValueChange={setDealerId}><SelectTrigger><SelectValue placeholder="Select dealer" /></SelectTrigger><SelectContent>{dealers.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Price Level</Label>
+                      <Select value={priceLevelOverride} onValueChange={setPriceLevelOverride}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Dealer default</SelectItem>
+                          {priceLevels.map((pl: any) => <SelectItem key={pl.id} value={pl.id}>{pl.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
                     <div className="space-y-2"><Label>Notes</Label><Input value={notes} onChange={(e) => setNotes(e.target.value)} /></div>
                   </div>
@@ -218,29 +276,71 @@ export default function Orders() {
                     </Alert>
                   )}
                   <div className="space-y-2">
-                    <Label>Line Items</Label>
-                    {items.map((item, i) => (
-                      <div key={i} className="flex gap-2 items-end">
-                        <Select value={item.product_id} onValueChange={(v) => { updateItem(i, "product_id", v); const p = products.find((p: any) => p.id === v); if (p) { const plId = selectedDealer?.price_level_id; const plPrice = plId ? priceLevelPrices.find((pp: any) => pp.product_id === v && pp.price_level_id === plId) : null; updateItem(i, "rate", plPrice ? Number(plPrice.price) : (Number((p as any).sale_price) || 0)); } }}>
-                          <SelectTrigger className="flex-1"><SelectValue placeholder="Product" /></SelectTrigger>
-                          <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <Input type="number" className="w-20" placeholder="Qty" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} />
-                        <Input type="number" className="w-28" placeholder="Rate" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} />
-                        <Input type="number" className="w-16" placeholder="Disc%" value={item.discount_pct || ""} onChange={(e) => updateItem(i, "discount_pct", Number(e.target.value))} title="Discount %" />
-                        <Input type="number" className="w-20" placeholder="Disc₹" value={item.discount_amount || ""} onChange={(e) => updateItem(i, "discount_amount", Number(e.target.value))} title="Discount Flat" />
-                        <span className="text-sm w-24 text-right">₹{(item.qty * item.rate - item.discount_amount - (item.qty * item.rate * item.discount_pct / 100)).toLocaleString("en-IN")}</span>
-                        {items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>}
-                      </div>
-                    ))}
+                    <Label>Line Items <span className="text-xs text-muted-foreground font-normal">(Qty = number of packs)</span></Label>
+                    {items.map((item, i) => {
+                      const productPacks = packsFor(item.product_id);
+                      return (
+                        <div key={i} className="flex gap-2 items-end flex-wrap">
+                          <Select value={item.product_id} onValueChange={(v) => {
+                            const firstPack = packs.find((p: any) => p.product_id === v) as any;
+                            const newPackId = firstPack?.id || "";
+                            const rate = resolveRate(v, newPackId);
+                            const n = [...items]; n[i] = { ...n[i], product_id: v, pack_id: newPackId, rate }; setItems(n);
+                          }}>
+                            <SelectTrigger className="min-w-[220px] flex-1"><SelectValue placeholder="Product" /></SelectTrigger>
+                            <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{productLabel(p)}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <Select value={item.pack_id} onValueChange={(v) => { const n = [...items]; n[i] = { ...n[i], pack_id: v, rate: resolveRate(n[i].product_id, v) }; setItems(n); }} disabled={!item.product_id || productPacks.length === 0}>
+                            <SelectTrigger className="min-w-[200px]"><SelectValue placeholder={productPacks.length === 0 ? "No packs" : "Pack"} /></SelectTrigger>
+                            <SelectContent>{productPacks.map((pk: any) => <SelectItem key={pk.id} value={pk.id}>{packLabel(pk)}</SelectItem>)}</SelectContent>
+                          </Select>
+                          <Input type="number" className="w-20" placeholder="Packs" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} title="Number of packs" />
+                          <Input type="number" className="w-28" placeholder="Rate/pack" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} title="Rate per pack" />
+                          <span className="text-sm w-24 text-right">₹{(item.qty * item.rate).toLocaleString("en-IN")}</span>
+                          {items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>}
+                        </div>
+                      );
+                    })}
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
-                  <div className="text-right font-semibold">Total: ₹{items.reduce((s, i) => s + (i.qty * i.rate - i.discount_amount - (i.qty * i.rate * i.discount_pct / 100)), 0).toLocaleString("en-IN")}</div>
+                  <div className="text-right font-semibold">Subtotal: ₹{items.reduce((s, i) => s + (i.qty * i.rate), 0).toLocaleString("en-IN")} <span className="text-xs text-muted-foreground font-normal">(GST added on invoice)</span></div>
                   <Button type="submit" className="w-full" disabled={saveOrder.isPending || (!alterId && isOverdue(dealerId))}>{saveOrder.isPending ? "Saving..." : alterId ? "Alter Order" : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
                 </form>
               </DialogContent>
             </Dialog>
+
+            {/* Post-create preview popup */}
+            <Dialog open={!!createdOrder} onOpenChange={(o) => { if (!o) setCreatedOrder(null); }}>
+              <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                <DialogHeader><DialogTitle>Order Preview — {createdOrder?.number}</DialogTitle></DialogHeader>
+                <div className="space-y-4">
+                  <div className="text-sm text-muted-foreground">Dealer: <span className="font-medium text-foreground">{selectedDealer?.name}</span></div>
+                  <Table>
+                    <TableHeader><TableRow><TableHead>Product</TableHead><TableHead>Pack</TableHead><TableHead className="text-right">Packs</TableHead><TableHead className="text-right">Rate</TableHead><TableHead className="text-right">GST</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                      {previewLines.map((l, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{l.name}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{l.pack}</TableCell>
+                          <TableCell className="text-right">{l.qty}</TableCell>
+                          <TableCell className="text-right">₹{l.rate.toLocaleString("en-IN")}</TableCell>
+                          <TableCell className="text-right">{l.gstRate}% (₹{l.gst.toFixed(2)})</TableCell>
+                          <TableCell className="text-right font-semibold">₹{l.total.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="flex justify-end text-base font-semibold">Grand Total (incl. GST): ₹{previewLines.reduce((s, l) => s + l.total, 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</div>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-end pt-2 border-t">
+                    <Button variant="ghost" onClick={() => { setCreatedOrder(null); setDealerId(""); setNotes(""); setItems([{ product_id: "", pack_id: "", qty: 1, rate: 0 }]); }}>Keep as Draft</Button>
+                    <Button variant="outline" onClick={() => confirmAndInvoice(false)}>Confirm & Generate Invoice</Button>
+                    <Button onClick={() => confirmAndInvoice(true)}><FileText className="h-4 w-4 mr-2" />Invoice + E-Way Bill</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
+
         </div>
         <Card>
           <CardHeader className="pb-3">
