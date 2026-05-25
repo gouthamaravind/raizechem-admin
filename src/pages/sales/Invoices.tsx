@@ -24,6 +24,7 @@ import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
 import { AlterButton } from "@/components/tally/AlterButton";
 import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
+import { TransporterPicker } from "@/components/TransporterPicker";
 
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { Database } from "@/integrations/supabase/types";
@@ -60,6 +61,7 @@ export default function Invoices() {
   const [vehicleNo, setVehicleNo] = useState("");
   const [dispatchFrom, setDispatchFrom] = useState("");
   const [deliveryTo, setDeliveryTo] = useState("");
+  const [transporterId, setTransporterId] = useState("");
   // Advance adjustment
   const [adjustAdvance, setAdjustAdvance] = useState(false);
   const [advanceAdjustAmount, setAdvanceAdjustAmount] = useState(0);
@@ -163,6 +165,7 @@ export default function Invoices() {
     setVehicleNo(inv.vehicle_no || "");
     setDispatchFrom(inv.dispatch_from || "");
     setDeliveryTo(inv.delivery_to || "");
+    setTransporterId((inv as any).transporter_id || "");
     setItems((invItems || []).map((it: any) => ({
       product_id: it.product_id,
       pack_id: it.pack_id || null,
@@ -231,6 +234,13 @@ export default function Invoices() {
       } as any);
       if (error) throw error;
 
+      const newInvoiceId = (data as any)?.invoice_id;
+      if (newInvoiceId && transporterId) {
+        await supabase.from("invoices").update({ transporter_id: transporterId } as any).eq("id", newInvoiceId);
+      }
+
+
+
       // Allocate advance if requested
       if (adjustAdvance && advanceAdjustAmount > 0 && data) {
         const invoiceId = (data as any).invoice_id;
@@ -279,7 +289,7 @@ export default function Invoices() {
       const wasAlter = !!alteringFrom;
       setDialogOpen(false); setDealerId("");
       setItems([{ product_id: "", pack_id: null, batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
-      setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo("");
+      setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo(""); setTransporterId("");
       setAdjustAdvance(false); setAdvanceAdjustAmount(0);
       setAlteringFrom(null);
       toast.success(wasAlter ? "Invoice altered — original voided, replacement created" : "Invoice created with GST and ledger entry");
@@ -374,6 +384,10 @@ export default function Invoices() {
                       <div className="space-y-1"><Label className="text-xs">Vehicle No</Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value)} placeholder="e.g. TS09AB1234" /></div>
                       <div className="space-y-1"><Label className="text-xs">Dispatch From</Label><Input value={dispatchFrom} onChange={(e) => setDispatchFrom(e.target.value)} placeholder="City, State" /></div>
                       <div className="space-y-1"><Label className="text-xs">Delivery To</Label><Input value={deliveryTo} onChange={(e) => setDeliveryTo(e.target.value)} placeholder="City, State" /></div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Transporter</Label>
+                      <TransporterPicker value={transporterId} onChange={(id) => setTransporterId(id)} branchId={branchId} />
                     </div>
                   </div>
                   {/* Advance Adjustment */}

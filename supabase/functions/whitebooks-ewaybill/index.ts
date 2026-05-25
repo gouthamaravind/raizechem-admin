@@ -292,6 +292,9 @@ Deno.serve(async (req) => {
       const distance = Number(wb.distance_km || 0);
       const vehicleNo = (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
       const transMode = wb.transport_mode === "rail" ? "2" : wb.transport_mode === "air" ? "3" : wb.transport_mode === "ship" ? "4" : "1";
+      const fromPincode = Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0;
+      const transporterGstinRaw = (wb.transporter_gstin || "").toString().trim().toUpperCase();
+      const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9A-Z]$/;
 
       const errors: string[] = [];
       if (distance < 1 || distance > 4000) errors.push("distance_km must be 1-4000");
@@ -299,7 +302,9 @@ Deno.serve(async (req) => {
       if (!toAddr1) errors.push("recipient address missing");
       if (!toPlace) errors.push("recipient city missing");
       if (!toPincode) errors.push("recipient pincode missing");
-      if (toGstinResolved !== "URP" && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9A-Z]$/.test(toGstinResolved)) errors.push("recipient GSTIN invalid");
+      if (toGstinResolved !== "URP" && !GSTIN_RE.test(toGstinResolved)) errors.push("recipient GSTIN invalid");
+      if (fromPincode < 100000) errors.push("dispatch branch pincode missing — open Settings → Branches and fill it (or use Auto-fill from GSTIN)");
+      if (transporterGstinRaw && !GSTIN_RE.test(transporterGstinRaw)) errors.push("transporter GSTIN invalid (must be 15 chars) — fix it in the transporter master");
       if (errors.length) {
         return new Response(JSON.stringify({ error: "Validation: " + errors.join(", ") }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
@@ -328,7 +333,7 @@ Deno.serve(async (req) => {
         fromAddr2: wb.branches?.address_line2 || "",
         fromPlace: wb.branches?.city || "",
         actFromStateCode: fromStateCode,
-        fromPincode: Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0,
+        fromPincode,
         fromStateCode,
         toGstin: toGstinResolved,
         toTrdName: toName || (toGstinResolved === "URP" ? "Unregistered Person" : ""),
@@ -350,7 +355,7 @@ Deno.serve(async (req) => {
         transMode,
         transDistance: String(distance),
         transporterName: wb.transporter_name || "",
-        transporterId: wb.transporter_gstin || "",
+        transporterId: transporterGstinRaw || "",
         transDocNo: wb.transport_doc_no || "",
         transDocDate: wb.transport_doc_date ? new Date(wb.transport_doc_date).toLocaleDateString("en-GB") : "",
         vehicleNo,

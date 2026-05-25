@@ -125,6 +125,7 @@ Deno.serve(async (req) => {
     // Common providers: MasterGST, ClearTax, GSTN Setu, KYC API
     const data = raw.data || raw.result || raw;
 
+    const pradrAddr = data.pradr?.addr || {};
     const normalized = {
       gstin,
       legal_name: data.lgnm || data.legal_name || data.legalName || "",
@@ -132,7 +133,10 @@ Deno.serve(async (req) => {
       status: data.sts || data.status || data.gstStatus || "",
       registration_date: data.rgdt || data.registration_date || data.registrationDate || null,
       address: data.pradr?.adr || data.principal_address || data.address || null,
-      state_code: data.pradr?.addr?.stcd || data.state_code || gstin.substring(0, 2),
+      state_code: pradrAddr.stcd || data.state_code || gstin.substring(0, 2),
+      pincode: (pradrAddr.pncd || data.pincode || "").toString() || null,
+      city: pradrAddr.city || pradrAddr.dst || data.city || null,
+      state: pradrAddr.stcd_name || data.state || null,
       raw: data,
     };
 

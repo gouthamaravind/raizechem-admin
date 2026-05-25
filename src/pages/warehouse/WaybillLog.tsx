@@ -12,11 +12,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Send, XCircle, FileText, Search, Printer, ExternalLink, AlertCircle } from "lucide-react";
+import { Plus, Send, XCircle, FileText, Search, Printer, ExternalLink, AlertCircle, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { explainEwbError } from "@/lib/ewb-error-codes";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TransporterPicker, type TransporterOption } from "@/components/TransporterPicker";
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   pending: "secondary",
@@ -38,7 +39,10 @@ export default function WaybillLog() {
   const [transportMode, setTransportMode] = useState("road");
   const [vehicleNo, setVehicleNo] = useState("");
   const [distance, setDistance] = useState("");
-  const [transporter, setTransporter] = useState("");
+  const [transporterId, setTransporterId] = useState("");
+  const [transporterName, setTransporterName] = useState("");
+  const [transporterGstin, setTransporterGstin] = useState("");
+
 
   useEffect(() => {
     const prefill = (location.state as any)?.prefillInvoiceId;
@@ -61,6 +65,18 @@ export default function WaybillLog() {
     },
   });
 
+  const { data: branchRow } = useQuery({
+    queryKey: ["branch-row", branchId],
+    enabled: !!branchId,
+    queryFn: async () => {
+      const { data } = await supabase.from("branches").select("id, branch_name, pincode, gst_number").eq("id", branchId!).single();
+      return data;
+    },
+  });
+  const branchMissing: string[] = [];
+  if (branchRow && !branchRow.pincode) branchMissing.push("pincode");
+  if (branchRow && !branchRow.gst_number) branchMissing.push("GSTIN");
+
   const { data: sources = [] } = useQuery({
     queryKey: ["wb-sources", sourceType, branchId],
     enabled: openNew,
@@ -68,7 +84,7 @@ export default function WaybillLog() {
       if (sourceType === "invoice") {
         const { data } = await supabase
           .from("invoices")
-          .select("id, invoice_number, total_amount, dealer_id, branch_id, dealers(name, gst_number, state_code)")
+          .select("id, invoice_number, total_amount, dealer_id, branch_id, transporter_id, dealers(name, gst_number, state_code)")
           .eq("branch_id", branchId!)
           .order("invoice_date", { ascending: false })
           .limit(100);
@@ -84,6 +100,20 @@ export default function WaybillLog() {
       }
     },
   });
+
+  // Prefill transporter when invoice source is picked
+  useEffect(() => {
+    if (sourceType !== "invoice" || !sourceId) return;
+    const src: any = (sources as any[]).find((s) => s.id === sourceId);
+    if (!src?.transporter_id) return;
+    supabase.from("transporters" as any).select("id, name, gst_number").eq("id", src.transporter_id).single().then(({ data }) => {
+      if (data) {
+        setTransporterId((data as any).id);
+        setTransporterName((data as any).name || "");
+        setTransporterGstin((data as any).gst_number || "");
+      }
+    });
+  }, [sourceId, sourceType, sources]);
 
   const createWb = useMutation({
     mutationFn: async () => {
@@ -125,7 +155,8 @@ export default function WaybillLog() {
         transport_mode: transportMode,
         vehicle_no: vehicleNo,
         distance_km: Number(distance) || 0,
-        transporter_name: transporter || null,
+        transporter_name: transporterName || null,
+        transporter_gstin: transporterGstin || null,
         from_gstin: branch?.gst_number ?? null,
         from_state_code: branch?.state_code ?? null,
         to_gstin: toGstin || null,
@@ -139,7 +170,8 @@ export default function WaybillLog() {
     onSuccess: (id) => {
       toast.success("Waybill draft created");
       setOpenNew(false);
-      setSourceId(""); setVehicleNo(""); setDistance(""); setTransporter("");
+      setSourceId(""); setVehicleNo(""); setDistance("");
+      setTransporterId(""); setTransporterName(""); setTransporterGstin("");
       qc.invalidateQueries({ queryKey: ["waybills"] });
       generate.mutate(id);
     },
@@ -241,11 +273,33 @@ export default function WaybillLog() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div><Label>Vehicle No</Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" /></div>
                   <div><Label>Distance (km)</Label><Input type="number" value={distance} onChange={(e) => setDistance(e.target.value)} /></div>
-                  <div><Label>Transporter</Label><Input value={transporter} onChange={(e) => setTransporter(e.target.value)} /></div>
                 </div>
+                <div>
+                  <Label>Transporter</Label>
+                  <TransporterPicker
+                    value={transporterId}
+                    branchId={branchId}
+                    onChange={(id, t: TransporterOption | null) => {
+                      setTransporterId(id);
+                      setTransporterName(t?.name || "");
+                      setTransporterGstin(t?.gst_number || "");
+                    }}
+                  />
+                </div>
+                {branchMissing.length > 0 && (
+                  <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-destructive">Branch is missing {branchMissing.join(" & ")}</p>
+                      <p className="text-muted-foreground mt-0.5">
+                        NIC will reject. Set it in <button type="button" onClick={() => navigate("/settings/company")} className="underline">Settings → Branches</button> (use Auto-fill from GSTIN).
+                      </p>
+                    </div>
+                  </div>
+                )}
                 <Button className="w-full" onClick={() => createWb.mutate()} disabled={createWb.isPending || generate.isPending}>
                   <Send className="h-4 w-4 mr-2" />
                   {createWb.isPending || generate.isPending ? "Generating…" : "Create & Push to NIC"}

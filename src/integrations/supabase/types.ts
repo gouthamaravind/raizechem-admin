@@ -2199,6 +2199,7 @@ export type Database = {
           subtotal: number
           total_amount: number
           transport_mode: string | null
+          transporter_id: string | null
           updated_at: string
           vehicle_no: string | null
           void_reason: string | null
@@ -2228,6 +2229,7 @@ export type Database = {
           subtotal?: number
           total_amount?: number
           transport_mode?: string | null
+          transporter_id?: string | null
           updated_at?: string
           vehicle_no?: string | null
           void_reason?: string | null
@@ -2257,6 +2259,7 @@ export type Database = {
           subtotal?: number
           total_amount?: number
           transport_mode?: string | null
+          transporter_id?: string | null
           updated_at?: string
           vehicle_no?: string | null
           void_reason?: string | null
@@ -2283,6 +2286,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_transporter_id_fkey"
+            columns: ["transporter_id"]
+            isOneToOne: false
+            referencedRelation: "transporters"
             referencedColumns: ["id"]
           },
         ]
