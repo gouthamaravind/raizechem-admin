@@ -39,7 +39,10 @@ export default function WaybillLog() {
   const [transportMode, setTransportMode] = useState("road");
   const [vehicleNo, setVehicleNo] = useState("");
   const [distance, setDistance] = useState("");
-  const [transporter, setTransporter] = useState("");
+  const [transporterId, setTransporterId] = useState("");
+  const [transporterName, setTransporterName] = useState("");
+  const [transporterGstin, setTransporterGstin] = useState("");
+
 
   useEffect(() => {
     const prefill = (location.state as any)?.prefillInvoiceId;
