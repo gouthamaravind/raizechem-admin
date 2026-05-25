@@ -120,10 +120,8 @@ export default function WaybillLog() {
       if (!sourceId) throw new Error("Pick a source document");
       const src: any = (sources as any[]).find((s: any) => s.id === sourceId);
       if (!src) throw new Error("Source not loaded");
-      const distKm = Number(distance) || 0;
       if (transportMode === "road") {
         if (!vehicleNo || vehicleNo.trim().length < 6) throw new Error("Vehicle No is required for road transport (e.g. TS09EE1234)");
-        if (distKm < 1 || distKm > 4000) throw new Error("Distance (km) must be between 1 and 4000");
       }
 
       const { data: branch } = await supabase.from("branches").select("*").eq("id", branchId!).single();
@@ -159,7 +157,7 @@ export default function WaybillLog() {
         status: "pending",
         transport_mode: transportMode,
         vehicle_no: vehicleNo,
-        distance_km: Number(distance) || 0,
+        distance_km: 0,
         transporter_name: transporterName || null,
         transporter_gstin: transporterGstin || null,
         from_gstin: branch?.gst_number ?? null,
@@ -278,9 +276,10 @@ export default function WaybillLog() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Vehicle No <span className="text-destructive">*</span></Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" required /></div>
-                  <div><Label>Distance (km) <span className="text-destructive">*</span></Label><Input type="number" min={1} max={4000} value={distance} onChange={(e) => setDistance(e.target.value)} placeholder="1–4000" required /></div>
+                <div>
+                  <Label>Vehicle No <span className="text-destructive">*</span></Label>
+                  <Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" required />
+                  <p className="text-xs text-muted-foreground mt-1">Distance is auto-computed by NIC from dispatch & delivery pincodes.</p>
                 </div>
                 <div>
                   <Label>Transporter</Label>

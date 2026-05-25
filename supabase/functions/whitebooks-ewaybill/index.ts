@@ -313,7 +313,7 @@ Deno.serve(async (req) => {
       // 4. Pre-validation (clearer than NIC error codes)
       const fromStateCode = toNum(wb.from_state_code ?? wb.branches?.state_code, 36);
       const isInterState = fromStateCode !== toStateCode;
-      const distance = Number(wb.distance_km || 0);
+      const distance = Number(wb.distance_km || 0); // 0 = let NIC auto-compute from pincodes
       const vehicleNo = (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
       const transMode = wb.transport_mode === "rail" ? "2" : wb.transport_mode === "air" ? "3" : wb.transport_mode === "ship" ? "4" : "1";
       const fromPincode = Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0;
@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
       const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9A-Z]$/;
 
       const errors: string[] = [];
-      if (distance < 1 || distance > 4000) errors.push("distance_km must be 1-4000");
+      if (distance < 0 || distance > 4000) errors.push("distance_km must be 0-4000 (0 = auto)");
       if (transMode === "1" && !vehicleNo) errors.push("vehicle_no required for road");
       if (!toAddr1) errors.push("recipient address missing");
       if (!toPlace) errors.push("recipient city missing");
@@ -444,11 +444,13 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: enriched.friendly || rawErr, codes: enriched.codes, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      const nicDistance = Number(data?.distance ?? data?.transDistance ?? 0);
       await supabase.from("waybills").update({
         ewb_number: String(ewbNo),
         status: "generated",
         ewb_date: data?.ewayBillDate ? new Date(data.ewayBillDate).toISOString() : new Date().toISOString(),
         valid_until: data?.validUpto ? new Date(data.validUpto).toISOString() : null,
+        distance_km: nicDistance > 0 ? nicDistance : distance,
         gsp_request: payload,
         gsp_response: result,
         error_msg: null,
