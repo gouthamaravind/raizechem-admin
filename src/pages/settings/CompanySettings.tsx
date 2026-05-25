@@ -250,6 +250,10 @@ export default function CompanySettings() {
             </CardContent>
           </Card>
 
+          {/* Branches (per-branch dispatch GSTIN + pincode for E-Way Bills) */}
+          <BranchesEditor />
+
+
           {/* Bank Details */}
           <Card>
             <CardHeader>
