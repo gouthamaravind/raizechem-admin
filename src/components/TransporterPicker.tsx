@@ -50,7 +50,7 @@ export function TransporterPicker({ value, onChange, branchId, className }: Prop
         .select("id, name, gst_number")
         .eq("gst_number", g)
         .maybeSingle();
-      if (existing) return existing as TransporterOption;
+      if (existing) return existing as unknown as TransporterOption;
 
       // Lookup
       const { data: lookup, error: lookupErr } = await supabase.functions.invoke("gstin-lookup", { body: { gstin: g } });
