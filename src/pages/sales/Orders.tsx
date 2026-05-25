@@ -22,7 +22,7 @@ import { exportToCsv } from "@/lib/csv-export";
 import { useNavigate } from "react-router-dom";
 import { AlterButton } from "@/components/tally/AlterButton";
 
-type LineItem = { product_id: string; qty: number; rate: number; discount_pct: number; discount_amount: number };
+type LineItem = { product_id: string; pack_id: string; qty: number; rate: number };
 
 export default function Orders() {
   const { user } = useAuth();
