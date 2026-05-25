@@ -63,6 +63,8 @@ export default function PriceList() {
   const [view, setView] = useState<ViewMode>("pricing");
   const [edits, setEdits] = useState<Record<string, Partial<Pack>>>({});
   const [pendingNew, setPendingNew] = useState<Record<string, Partial<Pack>[]>>({});
+  const [productEdits, setProductEdits] = useState<Record<string, { hsn_code?: string; gst_rate?: number }>>({});
+  const [savingProduct, setSavingProduct] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [confirmDel, setConfirmDel] = useState<{ id: string; label: string } | null>(null);
