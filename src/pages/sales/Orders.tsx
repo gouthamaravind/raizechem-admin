@@ -99,14 +99,14 @@ export default function Orders() {
     return `${pk.pack_label} · ${size} × ${pk.units_per_case}/case`;
   };
   const packsFor = (productId: string) => packs.filter((p: any) => p.product_id === productId);
+  // Rate is per pack (per bottle/SKU). Price levels also store the per-pack price.
   const resolveRate = (productId: string, packId: string) => {
     const pk = packs.find((p: any) => p.id === packId) as any;
     if (effectivePriceLevelId) {
       const plPrice = priceLevelPrices.find((pp: any) => pp.product_id === productId && pp.price_level_id === effectivePriceLevelId) as any;
-      if (plPrice && pk) return Number(plPrice.price) * Number(pk.units_per_case || 1);
       if (plPrice) return Number(plPrice.price);
     }
-    if (pk) return Number(pk.price_finished_goods) || 0;
+    if (pk) return Number(pk.price_finished_goods) || Number(pk.mrp) || 0;
     const p = products.find((x: any) => x.id === productId) as any;
     return p ? Number(p.sale_price) || 0 : 0;
   };
