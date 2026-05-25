@@ -25,15 +25,53 @@ function generateToken(): string {
     .join('')
 }
 
-// Auth note: this function uses verify_jwt = true in config.toml, so Supabase's
-// gateway validates the caller's JWT (anon or service_role) before the request
-// reaches this code. No in-function auth check is needed.
+// Auth note: this function uses verify_jwt = true in config.toml. We additionally
+// require either a service_role caller (internal/cron) or an authenticated user
+// with admin/accounts/sales role — preventing arbitrary anon-key abuse to send
+// company-branded emails to unrelated addresses.
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
+
+  // Authorization check
+  const authHeader = req.headers.get('Authorization') ?? ''
+  if (!authHeader.startsWith('Bearer ')) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+  {
+    const url = Deno.env.get('SUPABASE_URL')!
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
+    const userClient = createClient(url, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    })
+    const token = authHeader.replace('Bearer ', '')
+    const { data: claimsData } = await userClient.auth.getClaims(token)
+    const role = (claimsData as any)?.claims?.role
+    if (role !== 'service_role') {
+      const userId = (claimsData as any)?.claims?.sub
+      if (!userId) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      const svc = createClient(url, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+      const { data: roles } = await svc.from('user_roles').select('role').eq('user_id', userId)
+      const allowed = (roles ?? []).some((r: any) =>
+        ['admin', 'accounts', 'sales'].includes(r.role)
+      )
+      if (!allowed) {
+        return new Response(JSON.stringify({ error: 'Forbidden' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+  }
+
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
