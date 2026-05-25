@@ -12,9 +12,13 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 import {
   Download, Upload, Save, Search, ChevronRight, ChevronDown,
-  Plus, Trash2, RotateCcw,
+  Plus, Trash2, RotateCcw, Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const HSN_RE = /^(\d{4}|\d{6}|\d{8})$/;
+const isValidHsn = (v: string) => !v || HSN_RE.test(v.trim());
+
 
 type Product = {
   id: string; name: string; brand: string | null; category: string | null;
@@ -68,6 +72,10 @@ export default function PriceList() {
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [confirmDel, setConfirmDel] = useState<{ id: string; label: string } | null>(null);
+  const [bulkHsn, setBulkHsn] = useState("");
+  const [bulkGst, setBulkGst] = useState<string>("");
+  const [bulkApplying, setBulkApplying] = useState(false);
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const { data: products = [], isLoading: lp } = useQuery<Product[]>({
     queryKey: ["pricelist-products"],
@@ -175,9 +183,14 @@ export default function PriceList() {
   const saveProduct = async (p: Product) => {
     const patch = productEdits[p.id];
     if (!patch) return;
+    if (patch.hsn_code !== undefined && !isValidHsn(String(patch.hsn_code))) {
+      toast.error("HSN must be 4, 6, or 8 digits");
+      return;
+    }
     setSavingProduct(p.id);
     try {
-      const { error } = await supabase.from("products").update(patch).eq("id", p.id);
+      const clean = { ...patch, hsn_code: patch.hsn_code ? String(patch.hsn_code).trim() : patch.hsn_code };
+      const { error } = await supabase.from("products").update(clean).eq("id", p.id);
       if (error) throw error;
       toast.success(`Updated ${p.brand || p.name}`);
       setProductEdits(prev => { const n = { ...prev }; delete n[p.id]; return n; });
@@ -188,6 +201,31 @@ export default function PriceList() {
       setSavingProduct(null);
     }
   };
+
+  const applyBulk = async () => {
+    const hsn = bulkHsn.trim();
+    const gst = bulkGst === "" ? null : Number(bulkGst);
+    if (!hsn && gst === null) { toast.error("Enter HSN or GST to apply"); return; }
+    if (hsn && !HSN_RE.test(hsn)) { toast.error("HSN must be 4, 6, or 8 digits"); return; }
+    setBulkApplying(true);
+    try {
+      const ids = filtered.map(p => p.id);
+      const patch: any = {};
+      if (hsn) patch.hsn_code = hsn;
+      if (gst !== null) patch.gst_rate = gst;
+      const { error } = await supabase.from("products").update(patch).in("id", ids);
+      if (error) throw error;
+      toast.success(`Applied to ${ids.length} product${ids.length === 1 ? "" : "s"}`);
+      setBulkHsn(""); setBulkGst("");
+      qc.invalidateQueries({ queryKey: ["pricelist-products"] });
+    } catch (e: any) {
+      toast.error(e.message || "Bulk apply failed");
+    } finally {
+      setBulkApplying(false);
+      setConfirmBulk(false);
+    }
+  };
+
 
   const editCount = Object.keys(edits).length;
   const newCount = Object.values(pendingNew).reduce((n, l) => n + l.length, 0);
@@ -396,7 +434,41 @@ export default function PriceList() {
               </Badge>
             </div>
           </div>
+          {/* Bulk apply HSN/GST */}
+          <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border bg-muted/30 px-3 py-2">
+            <Wand2 className="h-4 w-4 text-muted-foreground mb-2" />
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Bulk HSN</label>
+              <Input
+                className={cn("h-8 text-xs w-32", bulkHsn && !HSN_RE.test(bulkHsn.trim()) && "border-destructive")}
+                placeholder="4/6/8 digits" value={bulkHsn}
+                onChange={e => setBulkHsn(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Bulk GST %</label>
+              <Select value={bulkGst} onValueChange={setBulkGst}>
+                <SelectTrigger className="h-8 text-xs w-24"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  {[0, 5, 12, 18, 28].map(r => (
+                    <SelectItem key={r} value={String(r)} className="text-xs">{r}%</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm" variant="outline"
+              disabled={bulkApplying || (!bulkHsn && bulkGst === "")}
+              onClick={() => setConfirmBulk(true)}
+            >
+              {bulkApplying ? "Applying…" : `Apply to ${filtered.length} filtered`}
+            </Button>
+            <span className="text-[11px] text-muted-foreground ml-auto">
+              Updates every product currently visible. Use search/category to narrow scope first.
+            </span>
+          </div>
         </CardHeader>
+
         <CardContent className="p-0 border-t">
           {/* Sticky column header */}
           <div className="bg-muted/40 border-b text-[11px] uppercase tracking-wide text-muted-foreground font-medium sticky top-0 z-10">
@@ -486,12 +558,19 @@ export default function PriceList() {
                         <div className="flex flex-col gap-1">
                           <label className="text-[10px] uppercase tracking-wide text-muted-foreground">HSN Code</label>
                           <Input
-                            className="h-8 text-xs w-32"
+                            className={cn(
+                              "h-8 text-xs w-32",
+                              !isValidHsn(String(getProdVal(p, "hsn_code") || "")) && "border-destructive"
+                            )}
                             placeholder="e.g. 38089390"
                             value={getProdVal(p, "hsn_code") as string}
                             onChange={e => setProdVal(p, "hsn_code", e.target.value)}
                           />
+                          {!isValidHsn(String(getProdVal(p, "hsn_code") || "")) && (
+                            <span className="text-[10px] text-destructive">Must be 4, 6, or 8 digits</span>
+                          )}
                         </div>
+
                         <div className="flex flex-col gap-1">
                           <label className="text-[10px] uppercase tracking-wide text-muted-foreground">GST %</label>
                           <Select
@@ -577,6 +656,14 @@ export default function PriceList() {
         confirmText="Remove"
         variant="destructive"
         onConfirm={deletePack}
+      />
+      <ConfirmDialog
+        open={confirmBulk}
+        onOpenChange={setConfirmBulk}
+        title={`Apply to ${filtered.length} products?`}
+        description={`This will overwrite ${bulkHsn ? `HSN to "${bulkHsn}"` : ""}${bulkHsn && bulkGst !== "" ? " and " : ""}${bulkGst !== "" ? `GST to ${bulkGst}%` : ""} on every currently filtered product.`}
+        confirmText="Apply"
+        onConfirm={applyBulk}
       />
     </div>
   );
