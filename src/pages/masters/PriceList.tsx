@@ -118,6 +118,8 @@ export default function PriceList() {
       setCreatingProduct(false);
     }
   };
+
+  const { data: products = [], isLoading: lp } = useQuery<Product[]>({
     queryKey: ["pricelist-products"],
     queryFn: async () => {
       const { data, error } = await supabase
