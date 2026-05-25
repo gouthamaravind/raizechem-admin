@@ -367,7 +367,10 @@ export default function PriceList() {
   const totalPacks = filtered.reduce((n, p) => n + (packsByProduct[p.id]?.length || 0), 0);
 
   return (
+  return (
+    <DashboardLayout>
     <div className="container mx-auto py-6 space-y-4 max-w-[1400px]">
+
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
