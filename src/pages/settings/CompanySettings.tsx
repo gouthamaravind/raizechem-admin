@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Building2, MapPin, Landmark, FileText, Upload, Loader2, Trash2, Percent } from "lucide-react";
+import { BranchesEditor } from "@/components/BranchesEditor";
 
 export default function CompanySettings() {
   const qc = useQueryClient();
