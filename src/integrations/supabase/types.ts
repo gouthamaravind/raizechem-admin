@@ -2924,6 +2924,7 @@ export type Database = {
       product_packs: {
         Row: {
           basic_price: number
+          batch_no: string | null
           created_at: string
           gst_amount: number
           id: string
@@ -2946,6 +2947,7 @@ export type Database = {
         }
         Insert: {
           basic_price?: number
+          batch_no?: string | null
           created_at?: string
           gst_amount?: number
           id?: string
@@ -2968,6 +2970,7 @@ export type Database = {
         }
         Update: {
           basic_price?: number
+          batch_no?: string | null
           created_at?: string
           gst_amount?: number
           id?: string
