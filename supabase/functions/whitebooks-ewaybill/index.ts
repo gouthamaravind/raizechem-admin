@@ -445,11 +445,27 @@ Deno.serve(async (req) => {
       }
 
       const nicDistance = Number(data?.distance ?? data?.transDistance ?? 0);
+      // NIC returns dates like "29/05/2026 11:30:00 AM" (DD/MM/YYYY) — not ISO-parseable.
+      const parseNicDate = (s: any): string | null => {
+        if (!s) return null;
+        const str = String(s).trim();
+        const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i);
+        if (m) {
+          let [, d, mo, y, hh = "0", mm = "0", ss = "0", ap] = m;
+          let h = parseInt(hh);
+          if (ap?.toUpperCase() === "PM" && h < 12) h += 12;
+          if (ap?.toUpperCase() === "AM" && h === 12) h = 0;
+          const dt = new Date(Date.UTC(+y, +mo - 1, +d, h, +mm, +ss));
+          return isNaN(dt.getTime()) ? null : dt.toISOString();
+        }
+        const dt = new Date(str);
+        return isNaN(dt.getTime()) ? null : dt.toISOString();
+      };
       await supabase.from("waybills").update({
         ewb_number: String(ewbNo),
         status: "generated",
-        ewb_date: data?.ewayBillDate ? new Date(data.ewayBillDate).toISOString() : new Date().toISOString(),
-        valid_until: data?.validUpto ? new Date(data.validUpto).toISOString() : null,
+        ewb_date: parseNicDate(data?.ewayBillDate) ?? new Date().toISOString(),
+        valid_until: parseNicDate(data?.validUpto),
         distance_km: nicDistance > 0 ? nicDistance : distance,
         gsp_request: payload,
         gsp_response: result,
