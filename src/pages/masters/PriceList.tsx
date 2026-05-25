@@ -622,6 +622,7 @@ export default function PriceList() {
                               units_per_case: getVal(pk, "units_per_case") as any,
                               unit_size: getVal(pk, "unit_size") as any,
                               unit_uom: getVal(pk, "unit_uom") as any,
+                              batch_no: getVal(pk, "batch_no") as any,
                               ...Object.fromEntries(cols.map(c => [c.key, getVal(pk, c.key)])) as any,
                             }}
                             onChange={(f, v) => setVal(pk, f, v)}
@@ -639,6 +640,7 @@ export default function PriceList() {
                             units_per_case: (row.units_per_case as any) ?? 1,
                             unit_size: (row.unit_size as any) ?? 1,
                             unit_uom: (row.unit_uom as any) ?? "L",
+                            batch_no: (row.batch_no as any) ?? "",
                             ...Object.fromEntries(cols.map(c => [c.key, (row as any)[c.key] ?? 0])) as any,
                           }}
                           onChange={(f, v) => setNewVal(p.id, idx, f, v)}
