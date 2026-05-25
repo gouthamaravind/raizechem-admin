@@ -234,6 +234,13 @@ export default function Invoices() {
       } as any);
       if (error) throw error;
 
+      const newInvoiceId = (data as any)?.invoice_id;
+      if (newInvoiceId && transporterId) {
+        await supabase.from("invoices").update({ transporter_id: transporterId } as any).eq("id", newInvoiceId);
+      }
+
+
+
       // Allocate advance if requested
       if (adjustAdvance && advanceAdjustAmount > 0 && data) {
         const invoiceId = (data as any).invoice_id;
