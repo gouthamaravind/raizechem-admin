@@ -63,6 +63,8 @@ export default function PriceList() {
   const [view, setView] = useState<ViewMode>("pricing");
   const [edits, setEdits] = useState<Record<string, Partial<Pack>>>({});
   const [pendingNew, setPendingNew] = useState<Record<string, Partial<Pack>[]>>({});
+  const [productEdits, setProductEdits] = useState<Record<string, { hsn_code?: string; gst_rate?: number }>>({});
+  const [savingProduct, setSavingProduct] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [confirmDel, setConfirmDel] = useState<{ id: string; label: string } | null>(null);
@@ -161,6 +163,31 @@ export default function PriceList() {
   });
   const expandAll = () => setCollapsed(new Set());
   const collapseAll = () => setCollapsed(new Set(filtered.map(p => p.id)));
+
+  const getProdVal = (p: Product, field: "hsn_code" | "gst_rate") => {
+    const e = productEdits[p.id];
+    return (e && field in e ? (e as any)[field] : (p as any)[field]) ?? "";
+  };
+  const setProdVal = (p: Product, field: "hsn_code" | "gst_rate", raw: string) => {
+    const v = field === "gst_rate" ? (raw === "" ? 0 : Number(raw)) : raw;
+    setProductEdits(prev => ({ ...prev, [p.id]: { ...(prev[p.id] || {}), [field]: v } }));
+  };
+  const saveProduct = async (p: Product) => {
+    const patch = productEdits[p.id];
+    if (!patch) return;
+    setSavingProduct(p.id);
+    try {
+      const { error } = await supabase.from("products").update(patch).eq("id", p.id);
+      if (error) throw error;
+      toast.success(`Updated ${p.brand || p.name}`);
+      setProductEdits(prev => { const n = { ...prev }; delete n[p.id]; return n; });
+      qc.invalidateQueries({ queryKey: ["pricelist-products"] });
+    } catch (e: any) {
+      toast.error(e.message || "Save failed");
+    } finally {
+      setSavingProduct(null);
+    }
+  };
 
   const editCount = Object.keys(edits).length;
   const newCount = Object.values(pendingNew).reduce((n, l) => n + l.length, 0);
@@ -454,6 +481,45 @@ export default function PriceList() {
                   {/* Pack rows */}
                   {!isCollapsed && (
                     <div className="bg-muted/10 border-t">
+                      {/* Product master fields editor */}
+                      <div className="flex flex-wrap items-end gap-3 px-3 py-2.5 border-b bg-background/60">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">HSN Code</label>
+                          <Input
+                            className="h-8 text-xs w-32"
+                            placeholder="e.g. 38089390"
+                            value={getProdVal(p, "hsn_code") as string}
+                            onChange={e => setProdVal(p, "hsn_code", e.target.value)}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">GST %</label>
+                          <Select
+                            value={String(getProdVal(p, "gst_rate") ?? 18)}
+                            onValueChange={v => setProdVal(p, "gst_rate", v)}
+                          >
+                            <SelectTrigger className="h-8 text-xs w-24"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {[0, 5, 12, 18, 28].map(r => (
+                                <SelectItem key={r} value={String(r)} className="text-xs">{r}%</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant={productEdits[p.id] ? "default" : "outline"}
+                          disabled={!productEdits[p.id] || savingProduct === p.id}
+                          onClick={() => saveProduct(p)}
+                        >
+                          <Save className="h-3.5 w-3.5 mr-1.5" />
+                          {savingProduct === p.id ? "Saving…" : "Add to Products"}
+                        </Button>
+                        {productEdits[p.id] && (
+                          <span className="text-[11px] text-warning">Unsaved product changes</span>
+                        )}
+                      </div>
+
                       {ps.length === 0 && newRows.length === 0 && (
                         <div className="px-3 py-4 text-xs text-muted-foreground italic">
                           No packs configured. Click <span className="font-medium">+ Pack</span> to add one.
