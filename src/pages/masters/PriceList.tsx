@@ -72,6 +72,10 @@ export default function PriceList() {
   const [saving, setSaving] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [confirmDel, setConfirmDel] = useState<{ id: string; label: string } | null>(null);
+  const [bulkHsn, setBulkHsn] = useState("");
+  const [bulkGst, setBulkGst] = useState<string>("");
+  const [bulkApplying, setBulkApplying] = useState(false);
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const { data: products = [], isLoading: lp } = useQuery<Product[]>({
     queryKey: ["pricelist-products"],
