@@ -281,13 +281,13 @@ Deno.serve(async (req) => {
           toPlace = b.city || lastSegment(b.address_line1) || b.state || "";
           toPincode = Number((b.pincode || "0").toString().replace(/\D/g, "")) || 0;
           toGstinResolved = wb.to_gstin || b.gst_number || "";
-          toStateCode = Number(wb.to_state_code || b.state_code || 36);
+          toStateCode = toNum(wb.to_state_code ?? b.state_code, 36);
         }
         if (bt?.transfer_date) docDate = new Date(bt.transfer_date);
       }
 
       // 4. Pre-validation (clearer than NIC error codes)
-      const fromStateCode = Number(wb.from_state_code || wb.branches?.state_code || 36);
+      const fromStateCode = toNum(wb.from_state_code ?? wb.branches?.state_code, 36);
       const isInterState = fromStateCode !== toStateCode;
       const distance = Number(wb.distance_km || 0);
       const vehicleNo = (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
