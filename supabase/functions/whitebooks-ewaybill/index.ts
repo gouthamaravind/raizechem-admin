@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
       };
 
       // 4. Call Whitebooks API
-      const response = await fetch(`${WHITEBOOKS_BASE}generate`, {
+      const response = await fetch(`${WHITEBOOKS_BASE}ewayapi/genewaybill`, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
