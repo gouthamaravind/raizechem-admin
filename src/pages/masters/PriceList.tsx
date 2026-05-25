@@ -183,9 +183,14 @@ export default function PriceList() {
   const saveProduct = async (p: Product) => {
     const patch = productEdits[p.id];
     if (!patch) return;
+    if (patch.hsn_code !== undefined && !isValidHsn(String(patch.hsn_code))) {
+      toast.error("HSN must be 4, 6, or 8 digits");
+      return;
+    }
     setSavingProduct(p.id);
     try {
-      const { error } = await supabase.from("products").update(patch).eq("id", p.id);
+      const clean = { ...patch, hsn_code: patch.hsn_code ? String(patch.hsn_code).trim() : patch.hsn_code };
+      const { error } = await supabase.from("products").update(clean).eq("id", p.id);
       if (error) throw error;
       toast.success(`Updated ${p.brand || p.name}`);
       setProductEdits(prev => { const n = { ...prev }; delete n[p.id]; return n; });
@@ -196,6 +201,31 @@ export default function PriceList() {
       setSavingProduct(null);
     }
   };
+
+  const applyBulk = async () => {
+    const hsn = bulkHsn.trim();
+    const gst = bulkGst === "" ? null : Number(bulkGst);
+    if (!hsn && gst === null) { toast.error("Enter HSN or GST to apply"); return; }
+    if (hsn && !HSN_RE.test(hsn)) { toast.error("HSN must be 4, 6, or 8 digits"); return; }
+    setBulkApplying(true);
+    try {
+      const ids = filtered.map(p => p.id);
+      const patch: any = {};
+      if (hsn) patch.hsn_code = hsn;
+      if (gst !== null) patch.gst_rate = gst;
+      const { error } = await supabase.from("products").update(patch).in("id", ids);
+      if (error) throw error;
+      toast.success(`Applied to ${ids.length} product${ids.length === 1 ? "" : "s"}`);
+      setBulkHsn(""); setBulkGst("");
+      qc.invalidateQueries({ queryKey: ["pricelist-products"] });
+    } catch (e: any) {
+      toast.error(e.message || "Bulk apply failed");
+    } finally {
+      setBulkApplying(false);
+      setConfirmBulk(false);
+    }
+  };
+
 
   const editCount = Object.keys(edits).length;
   const newCount = Object.values(pendingNew).reduce((n, l) => n + l.length, 0);
