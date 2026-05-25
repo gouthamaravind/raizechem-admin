@@ -434,7 +434,41 @@ export default function PriceList() {
               </Badge>
             </div>
           </div>
+          {/* Bulk apply HSN/GST */}
+          <div className="mt-3 flex flex-wrap items-end gap-2 rounded-md border bg-muted/30 px-3 py-2">
+            <Wand2 className="h-4 w-4 text-muted-foreground mb-2" />
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Bulk HSN</label>
+              <Input
+                className={cn("h-8 text-xs w-32", bulkHsn && !HSN_RE.test(bulkHsn.trim()) && "border-destructive")}
+                placeholder="4/6/8 digits" value={bulkHsn}
+                onChange={e => setBulkHsn(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Bulk GST %</label>
+              <Select value={bulkGst} onValueChange={setBulkGst}>
+                <SelectTrigger className="h-8 text-xs w-24"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  {[0, 5, 12, 18, 28].map(r => (
+                    <SelectItem key={r} value={String(r)} className="text-xs">{r}%</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              size="sm" variant="outline"
+              disabled={bulkApplying || (!bulkHsn && bulkGst === "")}
+              onClick={() => setConfirmBulk(true)}
+            >
+              {bulkApplying ? "Applying…" : `Apply to ${filtered.length} filtered`}
+            </Button>
+            <span className="text-[11px] text-muted-foreground ml-auto">
+              Updates every product currently visible. Use search/category to narrow scope first.
+            </span>
+          </div>
         </CardHeader>
+
         <CardContent className="p-0 border-t">
           {/* Sticky column header */}
           <div className="bg-muted/40 border-b text-[11px] uppercase tracking-wide text-muted-foreground font-medium sticky top-0 z-10">
