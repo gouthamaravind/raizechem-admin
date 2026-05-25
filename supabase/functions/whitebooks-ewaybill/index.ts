@@ -313,7 +313,7 @@ Deno.serve(async (req) => {
       // 4. Pre-validation (clearer than NIC error codes)
       const fromStateCode = toNum(wb.from_state_code ?? wb.branches?.state_code, 36);
       const isInterState = fromStateCode !== toStateCode;
-      const distance = Number(wb.distance_km || 0);
+      const distance = Number(wb.distance_km || 0); // 0 = let NIC auto-compute from pincodes
       const vehicleNo = (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
       const transMode = wb.transport_mode === "rail" ? "2" : wb.transport_mode === "air" ? "3" : wb.transport_mode === "ship" ? "4" : "1";
       const fromPincode = Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0;
