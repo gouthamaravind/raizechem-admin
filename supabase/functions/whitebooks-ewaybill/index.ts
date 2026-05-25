@@ -374,7 +374,7 @@ Deno.serve(async (req) => {
       };
 
       // 6. Call Whitebooks (retry once with fresh token if response is the bare {status_cd:"0"} auth-rejection)
-      let response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
+      let response = await fetch(withEmail(WHITEBOOKS_GENERATE_ENDPOINT), {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
@@ -384,7 +384,7 @@ Deno.serve(async (req) => {
         r && typeof r === "object" && String(r.status_cd ?? "") === "0" && !r.error && !r.errorDesc && !r.message && !r.data;
       if (isBareAuthReject(parsed.json)) {
         cachedAuthToken = null; cachedAuthExpiry = 0;
-        response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
+        response = await fetch(withEmail(WHITEBOOKS_GENERATE_ENDPOINT), {
           method: "POST",
           headers: await getHeaders(),
           body: JSON.stringify(payload),
