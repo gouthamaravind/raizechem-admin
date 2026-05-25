@@ -18,6 +18,7 @@ import Dealer360 from "./pages/masters/Dealer360";
 import Products from "./pages/masters/Products";
 import Suppliers from "./pages/masters/Suppliers";
 import PriceLevels from "./pages/masters/PriceLevels";
+import PriceList from "./pages/masters/PriceList";
 import Transporters from "./pages/masters/Transporters";
 import Batches from "./pages/inventory/Batches";
 import StockIn from "./pages/inventory/StockIn";
