@@ -7,12 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const RAW_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://apisandbox.whitebooks.in/api/ewaybill/v1.03/";
-// Normalize: must end with / and contain the API path
-const NORMALIZED = RAW_BASE.endsWith("/") ? RAW_BASE : RAW_BASE + "/";
-const WHITEBOOKS_BASE = /\/api\/ewaybill\/v\d/.test(NORMALIZED)
-  ? NORMALIZED
-  : NORMALIZED.replace(/\/?$/, "/") + "api/ewaybill/v1.03/";
+// Whitebooks base. Production: https://api.whitebooks.in  Sandbox: https://api-sandbox.whitebooks.in
+const RAW_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://api.whitebooks.in";
+// Strip any path the user pasted, then append the canonical API path.
+const ORIGIN = RAW_BASE.replace(/\/+$/, "").replace(/\/(api\/)?ewaybill(api)?\/v[\d.]+\/?$/i, "");
+const WHITEBOOKS_BASE = `${ORIGIN}/ewaybillapi/v1.03/`;
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
@@ -25,28 +24,26 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
+  // Whitebooks authenticate is GET with credentials in headers
   const res = await fetch(`${WHITEBOOKS_BASE}authenticate`, {
-    method: "POST",
+    method: "GET",
     headers: {
       "Content-Type": "application/json",
+      "username": EWB_USERNAME,
+      "password": EWB_PASSWORD,
       "client-id": CLIENT_ID,
       "client-secret": CLIENT_SECRET,
       "gstin": GSTIN,
     },
-    body: JSON.stringify({
-      action: "ACCESSTOKEN",
-      username: EWB_USERNAME,
-      password: EWB_PASSWORD,
-    }),
   });
   const json = await res.json().catch(() => ({}));
   const token = json?.authtoken || json?.data?.authtoken || json?.AuthToken;
   if (!res.ok || !token) {
-    throw new Error(`NIC auth failed [${res.status}]: ${JSON.stringify(json).slice(0, 400)}`);
+    throw new Error(`Whitebooks auth failed [${res.status}]: ${JSON.stringify(json).slice(0, 400)}`);
   }
 
   cachedAuthToken = token;
-  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000; // 5h30m safety
+  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000;
   return token;
 }
 
