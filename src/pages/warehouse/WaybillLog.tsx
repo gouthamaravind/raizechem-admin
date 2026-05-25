@@ -160,7 +160,10 @@ export default function WaybillLog() {
       qc.invalidateQueries({ queryKey: ["waybills"] });
       toast.success(`E-Way Bill ${data.ewb_number}${data.stub ? " (stub mode)" : ""}`);
     },
-    onError: (e: Error) => toast.error("Generate failed: " + e.message),
+    onError: (e: Error) => {
+      const ex = explainEwbError(e.message);
+      toast.error(ex.friendly || ("Generate failed: " + e.message), { duration: 10000 });
+    },
   });
 
   const cancel = useMutation({
