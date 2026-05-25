@@ -657,6 +657,14 @@ export default function PriceList() {
         variant="destructive"
         onConfirm={deletePack}
       />
+      <ConfirmDialog
+        open={confirmBulk}
+        onOpenChange={setConfirmBulk}
+        title={`Apply to ${filtered.length} products?`}
+        description={`This will overwrite ${bulkHsn ? `HSN to "${bulkHsn}"` : ""}${bulkHsn && bulkGst !== "" ? " and " : ""}${bulkGst !== "" ? `GST to ${bulkGst}%` : ""} on every currently filtered product.`}
+        confirmText="Apply"
+        onConfirm={applyBulk}
+      />
     </div>
   );
 }
