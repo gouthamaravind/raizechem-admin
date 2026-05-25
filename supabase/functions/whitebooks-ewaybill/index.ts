@@ -321,7 +321,7 @@ Deno.serve(async (req) => {
       const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9A-Z]$/;
 
       const errors: string[] = [];
-      if (distance < 1 || distance > 4000) errors.push("distance_km must be 1-4000");
+      if (distance < 0 || distance > 4000) errors.push("distance_km must be 0-4000 (0 = auto)");
       if (transMode === "1" && !vehicleNo) errors.push("vehicle_no required for road");
       if (!toAddr1) errors.push("recipient address missing");
       if (!toPlace) errors.push("recipient city missing");
