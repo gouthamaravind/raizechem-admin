@@ -244,7 +244,27 @@ export default function Employees() {
                       <TableCell className="text-right">₹{Number(emp.basic_salary || 0).toLocaleString("en-IN")}</TableCell>
                       <TableCell className="font-mono text-sm">{emp.pan || "—"}</TableCell>
                       <TableCell><Badge variant={emp.status === "active" ? "default" : "secondary"}>{emp.status}</Badge></TableCell>
-                      <TableCell><AlterButton onClick={() => openEdit(emp)} /></TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Btn variant="ghost" size="icon" className="h-8 w-8" aria-label="Manage">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Btn>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(emp)} disabled={!isAdmin}>
+                              <Pencil className="h-4 w-4 mr-2" />Alter
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setConfirmAction({ type: "toggle", emp })} disabled={!isAdmin}>
+                              <Power className="h-4 w-4 mr-2" />{emp.status === "active" ? "Deactivate" : "Activate"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setConfirmAction({ type: "delete", emp })} disabled={!isAdmin} className="text-destructive focus:text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" />Remove
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
