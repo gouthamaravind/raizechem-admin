@@ -34,6 +34,7 @@ async function getAuthToken(): Promise<string> {
       "password": EWB_PASSWORD,
       "client_id": CLIENT_ID,
       "client_secret": CLIENT_SECRET,
+      "ip_address": IP_ADDRESS,
       "gstin": GSTIN,
     },
   });
@@ -55,6 +56,7 @@ async function getHeaders() {
     "Content-Type": "application/json",
     "client_id": CLIENT_ID,
     "client_secret": CLIENT_SECRET,
+      "ip_address": IP_ADDRESS,
     "gstin": GSTIN,
     "username": EWB_USERNAME,
     "authtoken": authToken,
