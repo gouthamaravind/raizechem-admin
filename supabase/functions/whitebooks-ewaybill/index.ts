@@ -61,6 +61,7 @@ function apiHeaders(authToken: string): Record<string, string> {
     "client_secret": CLIENT_SECRET,
     "gstin": GSTIN,
     "gst_username": GST_USERNAME,
+    "username": GST_USERNAME,
     "authtoken": authToken,
   };
 }
@@ -107,15 +108,16 @@ async function getAuthToken(): Promise<string> {
   try { json = JSON.parse(rawText); } catch { /* keep raw */ }
   const status_cd = String(json?.status_cd ?? json?.status ?? "");
   // Whitebooks auth may return token fields with different casing / nesting.
-  // Do not proceed without a real token; generate APIs reject that as bare {status_cd:"0"}.
+  // Some Whitebooks accounts only validate the session and do not echo an auth token.
   const token =
     readStringDeep(json, ["authtoken", "authToken", "AuthToken", "auth_token", "token"]) ||
-    headerString(res.headers, ["authtoken", "auth-token", "x-auth-token"]);
+    headerString(res.headers, ["authtoken", "auth-token", "x-auth-token"]) ||
+    (status_cd === "1" ? "VALIDATED" : "");
   if (!res.ok || status_cd !== "1" || !token) {
     const respHeaders: Record<string, string> = {};
     res.headers.forEach((v, k) => { respHeaders[k] = v; });
     throw new Error(JSON.stringify({
-      msg: !token && status_cd === "1" ? "Whitebooks auth succeeded but did not return authtoken" : "Whitebooks auth failed",
+      msg: "Whitebooks auth failed",
       status: res.status,
       status_cd,
       raw: rawText.slice(0, 800),
@@ -140,6 +142,7 @@ async function getAuthToken(): Promise<string> {
 async function getHeaders() {
   const authToken = await getAuthToken();
   const h = apiHeaders(authToken);
+  if (authToken === "VALIDATED") delete (h as any).authtoken;
   return h;
 }
 
