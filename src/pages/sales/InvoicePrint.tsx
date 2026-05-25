@@ -292,7 +292,7 @@ export default function InvoicePrint() {
     queryKey: ["invoice-items-print", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("invoice_items")
-        .select("*, products(name, unit, hsn_code), product_batches(batch_no)")
+        .select("*, products(name, brand, unit, hsn_code), product_batches(batch_no)")
         .eq("invoice_id", id!);
       if (error) throw error;
       return data || [];
