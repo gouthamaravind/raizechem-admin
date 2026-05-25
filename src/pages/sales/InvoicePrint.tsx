@@ -40,58 +40,262 @@ function numberToWords(num: number): string {
 // --- Template renderers ---
 
 function StandardTemplate({ inv, dealer, items, company, isIntra, placeOfSupply }: any) {
+  // HSN-wise tax summary
+  const hsnMap = new Map<string, { taxable: number; cgst: number; sgst: number; igst: number; rate: number }>();
+  items.forEach((it: any) => {
+    const hsn = it.hsn_code || it.products?.hsn_code || "—";
+    const r = hsnMap.get(hsn) || { taxable: 0, cgst: 0, sgst: 0, igst: 0, rate: Number(it.gst_rate) };
+    r.taxable += Number(it.amount);
+    r.cgst += Number(it.cgst_amount || 0);
+    r.sgst += Number(it.sgst_amount || 0);
+    r.igst += Number(it.igst_amount || 0);
+    hsnMap.set(hsn, r);
+  });
+  const totalQty = items.reduce((s: number, it: any) => s + Number(it.qty), 0);
+  const unitLabel = items[0]?.products?.unit || "Nos";
+  const subtotal = Number(inv.subtotal);
+  const cgst = Number(inv.cgst_total || 0);
+  const sgst = Number(inv.sgst_total || 0);
+  const igst = Number(inv.igst_total || 0);
+  const roundOff = Number(inv.round_off || 0);
+  const totalTax = isIntra ? cgst + sgst : igst;
+
+  const taxInWords = (() => {
+    const intPart = Math.floor(totalTax);
+    const paise = Math.round((totalTax - intPart) * 100);
+    let s = "INR " + numberToWords(intPart).replace(" Rupees", "").replace(" Only", "");
+    if (paise > 0) s += " and " + numberToWords(paise / 100).replace(/.*and /, "").replace(" Only", "");
+    return s + " Only";
+  })();
+
   return (
-    <div className="max-w-[210mm] mx-auto p-8 print:p-6 print:pt-0 mt-16 print:mt-0 text-sm">
-      <h2 className="text-center text-lg font-bold mb-1">TAX INVOICE</h2>
-      <div className="grid grid-cols-2 border border-foreground/30 mb-2">
-        <div className="p-3 border-r border-foreground/30 flex gap-3">
-          {company?.logo_url && (
-            <img src={company.logo_url} alt="Logo" className="h-16 w-16 object-contain shrink-0" crossOrigin="anonymous" />
-          )}
-          <div className="flex-1">
-          <p className="font-bold text-base">{company?.company_name || "Raizechem Pvt Ltd"}</p>
-          {company?.legal_name && <p className="text-xs text-muted-foreground">{company.legal_name}</p>}
-          <p>{company?.address_line1}{company?.address_line2 ? `, ${company.address_line2}` : ""}</p>
-          <p>{company?.city}, {company?.state} - {company?.pincode}</p>
-          <p><strong>GSTIN:</strong> {company?.gst_number || "—"}</p>
-          <p><strong>State:</strong> {company?.state} (Code: {(company as any)?.state_code || "36"})</p>
+    <div className="max-w-[210mm] mx-auto p-4 print:p-2 print:pt-0 mt-16 print:mt-0 text-[11px] leading-tight">
+      <div className="border-2 border-foreground">
+        <h2 className="text-center text-sm font-bold py-1 border-b-2 border-foreground">TAX INVOICE</h2>
+
+        {/* Seller + Invoice metadata */}
+        <div className="grid grid-cols-2 border-b-2 border-foreground">
+          <div className="p-2 border-r-2 border-foreground flex gap-2">
+            {company?.logo_url && <img src={company.logo_url} alt="" className="h-14 w-14 object-contain shrink-0" crossOrigin="anonymous" />}
+            <div className="flex-1">
+              <p className="font-bold text-[13px]">{company?.company_name || "Raizechem Pvt. Ltd"}</p>
+              <p>{company?.address_line1}{company?.address_line2 ? `, ${company.address_line2}` : ""}</p>
+              <p>{company?.city}{company?.state ? `, ${company.state}` : ""} {company?.pincode || ""}</p>
+              <p>GSTIN/UIN: <span className="font-semibold">{company?.gst_number || "—"}</span></p>
+              <p>State Name : {company?.state || "—"}, Code : {(company as any)?.state_code || "36"}</p>
+              {company?.phone && <p>Contact : {company.phone}</p>}
+              {company?.email && <p>E-Mail : {company.email}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 text-[10px]">
+            <div className="p-1.5 border-r border-b border-foreground"><div className="text-foreground/60">Invoice No.</div><div className="font-bold">{inv.invoice_number}</div></div>
+            <div className="p-1.5 border-b border-foreground"><div className="text-foreground/60">Dated</div><div className="font-bold">{inv.invoice_date}</div></div>
+            <div className="p-1.5 border-r border-b border-foreground"><div className="text-foreground/60">Delivery Note</div><div>{inv.delivery_note || ""}</div></div>
+            <div className="p-1.5 border-b border-foreground"><div className="text-foreground/60">Mode/Terms of Payment</div><div>{inv.payment_terms || ""}</div></div>
+            <div className="p-1.5 border-r border-b border-foreground"><div className="text-foreground/60">Reference No. &amp; Date</div><div>{inv.reference_no || ""}</div></div>
+            <div className="p-1.5 border-b border-foreground"><div className="text-foreground/60">Other References</div><div>{inv.other_reference || ""}</div></div>
+            <div className="p-1.5 border-r border-b border-foreground"><div className="text-foreground/60">Buyer's Order No.</div><div>{inv.buyer_order_no || ""}</div></div>
+            <div className="p-1.5 border-b border-foreground"><div className="text-foreground/60">Dated</div><div>{inv.buyer_order_date || ""}</div></div>
+            <div className="p-1.5 border-r border-b border-foreground"><div className="text-foreground/60">Dispatched through</div><div className="font-bold">{inv.transport_mode || ""}</div></div>
+            <div className="p-1.5 border-b border-foreground"><div className="text-foreground/60">Destination</div><div className="font-bold">{inv.delivery_to || dealer?.city || ""}</div></div>
+            <div className="p-1.5 border-r border-foreground col-span-1"><div className="text-foreground/60">e-Way Bill No.</div><div className="font-bold">{inv.eway_bill_no || ""}</div></div>
+            <div className="p-1.5"><div className="text-foreground/60">Vehicle No.</div><div className="font-bold">{inv.vehicle_no || ""}</div></div>
           </div>
         </div>
-        <div className="p-3">
-          <p className="font-bold">Bill To: {dealer?.name}</p>
-          <p>{dealer?.address_line1}{dealer?.address_line2 ? `, ${dealer.address_line2}` : ""}</p>
-          <p>{dealer?.city}, {dealer?.state} - {dealer?.pincode}</p>
-          <p><strong>GSTIN:</strong> {dealer?.gst_number || "Unregistered"}</p>
-          <p><strong>State:</strong> {dealer?.state} (Code: {dealer?.state_code || "—"})</p>
+
+        {/* Consignee + Buyer */}
+        <div className="grid grid-cols-2 border-b-2 border-foreground">
+          <div className="p-2 border-r-2 border-foreground">
+            <p className="text-foreground/60 text-[10px]">Consignee (Ship to)</p>
+            <p className="font-bold uppercase">{dealer?.name}</p>
+            <p>{dealer?.shipping_address_line1 || dealer?.address_line1}{(dealer?.shipping_address_line2 || dealer?.address_line2) ? `, ${dealer.shipping_address_line2 || dealer.address_line2}` : ""}</p>
+            <p>{dealer?.shipping_city || dealer?.city}, {dealer?.shipping_state || dealer?.state} {dealer?.shipping_pincode || dealer?.pincode || ""}</p>
+            <p>GSTIN/UIN : {dealer?.gst_number || "Unregistered"}</p>
+            <p>State Name : {dealer?.shipping_state || dealer?.state}, Code : {dealer?.state_code || "—"}</p>
+          </div>
+          <div className="p-2">
+            <p className="text-foreground/60 text-[10px]">Buyer (Bill to)</p>
+            <p className="font-bold uppercase">{dealer?.name}</p>
+            <p>{dealer?.address_line1}{dealer?.address_line2 ? `, ${dealer.address_line2}` : ""}</p>
+            <p>{dealer?.city}, {dealer?.state} {dealer?.pincode || ""}</p>
+            <p>GSTIN/UIN : {dealer?.gst_number || "Unregistered"}</p>
+            <p>State Name : {dealer?.state}, Code : {dealer?.state_code || "—"}</p>
+            <p>Place of Supply : {placeOfSupply}</p>
+          </div>
+        </div>
+
+        {/* Items table */}
+        <table className="w-full border-collapse text-[10.5px]">
+          <thead>
+            <tr className="border-b-2 border-foreground">
+              <th className="border-r border-foreground p-1 w-8">Sl No.</th>
+              <th className="border-r border-foreground p-1 text-left">Description of Goods</th>
+              <th className="border-r border-foreground p-1 w-16">HSN/SAC</th>
+              <th className="border-r border-foreground p-1 w-20">Quantity</th>
+              <th className="border-r border-foreground p-1 w-16 text-right">Rate</th>
+              <th className="border-r border-foreground p-1 w-10">per</th>
+              <th className="p-1 w-24 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((it: any, idx: number) => {
+              const desc = it.products?.brand
+                ? `${it.products.brand} — ${it.products.name}`
+                : it.products?.name;
+              const batch = it.product_batches?.batch_no || it.batch_no;
+              return (
+                <tr key={it.id} className="align-top">
+                  <td className="border-r border-foreground p-1 text-center">{idx + 1}</td>
+                  <td className="border-r border-foreground p-1">
+                    <div className="font-bold uppercase">{desc}</div>
+                    {batch && <div className="italic text-[10px]">Batch : {batch}</div>}
+                    {it.mfg_date && <div className="italic text-[10px]">Mfg Dt. : {it.mfg_date}</div>}
+                    {it.expiry_date && <div className="italic text-[10px]">Expiry : {it.expiry_date}</div>}
+                  </td>
+                  <td className="border-r border-foreground p-1 text-center">{it.hsn_code || it.products?.hsn_code || "—"}</td>
+                  <td className="border-r border-foreground p-1 text-right font-bold">{it.qty} {it.products?.unit || "Nos"}</td>
+                  <td className="border-r border-foreground p-1 text-right">{Number(it.rate).toFixed(2)}</td>
+                  <td className="border-r border-foreground p-1 text-center">{it.products?.unit || "Nos"}</td>
+                  <td className="p-1 text-right font-bold">{Number(it.amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                </tr>
+              );
+            })}
+            {/* Spacer */}
+            <tr><td colSpan={7} className="p-1">&nbsp;</td></tr>
+            {/* Subtotal */}
+            <tr>
+              <td className="border-r border-foreground p-1"></td>
+              <td className="border-r border-foreground p-1 text-right italic" colSpan={5}></td>
+              <td className="p-1 text-right">{subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+            {isIntra ? (
+              <>
+                <tr><td className="border-r border-foreground p-1"></td><td className="border-r border-foreground p-1 text-right" colSpan={5}>CGST</td><td className="p-1 text-right">{cgst.toFixed(2)}</td></tr>
+                <tr><td className="border-r border-foreground p-1"></td><td className="border-r border-foreground p-1 text-right" colSpan={5}>SGST</td><td className="p-1 text-right">{sgst.toFixed(2)}</td></tr>
+              </>
+            ) : (
+              <tr><td className="border-r border-foreground p-1"></td><td className="border-r border-foreground p-1 text-right" colSpan={5}>IGST</td><td className="p-1 text-right">{igst.toFixed(2)}</td></tr>
+            )}
+            {roundOff !== 0 && (
+              <tr><td className="border-r border-foreground p-1"></td><td className="border-r border-foreground p-1 text-right" colSpan={5}>Round Off</td><td className="p-1 text-right">{roundOff > 0 ? "" : "(-)"}{Math.abs(roundOff).toFixed(2)}</td></tr>
+            )}
+            <tr className="border-t-2 border-foreground font-bold">
+              <td className="border-r border-foreground p-1"></td>
+              <td className="border-r border-foreground p-1">Total</td>
+              <td className="border-r border-foreground p-1"></td>
+              <td className="border-r border-foreground p-1 text-right">{totalQty} {unitLabel}</td>
+              <td className="border-r border-foreground p-1"></td>
+              <td className="border-r border-foreground p-1"></td>
+              <td className="p-1 text-right">₹ {Number(inv.total_amount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Amount in words */}
+        <div className="border-t-2 border-foreground p-2">
+          <p className="text-[10px] text-foreground/60">Amount Chargeable (in words)</p>
+          <p className="font-bold">INR {numberToWords(Number(inv.total_amount)).replace(" Rupees", "").replace(" Only", "")} Only</p>
+          <p className="text-right italic text-[10px]">E. &amp; O.E</p>
+        </div>
+
+        {/* HSN-wise tax summary */}
+        <table className="w-full border-collapse text-[10.5px] border-t-2 border-foreground">
+          <thead>
+            <tr className="border-b border-foreground">
+              <th rowSpan={2} className="border-r border-foreground p-1">HSN/SAC</th>
+              <th rowSpan={2} className="border-r border-foreground p-1">Taxable Value</th>
+              {isIntra ? (
+                <>
+                  <th colSpan={2} className="border-r border-foreground p-1">CGST</th>
+                  <th colSpan={2} className="border-r border-foreground p-1">SGST/UTGST</th>
+                </>
+              ) : (
+                <th colSpan={2} className="border-r border-foreground p-1">IGST</th>
+              )}
+              <th rowSpan={2} className="p-1">Total Tax Amount</th>
+            </tr>
+            <tr className="border-b border-foreground">
+              <th className="border-r border-foreground p-1">Rate</th>
+              <th className="border-r border-foreground p-1">Amount</th>
+              {isIntra && <><th className="border-r border-foreground p-1">Rate</th><th className="border-r border-foreground p-1">Amount</th></>}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from(hsnMap.entries()).map(([hsn, r]) => (
+              <tr key={hsn}>
+                <td className="border-r border-foreground p-1 text-center">{hsn}</td>
+                <td className="border-r border-foreground p-1 text-right">{r.taxable.toFixed(2)}</td>
+                {isIntra ? (
+                  <>
+                    <td className="border-r border-foreground p-1 text-center">{(r.rate / 2).toFixed(1)}%</td>
+                    <td className="border-r border-foreground p-1 text-right">{r.cgst.toFixed(2)}</td>
+                    <td className="border-r border-foreground p-1 text-center">{(r.rate / 2).toFixed(1)}%</td>
+                    <td className="border-r border-foreground p-1 text-right">{r.sgst.toFixed(2)}</td>
+                  </>
+                ) : (
+                  <>
+                    <td className="border-r border-foreground p-1 text-center">{r.rate}%</td>
+                    <td className="border-r border-foreground p-1 text-right">{r.igst.toFixed(2)}</td>
+                  </>
+                )}
+                <td className="p-1 text-right">{(r.cgst + r.sgst + r.igst).toFixed(2)}</td>
+              </tr>
+            ))}
+            <tr className="font-bold border-t border-foreground">
+              <td className="border-r border-foreground p-1 text-right">Total</td>
+              <td className="border-r border-foreground p-1 text-right">{subtotal.toFixed(2)}</td>
+              {isIntra ? (
+                <>
+                  <td className="border-r border-foreground p-1"></td>
+                  <td className="border-r border-foreground p-1 text-right">{cgst.toFixed(2)}</td>
+                  <td className="border-r border-foreground p-1"></td>
+                  <td className="border-r border-foreground p-1 text-right">{sgst.toFixed(2)}</td>
+                </>
+              ) : (
+                <>
+                  <td className="border-r border-foreground p-1"></td>
+                  <td className="border-r border-foreground p-1 text-right">{igst.toFixed(2)}</td>
+                </>
+              )}
+              <td className="p-1 text-right">{totalTax.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        {/* Tax amount in words + PAN */}
+        <div className="border-t-2 border-foreground p-2">
+          <p>Tax Amount (in words) : <span className="font-bold">{taxInWords}</span></p>
+          {company?.pan_number && <p className="mt-1">Company's PAN : <span className="font-bold">{company.pan_number}</span></p>}
+        </div>
+
+        {/* Declaration + Bank */}
+        <div className="grid grid-cols-2 border-t-2 border-foreground">
+          <div className="p-2 border-r-2 border-foreground">
+            <p className="text-[10px] text-foreground/60">Declaration</p>
+            <p>We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.</p>
+          </div>
+          <div className="p-2">
+            <p className="text-[10px] text-foreground/60">Company's Bank Details</p>
+            {company?.bank_name && <p>Bank Name : <span className="font-bold">{company.bank_name}</span></p>}
+            {company?.bank_account && <p>A/c No. : <span className="font-bold">{company.bank_account}</span></p>}
+            {company?.bank_ifsc && <p>Branch &amp; IFS Code : <span className="font-bold">{company.bank_ifsc}</span></p>}
+          </div>
+        </div>
+
+        {/* Signature */}
+        <div className="border-t-2 border-foreground p-2 flex justify-end">
+          <div className="text-right">
+            <p className="font-bold">for {company?.company_name || "Raizechem Pvt. Ltd"}</p>
+            <div className="h-12" />
+            <p className="border-t border-foreground pt-1">Authorised Signatory</p>
+          </div>
         </div>
       </div>
-      <div className="grid grid-cols-4 border border-foreground/30 mb-2 text-xs">
-        <div className="p-2 border-r border-foreground/30"><strong>Invoice #:</strong> {inv.invoice_number}</div>
-        <div className="p-2 border-r border-foreground/30"><strong>Date:</strong> {inv.invoice_date}</div>
-        <div className="p-2 border-r border-foreground/30"><strong>Due:</strong> {inv.due_date || "—"}</div>
-        <div className="p-2"><strong>Place of Supply:</strong> {placeOfSupply}</div>
-      </div>
-      {(inv.transport_mode || inv.vehicle_no) && (
-        <div className="grid grid-cols-4 border border-foreground/30 mb-2 text-xs">
-          <div className="p-2 border-r border-foreground/30"><strong>Transport:</strong> {inv.transport_mode || "—"}</div>
-          <div className="p-2 border-r border-foreground/30"><strong>Vehicle:</strong> {inv.vehicle_no || "—"}</div>
-          <div className="p-2 border-r border-foreground/30"><strong>From:</strong> {inv.dispatch_from || "—"}</div>
-          <div className="p-2"><strong>To:</strong> {inv.delivery_to || "—"}</div>
-        </div>
-      )}
-      <ItemsTable items={items} isIntra={isIntra} />
-      <TotalBlock inv={inv} isIntra={isIntra} />
-      <p className="text-xs mb-4"><strong>Amount in words:</strong> {numberToWords(Number(inv.total_amount))}</p>
-      {company?.bank_name && (
-        <div className="text-xs border border-foreground/30 p-3 mb-4">
-          <p className="font-bold mb-1">Bank Details:</p>
-          <p>Bank: {company.bank_name} | A/C: {company.bank_account} | IFSC: {company.bank_ifsc}</p>
-        </div>
-      )}
-      <SignatureBlock companyName={company?.company_name} />
+      <p className="text-center text-[10px] mt-1">This is a Computer Generated Invoice</p>
     </div>
   );
 }
+
 
 function RetailTemplate({ inv, dealer, items, company, isIntra, placeOfSupply }: any) {
   return (
