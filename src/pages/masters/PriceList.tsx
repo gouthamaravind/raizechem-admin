@@ -421,6 +421,9 @@ export default function PriceList() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setNewProductOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> Add Product
+          </Button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
             onChange={e => e.target.files?.[0] && importXlsx(e.target.files[0])} />
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
