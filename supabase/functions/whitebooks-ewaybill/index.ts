@@ -405,9 +405,11 @@ Deno.serve(async (req) => {
       const okCancel = response.ok && (statusCd === "1" || result?.data?.cancelDate);
       if (!okCancel) {
         const errs = Array.isArray(result?.error)
-          ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ")
+          ? result.error.map((e: any) => `${e.errorCode ?? ""} ${e.errorMessage ?? ""}`.trim()).join("; ")
           : (result?.error?.message || result?.errorDesc || result?.message);
-        return new Response(JSON.stringify({ error: errs || raw.slice(0, 500) || "Cancel failed", raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const rawErr = errs || raw.slice(0, 500) || "Cancel failed";
+        const enriched = enrichEwbError(rawErr);
+        return new Response(JSON.stringify({ error: enriched.friendly || rawErr, codes: enriched.codes, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       await supabase.from("waybills").update({
