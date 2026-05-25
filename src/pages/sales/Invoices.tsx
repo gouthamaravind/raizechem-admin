@@ -319,13 +319,15 @@ export default function Invoices() {
                     <Label>Line Items (select batch for each)</Label>
                     {items.map((item, i) => {
                       const productBatches = batches.filter((b: any) => b.product_id === item.product_id);
+                      const productPacks = packs.filter((p: any) => p.product_id === item.product_id);
+                      const selectedPack = productPacks.find((p: any) => p.id === item.pack_id);
                       return (
                         <div key={i} className="flex gap-2 items-end flex-wrap">
                           <Select value={item.product_id} onValueChange={(v) => {
                             const p = products.find((p: any) => p.id === v) as any;
                             updateItem(i, "product_id", v);
+                            updateItem(i, "pack_id", null);
                             if (p) {
-                              // Use price level price if dealer has one, otherwise fall back to sale_price
                               const plId = selectedDealer?.price_level_id;
                               const plPrice = plId ? priceLevelPrices.find((pp: any) => pp.product_id === v && pp.price_level_id === plId) : null;
                               updateItem(i, "rate", plPrice ? Number(plPrice.price) : (Number(p.sale_price) || 0));
@@ -335,15 +337,26 @@ export default function Invoices() {
                             <SelectTrigger className="w-40"><SelectValue placeholder="Product" /></SelectTrigger>
                             <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                           </Select>
+                          {productPacks.length > 0 && (
+                            <Select value={item.pack_id || ""} onValueChange={(v) => {
+                              updateItem(i, "pack_id", v);
+                              const pk = productPacks.find((p: any) => p.id === v);
+                              if (pk && Number(pk.basic_price) > 0) updateItem(i, "rate", Number(pk.basic_price));
+                            }}>
+                              <SelectTrigger className="w-44"><SelectValue placeholder="Pack / Carton" /></SelectTrigger>
+                              <SelectContent>{productPacks.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.pack_label} ({p.units_per_case}×{p.unit_size}{p.unit_uom})</SelectItem>)}</SelectContent>
+                            </Select>
+                          )}
                           <Select value={item.batch_id} onValueChange={(v) => updateItem(i, "batch_id", v)}>
                             <SelectTrigger className="w-36"><SelectValue placeholder="Batch" /></SelectTrigger>
                             <SelectContent>{productBatches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.batch_no} (Qty: {b.current_qty})</SelectItem>)}</SelectContent>
                           </Select>
-                          <Input type="number" className="w-16" placeholder="Qty" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} />
-                          <Input type="number" className="w-24" placeholder="Rate" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} />
+                          <Input type="number" className="w-16" placeholder={selectedPack ? "Cartons" : "Qty"} value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} title={selectedPack ? `1 carton = ${selectedPack.units_per_case} × ${selectedPack.unit_size}${selectedPack.unit_uom}` : "Quantity"} />
+                          <Input type="number" className="w-24" placeholder={selectedPack ? "Rate/carton" : "Rate"} value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} />
                           <Input type="number" className="w-16" placeholder="Disc%" value={item.discount_pct || ""} onChange={(e) => updateItem(i, "discount_pct", Number(e.target.value))} title="Discount %" />
                           <Input type="number" className="w-20" placeholder="Disc₹" value={item.discount_amount || ""} onChange={(e) => updateItem(i, "discount_amount", Number(e.target.value))} title="Discount Amount" />
                           <span className="text-xs w-20">₹{(item.qty * item.rate - item.discount_amount - (item.qty * item.rate * item.discount_pct / 100)).toFixed(2)}</span>
+                          {selectedPack && item.qty > 0 && <span className="text-[10px] text-muted-foreground w-full pl-1">= {(item.qty * Number(selectedPack.units_per_case)).toLocaleString()} bottles ({item.qty} × {selectedPack.units_per_case})</span>}
                           {items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       );
