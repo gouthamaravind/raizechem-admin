@@ -120,6 +120,11 @@ export default function WaybillLog() {
       if (!sourceId) throw new Error("Pick a source document");
       const src: any = (sources as any[]).find((s: any) => s.id === sourceId);
       if (!src) throw new Error("Source not loaded");
+      const distKm = Number(distance) || 0;
+      if (transportMode === "road") {
+        if (!vehicleNo || vehicleNo.trim().length < 6) throw new Error("Vehicle No is required for road transport (e.g. TS09EE1234)");
+        if (distKm < 1 || distKm > 4000) throw new Error("Distance (km) must be between 1 and 4000");
+      }
 
       const { data: branch } = await supabase.from("branches").select("*").eq("id", branchId!).single();
       const docNumberRes = await supabase.rpc("next_waybill_number" as any, { p_branch_id: branchId });
@@ -274,8 +279,8 @@ export default function WaybillLog() {
                   </Select>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Vehicle No</Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" /></div>
-                  <div><Label>Distance (km)</Label><Input type="number" value={distance} onChange={(e) => setDistance(e.target.value)} /></div>
+                  <div><Label>Vehicle No <span className="text-destructive">*</span></Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" required /></div>
+                  <div><Label>Distance (km) <span className="text-destructive">*</span></Label><Input type="number" min={1} max={4000} value={distance} onChange={(e) => setDistance(e.target.value)} placeholder="1–4000" required /></div>
                 </div>
                 <div>
                   <Label>Transporter</Label>
