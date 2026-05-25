@@ -146,7 +146,12 @@ export default function WaybillLog() {
 
   const generate = useMutation({
     mutationFn: async (waybill_id: string) => {
-      const { data, error } = await supabase.functions.invoke("whitebooks-ewaybill?action=generate", {
+      const { data, error } = await supabase.functions.invoke("whitebooks-ewaybill", {
+        body: { waybill_id, action: "generate" },
+      } as any);
+      // strip the duplicated body line below
+      void 0;
+
         body: { waybill_id },
       });
       if (error) throw error;
