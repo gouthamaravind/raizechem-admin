@@ -303,6 +303,7 @@ All critical financial operations use PostgreSQL functions with row-level lockin
 | `generate-pdf` | Invoice PDF generation | User auth |
 | `location-cleanup` | 30-day GPS data retention cleanup | Service role |
 | `manage-users` | Admin user management (create, update roles) | Admin role required |
+| `whitebooks-ewaybill` | E-Way Bill generation via Whitebooks API | User auth |
 
 ---
 
@@ -397,6 +398,13 @@ All mobile routes are prefixed with `/m/` and protected by `MobileGuard`.
 - `VITE_SUPABASE_URL` — Backend URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` — Client key
 - `ADMIN_BOOTSTRAP_TOKEN` — Edge function secret for admin creation
+
+### Whitebooks E-Way Bill Config
+Set these in Supabase secrets for the `whitebooks-ewaybill` function:
+- `WHITEBOOKS_CLIENT_ID` — Your Whitebooks Client ID
+- `WHITEBOOKS_CLIENT_SECRET` — Your Whitebooks Client Secret
+- `WHITEBOOKS_GSTIN` — The GSTIN of the taxpayer
+- `WHITEBOOKS_BASE_URL` — API Base URL (Default: `https://apisandbox.whitebooks.in/api/ewaybill/v1.0/`)
 
 ### Deployment
 - **Frontend**: Click "Publish" in Lovable → "Update" to deploy
