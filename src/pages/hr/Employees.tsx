@@ -10,8 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, Plus, Pencil, Download } from "lucide-react";
-import { AlterButton } from "@/components/tally/AlterButton";
+import { Search, Plus, Pencil, Download, MoreHorizontal, Power, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { Button as Btn } from "@/components/ui/button";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
@@ -25,6 +28,8 @@ export default function Employees() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [confirmAction, setConfirmAction] = useState<{ type: "toggle" | "delete"; emp: any } | null>(null);
+  const { isAdmin } = useAuth();
   const qc = useQueryClient();
 
   const { data: employees = [], isLoading } = useQuery({
@@ -63,6 +68,33 @@ export default function Employees() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const toggleStatus = useMutation({
+    mutationFn: async (emp: any) => {
+      const next = emp.status === "active" ? "inactive" : "active";
+      const { error } = await supabase.from("employees").update({ status: next }).eq("id", emp.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Status updated");
+      setConfirmAction(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteEmp = useMutation({
+    mutationFn: async (emp: any) => {
+      const { error } = await supabase.from("employees").delete().eq("id", emp.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Employee removed");
+      setConfirmAction(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const filtered = employees.filter((emp: any) => {
     const s = search.toLowerCase();
@@ -212,7 +244,27 @@ export default function Employees() {
                       <TableCell className="text-right">₹{Number(emp.basic_salary || 0).toLocaleString("en-IN")}</TableCell>
                       <TableCell className="font-mono text-sm">{emp.pan || "—"}</TableCell>
                       <TableCell><Badge variant={emp.status === "active" ? "default" : "secondary"}>{emp.status}</Badge></TableCell>
-                      <TableCell><AlterButton onClick={() => openEdit(emp)} /></TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Btn variant="ghost" size="icon" className="h-8 w-8" aria-label="Manage">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Btn>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openEdit(emp)} disabled={!isAdmin}>
+                              <Pencil className="h-4 w-4 mr-2" />Alter
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setConfirmAction({ type: "toggle", emp })} disabled={!isAdmin}>
+                              <Power className="h-4 w-4 mr-2" />{emp.status === "active" ? "Deactivate" : "Activate"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setConfirmAction({ type: "delete", emp })} disabled={!isAdmin} className="text-destructive focus:text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" />Remove
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -220,6 +272,22 @@ export default function Employees() {
             )}
           </CardContent>
         </Card>
+        <ConfirmDialog
+          open={!!confirmAction}
+          onOpenChange={(v) => { if (!v) setConfirmAction(null); }}
+          onConfirm={() => {
+            if (!confirmAction) return;
+            if (confirmAction.type === "toggle") toggleStatus.mutate(confirmAction.emp);
+            else deleteEmp.mutate(confirmAction.emp);
+          }}
+          title={confirmAction?.type === "delete" ? "Remove employee?" : `${confirmAction?.emp?.status === "active" ? "Deactivate" : "Activate"} employee?`}
+          description={confirmAction?.type === "delete"
+            ? `This permanently removes ${confirmAction?.emp?.name}. This cannot be undone.`
+            : `${confirmAction?.emp?.name} will be marked ${confirmAction?.emp?.status === "active" ? "inactive" : "active"}.`}
+          confirmText={confirmAction?.type === "delete" ? "Remove" : "Confirm"}
+          variant={confirmAction?.type === "delete" ? "destructive" : "warning"}
+          isPending={toggleStatus.isPending || deleteEmp.isPending}
+        />
       </div>
     </DashboardLayout>
   );
