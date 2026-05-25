@@ -35,7 +35,9 @@ export default function Orders() {
   const [alterReason, setAlterReason] = useState("");
   const [dealerId, setDealerId] = useState("");
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<LineItem[]>([{ product_id: "", qty: 1, rate: 0, discount_pct: 0, discount_amount: 0 }]);
+  const [items, setItems] = useState<LineItem[]>([{ product_id: "", pack_id: "", qty: 1, rate: 0 }]);
+  const [priceLevelOverride, setPriceLevelOverride] = useState<string>("default");
+  const [createdOrder, setCreatedOrder] = useState<{ id: string; number: string; total: number } | null>(null);
 
   const { isOverdue, getOverdue } = useDealerOverdue();
   const { branchId } = useBranch();
