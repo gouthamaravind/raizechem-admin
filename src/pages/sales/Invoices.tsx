@@ -33,7 +33,7 @@ type Product = Database["public"]["Tables"]["products"]["Row"];
 type Batch = Database["public"]["Tables"]["product_batches"]["Row"];
 type Invoice = Database["public"]["Tables"]["invoices"]["Row"] & { dealers: { name: string } | null };
 
-type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number; pack_id?: string | null };
+type InvItem = { product_id: string; pack_id?: string | null; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number };
 
 export default function Invoices() {
   const { user, hasRole, isAdmin } = useAuth();
@@ -54,7 +54,7 @@ export default function Invoices() {
   const [dealerId, setDealerId] = useState("");
   const [convertingOrderId, setConvertingOrderId] = useState<string | null>(null);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
-  const [items, setItems] = useState<InvItem[]>([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
+  const [items, setItems] = useState<InvItem[]>([{ product_id: "", pack_id: null, batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
   // E-way bill fields
   const [transportMode, setTransportMode] = useState("");
   const [vehicleNo, setVehicleNo] = useState("");
@@ -83,6 +83,7 @@ export default function Invoices() {
   const { data: companySettings } = useQuery({ queryKey: ["company-settings"], queryFn: async () => { const { data } = await supabase.from("company_settings").select("state_code, state").limit(1).single(); return data; } });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return (data || []) as unknown as Product[]; } });
   const { data: batches = [] } = useQuery<Batch[]>({ queryKey: ["batches-available", branchId], queryFn: async () => { let q = supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); if (branchId) q = q.or(`branch_id.eq.${branchId},branch_id.is.null`); const { data } = await q; return (data || []) as unknown as Batch[]; } });
+  const { data: packs = [] } = useQuery<any[]>({ queryKey: ["product-packs-all"], queryFn: async () => { const { data } = await supabase.from("product_packs").select("id, product_id, pack_label, units_per_case, unit_size, unit_uom, basic_price, price_inclusive_gst").eq("is_active", true).order("sort_order"); return data || []; } });
 
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
 
@@ -164,6 +165,7 @@ export default function Invoices() {
     setDeliveryTo(inv.delivery_to || "");
     setItems((invItems || []).map((it: any) => ({
       product_id: it.product_id,
+      pack_id: it.pack_id || null,
       batch_id: it.batch_id,
       qty: Number(it.qty),
       rate: Number(it.rate),
@@ -200,7 +202,7 @@ export default function Invoices() {
       const placeOfSupply = selectedDealer?.state_code === companyStateCode ? (companySettings?.state || "Telangana") : (selectedDealer?.state || "");
 
       const itemsPayload = validItems.map((i) => ({
-        product_id: i.product_id, batch_id: i.batch_id, hsn_code: i.hsn_code,
+        product_id: i.product_id, pack_id: i.pack_id || null, batch_id: i.batch_id, hsn_code: i.hsn_code,
         qty: i.qty, rate: i.rate, amount: i.amount,
         gst_rate: i.gst_rate, cgst_amount: i.cgst, sgst_amount: i.sgst,
         igst_amount: i.igst, total_amount: i.totalWithGst,
@@ -276,7 +278,7 @@ export default function Invoices() {
 
       const wasAlter = !!alteringFrom;
       setDialogOpen(false); setDealerId("");
-      setItems([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
+      setItems([{ product_id: "", pack_id: null, batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
       setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo("");
       setAdjustAdvance(false); setAdvanceAdjustAmount(0);
       setAlteringFrom(null);
@@ -285,7 +287,7 @@ export default function Invoices() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const addItem = () => setItems([...items, { product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
+  const addItem = () => setItems([...items, { product_id: "", pack_id: null, batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
   const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i: number, f: string, v: any) => { const n = [...items]; (n[i] as any)[f] = v; setItems(n); };
 
@@ -318,13 +320,15 @@ export default function Invoices() {
                     <Label>Line Items (select batch for each)</Label>
                     {items.map((item, i) => {
                       const productBatches = batches.filter((b: any) => b.product_id === item.product_id);
+                      const productPacks = packs.filter((p: any) => p.product_id === item.product_id);
+                      const selectedPack = productPacks.find((p: any) => p.id === item.pack_id);
                       return (
                         <div key={i} className="flex gap-2 items-end flex-wrap">
                           <Select value={item.product_id} onValueChange={(v) => {
                             const p = products.find((p: any) => p.id === v) as any;
                             updateItem(i, "product_id", v);
+                            updateItem(i, "pack_id", null);
                             if (p) {
-                              // Use price level price if dealer has one, otherwise fall back to sale_price
                               const plId = selectedDealer?.price_level_id;
                               const plPrice = plId ? priceLevelPrices.find((pp: any) => pp.product_id === v && pp.price_level_id === plId) : null;
                               updateItem(i, "rate", plPrice ? Number(plPrice.price) : (Number(p.sale_price) || 0));
@@ -334,15 +338,26 @@ export default function Invoices() {
                             <SelectTrigger className="w-40"><SelectValue placeholder="Product" /></SelectTrigger>
                             <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                           </Select>
+                          {productPacks.length > 0 && (
+                            <Select value={item.pack_id || ""} onValueChange={(v) => {
+                              updateItem(i, "pack_id", v);
+                              const pk = productPacks.find((p: any) => p.id === v);
+                              if (pk && Number(pk.basic_price) > 0) updateItem(i, "rate", Number(pk.basic_price));
+                            }}>
+                              <SelectTrigger className="w-44"><SelectValue placeholder="Pack / Carton" /></SelectTrigger>
+                              <SelectContent>{productPacks.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.pack_label} ({p.units_per_case}×{p.unit_size}{p.unit_uom})</SelectItem>)}</SelectContent>
+                            </Select>
+                          )}
                           <Select value={item.batch_id} onValueChange={(v) => updateItem(i, "batch_id", v)}>
                             <SelectTrigger className="w-36"><SelectValue placeholder="Batch" /></SelectTrigger>
                             <SelectContent>{productBatches.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.batch_no} (Qty: {b.current_qty})</SelectItem>)}</SelectContent>
                           </Select>
-                          <Input type="number" className="w-16" placeholder="Qty" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} />
-                          <Input type="number" className="w-24" placeholder="Rate" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} />
+                          <Input type="number" className="w-16" placeholder={selectedPack ? "Cartons" : "Qty"} value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} title={selectedPack ? `1 carton = ${selectedPack.units_per_case} × ${selectedPack.unit_size}${selectedPack.unit_uom}` : "Quantity"} />
+                          <Input type="number" className="w-24" placeholder={selectedPack ? "Rate/carton" : "Rate"} value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} />
                           <Input type="number" className="w-16" placeholder="Disc%" value={item.discount_pct || ""} onChange={(e) => updateItem(i, "discount_pct", Number(e.target.value))} title="Discount %" />
                           <Input type="number" className="w-20" placeholder="Disc₹" value={item.discount_amount || ""} onChange={(e) => updateItem(i, "discount_amount", Number(e.target.value))} title="Discount Amount" />
                           <span className="text-xs w-20">₹{(item.qty * item.rate - item.discount_amount - (item.qty * item.rate * item.discount_pct / 100)).toFixed(2)}</span>
+                          {selectedPack && item.qty > 0 && <span className="text-[10px] text-muted-foreground w-full pl-1">= {(item.qty * Number(selectedPack.units_per_case)).toLocaleString()} bottles ({item.qty} × {selectedPack.units_per_case})</span>}
                           {items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       );
