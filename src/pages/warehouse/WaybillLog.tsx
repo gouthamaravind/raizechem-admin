@@ -289,7 +289,24 @@ export default function WaybillLog() {
                       <TableCell className="text-xs">{w.source_type === "invoice" ? "Invoice" : "Branch Tx"} • {w.source_number}</TableCell>
                       <TableCell className="text-xs">{w.vehicle_no || "—"}</TableCell>
                       <TableCell>₹{Number(w.doc_value).toLocaleString("en-IN")}</TableCell>
-                      <TableCell><Badge variant={statusVariant[w.status] ?? "secondary"}>{w.status}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Badge variant={statusVariant[w.status] ?? "secondary"}>{w.status}</Badge>
+                          {w.status === "failed" && w.error_msg && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertCircle className="h-3.5 w-3.5 text-destructive cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-md">
+                                  <p className="text-xs font-semibold mb-1">NIC error</p>
+                                  <p className="text-xs whitespace-pre-wrap">{explainEwbError(w.error_msg).friendly || w.error_msg}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-xs">{w.valid_until ? new Date(w.valid_until).toLocaleString() : "—"}</TableCell>
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
