@@ -272,7 +272,6 @@ export default function Employees() {
             )}
           </CardContent>
         </Card>
-        </Card>
         <ConfirmDialog
           open={!!confirmAction}
           onOpenChange={(v) => { if (!v) setConfirmAction(null); }}
