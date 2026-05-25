@@ -165,6 +165,7 @@ export default function Invoices() {
     setVehicleNo(inv.vehicle_no || "");
     setDispatchFrom(inv.dispatch_from || "");
     setDeliveryTo(inv.delivery_to || "");
+    setTransporterId((inv as any).transporter_id || "");
     setItems((invItems || []).map((it: any) => ({
       product_id: it.product_id,
       pack_id: it.pack_id || null,
