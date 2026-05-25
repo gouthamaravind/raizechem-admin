@@ -276,7 +276,7 @@ Deno.serve(async (req) => {
       }
 
       // 3. Fetch recipient (dealer for invoice, destination branch for transfer)
-      let toName = "", toAddr1 = "", toAddr2 = "", toPlace = "", toPincode = 0, toGstinResolved = wb.to_gstin || "URP", toStateCode = Number(wb.to_state_code || 36);
+      let toName = "", toAddr1 = "", toAddr2 = "", toPlace = "", toPincode = 0, toGstinResolved = wb.to_gstin || "URP", toStateCode = toNum(wb.to_state_code, 36);
       let docDate = new Date(wb.created_at);
       const lastSegment = (s?: string | null) => {
         const parts = String(s || "").split(",").map((p) => p.trim()).filter(Boolean);
