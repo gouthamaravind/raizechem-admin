@@ -225,6 +225,10 @@ Deno.serve(async (req) => {
       // 3. Fetch recipient (dealer for invoice, destination branch for transfer)
       let toName = "", toAddr1 = "", toAddr2 = "", toPlace = "", toPincode = 0, toGstinResolved = wb.to_gstin || "URP", toStateCode = Number(wb.to_state_code || 36);
       let docDate = new Date(wb.created_at);
+      const lastSegment = (s?: string | null) => {
+        const parts = String(s || "").split(",").map((p) => p.trim()).filter(Boolean);
+        return parts.length ? parts[parts.length - 1] : "";
+      };
       if (wb.source_type === "invoice") {
         const { data: inv } = await supabase.from("invoices").select("*, dealers(*)").eq("id", wb.source_id).single();
         const d = inv?.dealers;
@@ -232,7 +236,7 @@ Deno.serve(async (req) => {
           toName = d.gst_legal_name || d.gst_trade_name || d.name || "";
           toAddr1 = d.shipping_address_line1 || d.address_line1 || "";
           toAddr2 = d.shipping_address_line2 || d.address_line2 || "";
-          toPlace = d.shipping_city || d.city || "";
+          toPlace = d.shipping_city || d.city || lastSegment(d.shipping_address_line1 || d.address_line1) || d.state || "";
           toPincode = Number((d.shipping_pincode || d.pincode || "0").toString().replace(/\D/g, "")) || 0;
           toGstinResolved = wb.to_gstin || d.gst_number || "URP";
           toStateCode = Number(wb.to_state_code || d.state_code || 36);
@@ -245,7 +249,7 @@ Deno.serve(async (req) => {
           toName = b.legal_name || b.branch_name || "";
           toAddr1 = b.address_line1 || "";
           toAddr2 = b.address_line2 || "";
-          toPlace = b.city || "";
+          toPlace = b.city || lastSegment(b.address_line1) || b.state || "";
           toPincode = Number((b.pincode || "0").toString().replace(/\D/g, "")) || 0;
           toGstinResolved = wb.to_gstin || b.gst_number || "";
           toStateCode = Number(wb.to_state_code || b.state_code || 36);
