@@ -34,10 +34,10 @@ export function getPrimaryRole(roles: AppRole[]): AppRole | null {
 }
 
 export function getMobileShell(roles: AppRole[]): MobileShell {
-  // STRICT TEMPORARY RESTRICTION: Only fieldops can use the mobile shell
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("manager")) return "manager";
+  if (roles.includes("sales")) return "sales";
   if (roles.includes("fieldops")) return "fieldops";
-  
-  // Fallback to fieldops for everyone else too, but they might not have data.
-  // This is safer than showing them the admin dashboard on mobile.
-  return "fieldops";
+  // warehouse / accounts / inventory → admin shell (read-only-ish via MoreMenu)
+  return "admin";
 }
