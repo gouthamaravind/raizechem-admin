@@ -153,7 +153,7 @@ export default function PriceList() {
       ...prev,
       [productId]: [
         ...(prev[productId] || []),
-        { pack_label: "", units_per_case: 1, unit_size: 1, unit_uom: "L" },
+        { pack_label: "", units_per_case: 1, unit_size: 1, unit_uom: "L", batch_no: "" },
       ],
     }));
   };
