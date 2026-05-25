@@ -33,11 +33,7 @@ export function getPrimaryRole(roles: AppRole[]): AppRole | null {
   return null;
 }
 
-export function getMobileShell(roles: AppRole[]): MobileShell {
-  if (roles.includes("admin")) return "admin";
-  if (roles.includes("manager")) return "manager";
-  if (roles.includes("sales")) return "sales";
-  if (roles.includes("fieldops")) return "fieldops";
-  // warehouse / accounts / inventory → admin shell (read-only-ish via MoreMenu)
-  return "admin";
+export function getMobileShell(_roles: AppRole[]): MobileShell {
+  // Mobile app is restricted to Field Ops only. All other roles use web.
+  return "fieldops";
 }
