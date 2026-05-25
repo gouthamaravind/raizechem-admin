@@ -198,6 +198,7 @@ const App = () => {
               <Route path="/sales/branch-transfers" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.sales}><BranchTransfers /></RoleGuard></P>} />
               <Route path="/warehouse" element={<P><RoleGuard allowedRoles={["admin","warehouse","sales"]}><WarehouseHome /></RoleGuard></P>} />
               <Route path="/warehouse/waybills" element={<P><RoleGuard allowedRoles={["admin","warehouse","sales"]}><WaybillLog /></RoleGuard></P>} />
+              <Route path="/sales/waybills" element={<P><RoleGuard allowedRoles={["admin","warehouse","sales","accounts"]}><WaybillLog /></RoleGuard></P>} />
               <Route path="/purchase/orders" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseOrders /></RoleGuard></P>} />
               <Route path="/purchase/invoices" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseInvoices /></RoleGuard></P>} />
               <Route path="/purchase/returns" element={<P><RoleGuard allowedRoles={MODULE_ACCESS.purchase}><PurchaseReturns /></RoleGuard></P>} />

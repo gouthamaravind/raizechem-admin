@@ -1,4 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { EWB_ERROR_CODES } from "./error-codes.ts";
+
+function enrichEwbError(raw: string): { codes: string[]; friendly: string; original: string } {
+  const original = String(raw ?? "").trim();
+  if (!original) return { codes: [], friendly: "", original };
+  const matches = Array.from(original.matchAll(/\b(\d{3})\b/g)).map((m) => m[1]);
+  const codes = Array.from(new Set(matches)).filter((c) => EWB_ERROR_CODES[c]);
+  if (!codes.length) return { codes: [], friendly: original, original };
+  const explained = codes.map((c) => `${c}: ${EWB_ERROR_CODES[c]}`).join(" • ");
+  return { codes, friendly: `${explained}${original.includes(explained) ? "" : ` — NIC said: ${original}`}`, original };
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -344,16 +355,17 @@ Deno.serve(async (req) => {
 
       if (!isOk || !ewbNo) {
         const errs = Array.isArray(result?.error)
-          ? result.error.map((e: any) => e.errorMessage || e.errorCode || JSON.stringify(e)).join("; ")
+          ? result.error.map((e: any) => `${e.errorCode ?? ""} ${e.errorMessage ?? e.error_msg ?? ""}`.trim()).join("; ")
           : (result?.error?.message || result?.error?.errorMessage || result?.errorDesc || result?.message || data?.message);
-        const errorMsg = errs || raw.slice(0, 500) || `WhiteBooks HTTP ${response.status}`;
+        const rawErr = errs || raw.slice(0, 500) || `WhiteBooks HTTP ${response.status}`;
+        const enriched = enrichEwbError(rawErr);
         await supabase.from("waybills").update({
           status: "failed",
-          error_msg: errorMsg,
+          error_msg: enriched.friendly || rawErr,
           gsp_request: payload,
           gsp_response: result,
         }).eq("id", wb.id);
-        return new Response(JSON.stringify({ error: errorMsg, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: enriched.friendly || rawErr, codes: enriched.codes, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       await supabase.from("waybills").update({
@@ -393,9 +405,11 @@ Deno.serve(async (req) => {
       const okCancel = response.ok && (statusCd === "1" || result?.data?.cancelDate);
       if (!okCancel) {
         const errs = Array.isArray(result?.error)
-          ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ")
+          ? result.error.map((e: any) => `${e.errorCode ?? ""} ${e.errorMessage ?? ""}`.trim()).join("; ")
           : (result?.error?.message || result?.errorDesc || result?.message);
-        return new Response(JSON.stringify({ error: errs || raw.slice(0, 500) || "Cancel failed", raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const rawErr = errs || raw.slice(0, 500) || "Cancel failed";
+        const enriched = enrichEwbError(rawErr);
+        return new Response(JSON.stringify({ error: enriched.friendly || rawErr, codes: enriched.codes, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       await supabase.from("waybills").update({
