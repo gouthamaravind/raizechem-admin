@@ -32,8 +32,9 @@ Deno.serve(async (req) => {
 
   try {
     const url = new URL(req.url);
-    const action = url.searchParams.get("action") ?? "generate";
     const body = await req.json().catch(() => ({}));
+    const action = url.searchParams.get("action") ?? (body as any).action ?? "generate";
+
 
     if (!body.waybill_id) {
       return new Response(
