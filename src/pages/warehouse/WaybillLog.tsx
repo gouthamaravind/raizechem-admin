@@ -157,7 +157,7 @@ export default function WaybillLog() {
         status: "pending",
         transport_mode: transportMode,
         vehicle_no: vehicleNo,
-        distance_km: Number(distance) || 0,
+        distance_km: 0,
         transporter_name: transporterName || null,
         transporter_gstin: transporterGstin || null,
         from_gstin: branch?.gst_number ?? null,
