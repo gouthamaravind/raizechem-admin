@@ -16,6 +16,9 @@ const ORIGIN = RAW_BASE
   .replace(/\/eway\/?.*$/i, "");
 // Whitebooks simplified e-Way Bill wrapper path (matches their Swagger / Postman collection)
 const WHITEBOOKS_BASE = `${ORIGIN}/ewaybillapi/v1.03/`;
+const WHITEBOOKS_AUTH_ENDPOINT = `${WHITEBOOKS_BASE}authenticate`;
+const WHITEBOOKS_GENERATE_ENDPOINT = `${WHITEBOOKS_BASE}ewayapi/genewaybill`;
+const WHITEBOOKS_CANCEL_ENDPOINT = `${WHITEBOOKS_BASE}ewayapi/canewb`;
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
@@ -43,7 +46,7 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
-  const res = await fetch(`${WHITEBOOKS_BASE}authenticate`, {
+  const res = await fetch(WHITEBOOKS_AUTH_ENDPOINT, {
     method: "GET",
     headers: baseHeaders(),
   });
@@ -74,7 +77,7 @@ async function getAuthToken(): Promise<string> {
       raw: rawText.slice(0, 800),
       response_headers: respHeaders,
       sent_headers: sentMasked,
-      url: `${WHITEBOOKS_BASE}authenticate`,
+      url: WHITEBOOKS_AUTH_ENDPOINT,
     }));
   }
   cachedAuthToken = token;
