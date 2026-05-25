@@ -24,6 +24,7 @@ import { useVoidTransaction } from "@/hooks/useVoidTransaction";
 import { VoidDialog } from "@/components/VoidDialog";
 import { AlterButton } from "@/components/tally/AlterButton";
 import { AlterReasonDialog } from "@/components/tally/AlterReasonDialog";
+import { TransporterPicker } from "@/components/TransporterPicker";
 
 import { TableSkeleton } from "@/components/ui/TableSkeleton";
 import { Database } from "@/integrations/supabase/types";
