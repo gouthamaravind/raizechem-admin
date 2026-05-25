@@ -54,7 +54,7 @@ export default function Invoices() {
   const [dealerId, setDealerId] = useState("");
   const [convertingOrderId, setConvertingOrderId] = useState<string | null>(null);
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
-  const [items, setItems] = useState<InvItem[]>([{ product_id: "", batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
+  const [items, setItems] = useState<InvItem[]>([{ product_id: "", pack_id: null, batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
   // E-way bill fields
   const [transportMode, setTransportMode] = useState("");
   const [vehicleNo, setVehicleNo] = useState("");
