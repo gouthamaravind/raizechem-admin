@@ -201,6 +201,28 @@ export default function WaybillLog() {
     },
   });
 
+  const attachEwb = useMutation({
+    mutationFn: async (waybill_id: string) => {
+      const ewb = prompt("Enter the EWB number shown on the NIC portal (12 digits):");
+      if (!ewb) throw new Error("Cancelled");
+      const clean = ewb.replace(/\D/g, "");
+      if (clean.length < 10) throw new Error("EWB number must be at least 10 digits");
+      const { error } = await supabase.from("waybills").update({
+        ewb_number: clean,
+        status: "generated",
+        ewb_date: new Date().toISOString(),
+        error_msg: null,
+        generated_at: new Date().toISOString(),
+      }).eq("id", waybill_id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["waybills"] });
+      toast.success("EWB number attached");
+    },
+    onError: (e: Error) => { if (e.message !== "Cancelled") toast.error(e.message); },
+  });
+
   const cancel = useMutation({
     mutationFn: async (waybill_id: string) => {
       const reason = prompt("Cancellation reason?", "Data entry error");
@@ -369,9 +391,14 @@ export default function WaybillLog() {
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
                           {(w.status === "pending" || w.status === "failed") && (
-                            <Button size="sm" variant="outline" onClick={() => generate.mutate(w.id)}>
-                              <Send className="h-3 w-3 mr-1" />Push
-                            </Button>
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => generate.mutate(w.id)}>
+                                <Send className="h-3 w-3 mr-1" />Push
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => attachEwb.mutate(w.id)} title="Attach EWB number from NIC portal (use if NIC already generated it)">
+                                Attach #
+                              </Button>
+                            </>
                           )}
                           {w.status === "generated" && (
                             <>
