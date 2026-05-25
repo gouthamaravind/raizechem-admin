@@ -385,6 +385,10 @@ export default function Invoices() {
                       <div className="space-y-1"><Label className="text-xs">Dispatch From</Label><Input value={dispatchFrom} onChange={(e) => setDispatchFrom(e.target.value)} placeholder="City, State" /></div>
                       <div className="space-y-1"><Label className="text-xs">Delivery To</Label><Input value={deliveryTo} onChange={(e) => setDeliveryTo(e.target.value)} placeholder="City, State" /></div>
                     </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Transporter</Label>
+                      <TransporterPicker value={transporterId} onChange={(id) => setTransporterId(id)} branchId={branchId} />
+                    </div>
                   </div>
                   {/* Advance Adjustment */}
                   {dealerId && dealerAdvanceBalance > 0 && (
