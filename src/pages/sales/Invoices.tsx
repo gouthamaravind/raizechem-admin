@@ -201,7 +201,7 @@ export default function Invoices() {
       const placeOfSupply = selectedDealer?.state_code === companyStateCode ? (companySettings?.state || "Telangana") : (selectedDealer?.state || "");
 
       const itemsPayload = validItems.map((i) => ({
-        product_id: i.product_id, batch_id: i.batch_id, hsn_code: i.hsn_code,
+        product_id: i.product_id, pack_id: i.pack_id || null, batch_id: i.batch_id, hsn_code: i.hsn_code,
         qty: i.qty, rate: i.rate, amount: i.amount,
         gst_rate: i.gst_rate, cgst_amount: i.cgst, sgst_amount: i.sgst,
         igst_amount: i.igst, total_amount: i.totalWithGst,
