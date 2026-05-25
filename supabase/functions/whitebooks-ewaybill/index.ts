@@ -441,7 +441,7 @@ Deno.serve(async (req) => {
         cancelRmrk: (reason || "Cancelled from ERP").slice(0, 100),
       };
 
-      const response = await fetch(WHITEBOOKS_CANCEL_ENDPOINT, {
+      const response = await fetch(withEmail(WHITEBOOKS_CANCEL_ENDPOINT), {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
