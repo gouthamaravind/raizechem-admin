@@ -43,8 +43,8 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
-  const res = await fetch(`${WHITEBOOKS_BASE}authenticate`, {
-    method: "GET",
+  const res = await fetch(`${WHITEBOOKS_BASE}authenticate?action=ACCESSTOKEN`, {
+    method: "POST",
     headers: baseHeaders(),
   });
   const rawText = await res.text();
