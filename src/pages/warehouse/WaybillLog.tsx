@@ -276,9 +276,10 @@ export default function WaybillLog() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Vehicle No <span className="text-destructive">*</span></Label><Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" required /></div>
-                  <div><Label>Distance (km) <span className="text-destructive">*</span></Label><Input type="number" min={1} max={4000} value={distance} onChange={(e) => setDistance(e.target.value)} placeholder="1–4000" required /></div>
+                <div>
+                  <Label>Vehicle No <span className="text-destructive">*</span></Label>
+                  <Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" required />
+                  <p className="text-xs text-muted-foreground mt-1">Distance is auto-computed by NIC from dispatch & delivery pincodes.</p>
                 </div>
                 <div>
                   <Label>Transporter</Label>
