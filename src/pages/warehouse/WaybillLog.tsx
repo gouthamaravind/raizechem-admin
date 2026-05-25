@@ -120,10 +120,8 @@ export default function WaybillLog() {
       if (!sourceId) throw new Error("Pick a source document");
       const src: any = (sources as any[]).find((s: any) => s.id === sourceId);
       if (!src) throw new Error("Source not loaded");
-      const distKm = Number(distance) || 0;
       if (transportMode === "road") {
         if (!vehicleNo || vehicleNo.trim().length < 6) throw new Error("Vehicle No is required for road transport (e.g. TS09EE1234)");
-        if (distKm < 1 || distKm > 4000) throw new Error("Distance (km) must be between 1 and 4000");
       }
 
       const { data: branch } = await supabase.from("branches").select("*").eq("id", branchId!).single();
