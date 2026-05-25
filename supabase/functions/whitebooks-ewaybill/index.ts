@@ -61,12 +61,36 @@ function apiHeaders(authToken: string): Record<string, string> {
     "client_secret": CLIENT_SECRET,
     "gstin": GSTIN,
     "gst_username": GST_USERNAME,
+    "username": GST_USERNAME,
     "authtoken": authToken,
   };
 }
 
 let cachedAuthToken: string | null = null;
 let cachedAuthExpiry = 0;
+
+function readStringDeep(value: any, wantedKeys: string[]): string {
+  if (!value || typeof value !== "object") return "";
+  const wanted = new Set(wantedKeys.map((k) => k.toLowerCase()));
+  const stack = [value];
+  while (stack.length) {
+    const current = stack.shift();
+    if (!current || typeof current !== "object") continue;
+    for (const [key, val] of Object.entries(current)) {
+      if (wanted.has(key.toLowerCase()) && typeof val === "string" && val.trim()) return val.trim();
+      if (val && typeof val === "object") stack.push(val);
+    }
+  }
+  return "";
+}
+
+function headerString(headers: Headers, wantedKeys: string[]): string {
+  for (const key of wantedKeys) {
+    const val = headers.get(key);
+    if (val?.trim()) return val.trim();
+  }
+  return "";
+}
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
@@ -82,15 +106,13 @@ async function getAuthToken(): Promise<string> {
   const rawText = await res.text();
   let json: any = {};
   try { json = JSON.parse(rawText); } catch { /* keep raw */ }
-  const status_cd = String(json?.status_cd ?? "");
-  // Whitebooks /authenticate validates creds but does NOT return an authtoken.
-  // Some deployments echo one in data.authtoken; otherwise treat status_cd=="1" as success.
+  const status_cd = String(json?.status_cd ?? json?.status ?? "");
+  // Whitebooks auth may return token fields with different casing / nesting.
+  // Some Whitebooks accounts only validate the session and do not echo an auth token.
   const token =
-    json?.authtoken ||
-    json?.data?.authtoken ||
-    json?.AuthToken ||
-    json?.result?.authtoken ||
-    (status_cd === "1" ? "VALIDATED" : null);
+    readStringDeep(json, ["authtoken", "authToken", "AuthToken", "auth_token", "token"]) ||
+    headerString(res.headers, ["authtoken", "auth-token", "x-auth-token"]) ||
+    (status_cd === "1" ? "VALIDATED" : "");
   if (!res.ok || status_cd !== "1" || !token) {
     const respHeaders: Record<string, string> = {};
     res.headers.forEach((v, k) => { respHeaders[k] = v; });
