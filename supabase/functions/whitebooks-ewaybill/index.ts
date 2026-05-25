@@ -435,12 +435,25 @@ Deno.serve(async (req) => {
           rawErr = "Whitebooks rejected the request with status_cd=0 and no detail. Most likely the GSP authtoken/credentials are not valid for the NIC e-Way Bill API — re-check WHITEBOOKS_EWB_USERNAME / PASSWORD and that this GSTIN has API access enabled on the e-Way Bill portal (User Management → Create API User).";
         }
         const enriched = enrichEwbError(rawErr);
+        const alreadyGenerated = enriched.codes.includes("604");
         await supabase.from("waybills").update({
           status: "failed",
           error_msg: enriched.friendly || rawErr,
           gsp_request: payload,
           gsp_response: result,
         }).eq("id", wb.id);
+        if (alreadyGenerated) {
+          return new Response(JSON.stringify({
+            ok: false,
+            recoverable: true,
+            reason: "already_generated",
+            error: enriched.friendly || rawErr,
+            codes: enriched.codes,
+            waybill_id: wb.id,
+            source_number: wb.source_number,
+            raw: result,
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
         return new Response(JSON.stringify({ error: enriched.friendly || rawErr, codes: enriched.codes, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
