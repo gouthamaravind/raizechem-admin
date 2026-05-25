@@ -326,7 +326,7 @@ export default function InvoicePrint() {
       delivery_to: inv.delivery_to || `${dealer?.shipping_city || dealer?.city}, ${dealer?.shipping_state || dealer?.state}`,
       total_value: inv.total_amount,
       items: items.map((it: any) => ({
-        hsn_code: it.hsn_code || it.products?.hsn_code, product: it.products?.name,
+        hsn_code: it.hsn_code || it.products?.hsn_code, product: it.products?.brand ? `${it.products.brand} — ${it.products.name}` : it.products?.name,
         qty: it.qty, unit: it.products?.unit, rate: it.rate, taxable_value: it.amount,
         cgst: it.cgst_amount, sgst: it.sgst_amount, igst: it.igst_amount,
       })),
