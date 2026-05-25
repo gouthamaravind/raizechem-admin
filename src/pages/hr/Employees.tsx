@@ -10,8 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Search, Plus, Pencil, Download } from "lucide-react";
-import { AlterButton } from "@/components/tally/AlterButton";
+import { Search, Plus, Pencil, Download, MoreHorizontal, Power, Trash2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { useAuth } from "@/hooks/useAuth";
+import { Button as Btn } from "@/components/ui/button";
 import { toast } from "sonner";
 import { exportToCsv } from "@/lib/csv-export";
 
