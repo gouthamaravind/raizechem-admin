@@ -306,7 +306,9 @@ export default function Dealers() {
         state_code: stateCode,
         state: stateName,
         address_line1: d.address || f.address_line1,
+        city: d.city || f.city,
         pincode: d.pincode || f.pincode,
+        shipping_city: f.shipping_city || d.city || "",
       }));
 
       setGstVerifiedAt(new Date().toISOString());
