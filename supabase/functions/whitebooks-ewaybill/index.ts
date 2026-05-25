@@ -27,17 +27,30 @@ const GST_USERNAME = Deno.env.get("WHITEBOOKS_EWB_USERNAME") ?? ""; // NIC API u
 const GST_PASSWORD = Deno.env.get("WHITEBOOKS_EWB_PASSWORD") ?? "";
 const IP_ADDRESS = Deno.env.get("WHITEBOOKS_IP_ADDRESS") ?? "127.0.0.1";
 
-// Per Whitebooks docs, every wrapper call (including auth) accepts these headers.
-function baseHeaders(): Record<string, string> {
+// Per Whitebooks docs:
+// - Auth endpoint takes email/username/password as QUERY params and
+//   ip_address/client_id/client_secret/gstin as HEADERS.
+// - Subsequent calls reuse the header set plus an `authtoken` header.
+function authHeaders(): Record<string, string> {
   return {
-    "Content-Type": "application/json",
-    "email": EMAIL,
-    "gst_username": GST_USERNAME,
-    "password": GST_PASSWORD,
+    "accept": "*/*",
     "ip_address": IP_ADDRESS,
     "client_id": CLIENT_ID,
     "client_secret": CLIENT_SECRET,
-    "Gstin": GSTIN,
+    "gstin": GSTIN,
+  };
+}
+
+function apiHeaders(authToken: string): Record<string, string> {
+  return {
+    "Content-Type": "application/json",
+    "accept": "*/*",
+    "ip_address": IP_ADDRESS,
+    "client_id": CLIENT_ID,
+    "client_secret": CLIENT_SECRET,
+    "gstin": GSTIN,
+    "gst_username": GST_USERNAME,
+    "authtoken": authToken,
   };
 }
 
@@ -46,38 +59,46 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
-  const res = await fetch(WHITEBOOKS_AUTH_ENDPOINT, {
+  const url = new URL(WHITEBOOKS_AUTH_ENDPOINT);
+  url.searchParams.set("email", EMAIL);
+  url.searchParams.set("username", GST_USERNAME);
+  url.searchParams.set("password", GST_PASSWORD);
+  const res = await fetch(url.toString(), {
     method: "GET",
-    headers: baseHeaders(),
+    headers: authHeaders(),
   });
+
   const rawText = await res.text();
   let json: any = {};
   try { json = JSON.parse(rawText); } catch { /* keep raw */ }
+  const status_cd = String(json?.status_cd ?? "");
+  // Whitebooks /authenticate validates creds but does NOT return an authtoken.
+  // Some deployments echo one in data.authtoken; otherwise treat status_cd=="1" as success.
   const token =
     json?.authtoken ||
     json?.data?.authtoken ||
     json?.AuthToken ||
-    json?.result?.authtoken;
-  if (!res.ok || !token) {
+    json?.result?.authtoken ||
+    (status_cd === "1" ? "VALIDATED" : null);
+  if (!res.ok || status_cd !== "1" || !token) {
     const respHeaders: Record<string, string> = {};
     res.headers.forEach((v, k) => { respHeaders[k] = v; });
-    const sent = baseHeaders();
-    const sentMasked = {
-      email: sent.email,
-      gst_username: sent.gst_username,
-      password_len: sent.password.length,
-      client_id_preview: sent.client_id.slice(0, 6) + "...",
-      client_secret_len: sent.client_secret.length,
-      Gstin: sent.Gstin,
-      ip_address: sent.ip_address,
-    };
     throw new Error(JSON.stringify({
       msg: "Whitebooks auth failed",
       status: res.status,
+      status_cd,
       raw: rawText.slice(0, 800),
       response_headers: respHeaders,
-      sent_headers: sentMasked,
-      url: WHITEBOOKS_AUTH_ENDPOINT,
+      sent: {
+        email: EMAIL,
+        username: GST_USERNAME,
+        password_len: GST_PASSWORD.length,
+        client_id_preview: CLIENT_ID.slice(0, 6) + "...",
+        client_secret_len: CLIENT_SECRET.length,
+        gstin: GSTIN,
+        ip_address: IP_ADDRESS,
+      },
+      url: url.toString().replace(GST_PASSWORD, "***"),
     }));
   }
   cachedAuthToken = token;
@@ -87,8 +108,12 @@ async function getAuthToken(): Promise<string> {
 
 async function getHeaders() {
   const authToken = await getAuthToken();
-  return { ...baseHeaders(), authtoken: authToken };
+  const h = apiHeaders(authToken);
+  if (authToken === "VALIDATED") delete (h as any).authtoken;
+  return h;
 }
+
+
 
 async function readWhitebooksJson(response: Response) {
   const raw = await response.text();
