@@ -31,8 +31,8 @@ async function getAuthToken(): Promise<string> {
       "Content-Type": "application/json",
       "username": EWB_USERNAME,
       "password": EWB_PASSWORD,
-      "client-id": CLIENT_ID,
-      "client-secret": CLIENT_SECRET,
+      "client_id": CLIENT_ID,
+      "client_secret": CLIENT_SECRET,
       "gstin": GSTIN,
     },
   });
@@ -52,8 +52,8 @@ async function getHeaders() {
   const authToken = await getAuthToken();
   return {
     "Content-Type": "application/json",
-    "client-id": CLIENT_ID,
-    "client-secret": CLIENT_SECRET,
+    "client_id": CLIENT_ID,
+    "client_secret": CLIENT_SECRET,
     "gstin": GSTIN,
     "username": EWB_USERNAME,
     "authtoken": authToken,
