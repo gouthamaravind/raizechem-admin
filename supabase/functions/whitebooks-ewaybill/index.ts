@@ -11,6 +11,30 @@ function enrichEwbError(raw: string): { codes: string[]; friendly: string; origi
   return { codes, friendly: `${explained}${original.includes(explained) ? "" : ` — NIC said: ${original}`}`, original };
 }
 
+// Coerce a value to a numeric GST state code. Accepts numbers, numeric strings,
+// or state names like "Telangana"/"Andhra Pradesh". Falls back if unparseable.
+const STATE_NAME_TO_CODE: Record<string, number> = {
+  "andhra pradesh": 37, "telangana": 36, "karnataka": 29, "tamil nadu": 33,
+  "kerala": 32, "maharashtra": 27, "gujarat": 24, "delhi": 7, "haryana": 6,
+  "punjab": 3, "rajasthan": 8, "uttar pradesh": 9, "madhya pradesh": 23,
+  "west bengal": 19, "odisha": 21, "bihar": 10, "jharkhand": 20,
+  "chhattisgarh": 22, "assam": 18, "goa": 30, "uttarakhand": 5,
+  "himachal pradesh": 2, "jammu and kashmir": 1, "ladakh": 38,
+  "manipur": 14, "meghalaya": 17, "mizoram": 15, "nagaland": 13,
+  "sikkim": 11, "tripura": 16, "arunachal pradesh": 12, "puducherry": 34,
+  "chandigarh": 4, "andaman and nicobar islands": 35,
+  "dadra and nagar haveli and daman and diu": 26, "lakshadweep": 31,
+};
+function toNum(v: unknown, fallback = 0): number {
+  if (v == null) return fallback;
+  if (typeof v === "number") return Number.isFinite(v) ? v : fallback;
+  const s = String(v).trim();
+  if (!s) return fallback;
+  const n = Number(s);
+  if (Number.isFinite(n)) return n;
+  return STATE_NAME_TO_CODE[s.toLowerCase()] ?? fallback;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
