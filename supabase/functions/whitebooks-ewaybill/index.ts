@@ -333,7 +333,7 @@ Deno.serve(async (req) => {
         fromAddr2: wb.branches?.address_line2 || "",
         fromPlace: wb.branches?.city || "",
         actFromStateCode: fromStateCode,
-        fromPincode: Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0,
+        fromPincode,
         fromStateCode,
         toGstin: toGstinResolved,
         toTrdName: toName || (toGstinResolved === "URP" ? "Unregistered Person" : ""),
