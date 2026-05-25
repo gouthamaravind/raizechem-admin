@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
         cancelRmrk: reason || "Cancelled from ERP",
       };
 
-      const response = await fetch(`${WHITEBOOKS_BASE}cancel`, {
+      const response = await fetch(`${WHITEBOOKS_BASE}ewayapi/canewb`, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
