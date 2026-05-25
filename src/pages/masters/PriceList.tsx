@@ -670,6 +670,7 @@ export default function PriceList() {
         onConfirm={applyBulk}
       />
     </div>
+    </DashboardLayout>
   );
 }
 
