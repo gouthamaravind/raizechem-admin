@@ -7,7 +7,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const WHITEBOOKS_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://apisandbox.whitebooks.in/api/ewaybill/v1.0/";
+const RAW_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://apisandbox.whitebooks.in/api/ewaybill/v1.03/";
+// Normalize: must end with / and contain the API path
+const NORMALIZED = RAW_BASE.endsWith("/") ? RAW_BASE : RAW_BASE + "/";
+const WHITEBOOKS_BASE = /\/api\/ewaybill\/v\d/.test(NORMALIZED)
+  ? NORMALIZED
+  : NORMALIZED.replace(/\/?$/, "/") + "api/ewaybill/v1.03/";
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
