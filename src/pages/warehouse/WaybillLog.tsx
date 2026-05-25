@@ -369,9 +369,14 @@ export default function WaybillLog() {
                       <TableCell>
                         <div className="flex gap-1 flex-wrap">
                           {(w.status === "pending" || w.status === "failed") && (
-                            <Button size="sm" variant="outline" onClick={() => generate.mutate(w.id)}>
-                              <Send className="h-3 w-3 mr-1" />Push
-                            </Button>
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => generate.mutate(w.id)}>
+                                <Send className="h-3 w-3 mr-1" />Push
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => attachEwb.mutate(w.id)} title="Attach EWB number from NIC portal (use if NIC already generated it)">
+                                Attach #
+                              </Button>
+                            </>
                           )}
                           {w.status === "generated" && (
                             <>
