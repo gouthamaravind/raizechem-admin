@@ -336,7 +336,7 @@ export default function Invoices() {
                             }
                           }}>
                             <SelectTrigger className="w-40"><SelectValue placeholder="Product" /></SelectTrigger>
-                            <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                            <SelectContent>{products.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.brand ? `${p.brand} — ${p.name}` : p.name}</SelectItem>)}</SelectContent>
                           </Select>
                           {productPacks.length > 0 && (
                             <Select value={item.pack_id || ""} onValueChange={(v) => {
