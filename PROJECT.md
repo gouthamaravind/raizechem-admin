@@ -120,7 +120,8 @@ supabase/
 |------|-------|---------|
 | Dealers | `/masters/dealers` | Customer/distributor management with billing + shipping addresses, GSTIN, credit limits |
 | Suppliers | `/masters/suppliers` | Vendor management for purchases |
-| Products | `/masters/products` | Product catalog with HSN, GST rate, sale/purchase prices, min stock alerts |
+| Products | `/masters/products` | Product catalog with HSN, GST rate, sale/purchase prices, min stock alerts. Each product has a stable `slug` of the form `rc-NNN` (3-digit zero-padded, e.g. `rc-001`) used as the canonical external identifier in imports, exports, and reports. Display convention on invoices and price lists: **Brand — Technical Name** (e.g. `Razefen — Hexaconazole 5% SC`). |
+| Price List | `/masters/price-list` | Bulk pricing editor for all product packs (cartons). Inline spreadsheet edit, dirty-row highlighting, **Excel Import/Export** in the same format as the monthly dealer price sheet. Columns: Brand, Technical Name, Slug, HSN, GST %, Pack Label, Units/Case, Unit Size, UOM, Purchase, Packing, PFG, Scheme1, Scheme2, Margin, Basic, GST Amt, Price Incl GST, MRP. Import matches existing packs by (slug + pack label) and upserts; unknown products are skipped (create them first in Products master). |
 
 ### 2. Sales
 
