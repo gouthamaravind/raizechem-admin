@@ -28,6 +28,8 @@ export default function Employees() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [confirmAction, setConfirmAction] = useState<{ type: "toggle" | "delete"; emp: any } | null>(null);
+  const { isAdmin } = useAuth();
   const qc = useQueryClient();
 
   const { data: employees = [], isLoading } = useQuery({
