@@ -276,9 +276,13 @@ export default function Orders() {
                     </Alert>
                   )}
                   <div className="space-y-2">
-                    <Label>Line Items <span className="text-xs text-muted-foreground font-normal">(Qty = number of packs)</span></Label>
+                    <Label>Line Items <span className="text-xs text-muted-foreground font-normal">(Qty = packs · Unit Qty = total units, auto)</span></Label>
                     {items.map((item, i) => {
                       const productPacks = packsFor(item.product_id);
+                      const pk = packs.find((p: any) => p.id === item.pack_id) as any;
+                      const unitsPerCase = Number(pk?.units_per_case || 1);
+                      const unitQty = (item.qty || 0) * unitsPerCase;
+                      const uom = pk?.unit_uom || "";
                       return (
                         <div key={i} className="flex gap-2 items-end flex-wrap">
                           <Select value={item.product_id} onValueChange={(v) => {
@@ -294,9 +298,19 @@ export default function Orders() {
                             <SelectTrigger className="min-w-[200px]"><SelectValue placeholder={productPacks.length === 0 ? "No packs" : "Pack"} /></SelectTrigger>
                             <SelectContent>{productPacks.map((pk: any) => <SelectItem key={pk.id} value={pk.id}>{packLabel(pk)}</SelectItem>)}</SelectContent>
                           </Select>
-                          <Input type="number" className="w-20" placeholder="Packs" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} title="Number of packs" />
-                          <Input type="number" className="w-28" placeholder="Rate/pack" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} title="Rate per pack" />
-                          <span className="text-sm w-24 text-right">₹{(item.qty * item.rate).toLocaleString("en-IN")}</span>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-muted-foreground">Qty (packs)</span>
+                            <Input type="number" className="w-20" value={item.qty || ""} onChange={(e) => updateItem(i, "qty", Number(e.target.value))} title="Number of packs" />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-muted-foreground">Unit Qty</span>
+                            <Input type="text" className="w-24 bg-muted/50" value={unitQty ? `${unitQty}${uom ? " " + uom : ""}` : ""} readOnly title={`${item.qty || 0} pack × ${unitsPerCase} units = ${unitQty}`} />
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] text-muted-foreground">Rate/pack</span>
+                            <Input type="number" className="w-28" value={item.rate || ""} onChange={(e) => updateItem(i, "rate", Number(e.target.value))} title="Rate per pack" />
+                          </div>
+                          <span className="text-sm w-24 text-right pb-2">₹{(item.qty * item.rate).toLocaleString("en-IN")}</span>
                           {items.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(i)}><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       );
@@ -304,6 +318,7 @@ export default function Orders() {
                     <Button type="button" variant="outline" size="sm" onClick={addItem}>+ Add Item</Button>
                   </div>
                   <div className="text-right font-semibold">Subtotal: ₹{items.reduce((s, i) => s + (i.qty * i.rate), 0).toLocaleString("en-IN")} <span className="text-xs text-muted-foreground font-normal">(GST added on invoice)</span></div>
+
                   <Button type="submit" className="w-full" disabled={saveOrder.isPending || (!alterId && isOverdue(dealerId))}>{saveOrder.isPending ? "Saving..." : alterId ? "Alter Order" : isOverdue(dealerId) ? "Blocked — Overdue >120 days" : "Create Order"}</Button>
                 </form>
               </DialogContent>
