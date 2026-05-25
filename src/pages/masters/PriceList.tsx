@@ -716,6 +716,55 @@ export default function PriceList() {
         confirmText="Apply"
         onConfirm={applyBulk}
       />
+
+      <Dialog open={newProductOpen} onOpenChange={setNewProductOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Add New Product</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Brand *</Label>
+              <Input value={newProduct.brand} onChange={e => setNewProduct(s => ({ ...s, brand: e.target.value }))} placeholder="e.g. ShieldX" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Technical Name *</Label>
+              <Input value={newProduct.name} onChange={e => setNewProduct(s => ({ ...s, name: e.target.value }))} placeholder="e.g. Azoxystrobin 11% + Tebuconazole 18.3% SC" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Category</Label>
+                <Select value={newProduct.category} onValueChange={v => setNewProduct(s => ({ ...s, category: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["Fungicide", "Herbicide", "Insecticide", "Botanical", "PGR"].map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">GST %</Label>
+                <Select value={String(newProduct.gst_rate)} onValueChange={v => setNewProduct(s => ({ ...s, gst_rate: Number(v) }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[0, 5, 12, 18, 28].map(r => <SelectItem key={r} value={String(r)}>{r}%</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">HSN Code (optional)</Label>
+              <Input value={newProduct.hsn_code} onChange={e => setNewProduct(s => ({ ...s, hsn_code: e.target.value }))} placeholder="e.g. 38089390" />
+            </div>
+            <p className="text-[11px] text-muted-foreground">After creating, expand the product and click <span className="font-medium">+ Pack</span> to add pack sizes & prices.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewProductOpen(false)}>Cancel</Button>
+            <Button onClick={createNewProduct} disabled={creatingProduct}>
+              {creatingProduct ? "Adding…" : "Add Product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </DashboardLayout>
   );
