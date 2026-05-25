@@ -17,6 +17,7 @@ const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
 const EWB_USERNAME = Deno.env.get("WHITEBOOKS_EWB_USERNAME") ?? "";
 const EWB_PASSWORD = Deno.env.get("WHITEBOOKS_EWB_PASSWORD") ?? "";
+const IP_ADDRESS = Deno.env.get("WHITEBOOKS_IP_ADDRESS") ?? "127.0.0.1";
 
 // In-memory auth token cache (per-instance, ~6h TTL on NIC side)
 let cachedAuthToken: string | null = null;
