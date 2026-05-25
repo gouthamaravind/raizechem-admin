@@ -344,14 +344,25 @@ Deno.serve(async (req) => {
         }),
       };
 
-      // 6. Call Whitebooks
-      const response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
+      // 6. Call Whitebooks (retry once with fresh token if response is the bare {status_cd:"0"} auth-rejection)
+      let response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
-
-      const { raw, json: result } = await readWhitebooksJson(response);
+      let parsed = await readWhitebooksJson(response);
+      const isBareAuthReject = (r: any) =>
+        r && typeof r === "object" && String(r.status_cd ?? "") === "0" && !r.error && !r.errorDesc && !r.message && !r.data;
+      if (isBareAuthReject(parsed.json)) {
+        cachedAuthToken = null; cachedAuthExpiry = 0;
+        response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
+          method: "POST",
+          headers: await getHeaders(),
+          body: JSON.stringify(payload),
+        });
+        parsed = await readWhitebooksJson(response);
+      }
+      const { raw, json: result } = parsed;
       const data = result?.data ?? result;
       const ewbNo = data?.ewayBillNo ?? data?.ewbNo;
       const statusCd = String(result?.status_cd ?? result?.status ?? "");
@@ -361,7 +372,10 @@ Deno.serve(async (req) => {
         const errs = Array.isArray(result?.error)
           ? result.error.map((e: any) => `${e.errorCode ?? ""} ${e.errorMessage ?? e.error_msg ?? ""}`.trim()).join("; ")
           : (result?.error?.message || result?.error?.errorMessage || result?.errorDesc || result?.message || data?.message);
-        const rawErr = errs || raw.slice(0, 500) || `WhiteBooks HTTP ${response.status}`;
+        let rawErr = errs || raw.slice(0, 500) || `WhiteBooks HTTP ${response.status}`;
+        if (isBareAuthReject(result)) {
+          rawErr = "Whitebooks rejected the request with status_cd=0 and no detail. Most likely the GSP authtoken/credentials are not valid for the NIC e-Way Bill API — re-check WHITEBOOKS_EWB_USERNAME / PASSWORD and that this GSTIN has API access enabled on the e-Way Bill portal (User Management → Create API User).";
+        }
         const enriched = enrichEwbError(rawErr);
         await supabase.from("waybills").update({
           status: "failed",
