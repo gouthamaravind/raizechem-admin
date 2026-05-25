@@ -377,7 +377,7 @@ Deno.serve(async (req) => {
         totInvValue,
         otherValue: 0,
         transMode,
-        transDistance: String(distance),
+        transDistance: "0",
         transporterName: wb.transporter_name || "",
         transporterId: transporterGstinRaw || "",
         transDocNo: wb.transport_doc_no || "",
