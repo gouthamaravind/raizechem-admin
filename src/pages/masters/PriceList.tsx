@@ -15,6 +15,7 @@ import {
   Plus, Trash2, RotateCcw, Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DashboardLayout } from "@/components/DashboardLayout";
 
 const HSN_RE = /^(\d{4}|\d{6}|\d{8})$/;
 const isValidHsn = (v: string) => !v || HSN_RE.test(v.trim());
@@ -366,7 +367,10 @@ export default function PriceList() {
   const totalPacks = filtered.reduce((n, p) => n + (packsByProduct[p.id]?.length || 0), 0);
 
   return (
+    <DashboardLayout>
     <div className="container mx-auto py-6 space-y-4 max-w-[1400px]">
+
+
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -666,6 +670,7 @@ export default function PriceList() {
         onConfirm={applyBulk}
       />
     </div>
+    </DashboardLayout>
   );
 }
 
