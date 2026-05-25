@@ -227,10 +227,21 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Validation: " + errors.join(", ") }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 5. Construct Whitebooks/NIC payload
+      // 5. Construct Whitebooks/NIC payload (schema per WhiteBooks v1.03 genewaybill)
+      // transactionType: 1=Regular, 2=Bill-To-Ship-To, 3=Bill-From-Dispatch-From, 4=Combo of 2 & 3
+      const transactionType = Number(wb.transaction_type || body.transaction_type || 1);
+      const cgstValue = isInterState ? 0 : Number(wb.cgst_total || 0);
+      const sgstValue = isInterState ? 0 : Number(wb.sgst_total || 0);
+      const igstValue = isInterState ? Number(wb.igst_total || 0) : 0;
+      const cessValue = Number(wb.cess_total || 0);
+      const cessNonAdvolValue = Number(wb.cess_non_advol_total || 0);
+      const taxableValue = Number(wb.taxable_value || 0);
+      const totInvValue = Number(wb.doc_value || (taxableValue + cgstValue + sgstValue + igstValue + cessValue + cessNonAdvolValue));
+
       const payload = {
         supplyType: "O",
         subSupplyType: wb.source_type === "branch_transfer" ? "5" : "1",
+        subSupplyDesc: " ",
         docType: wb.source_type === "branch_transfer" ? "CHL" : "INV",
         docNo: wb.source_number,
         docDate: docDate.toLocaleDateString("en-GB"),
@@ -239,24 +250,26 @@ Deno.serve(async (req) => {
         fromAddr1: wb.branches?.address_line1 || "",
         fromAddr2: wb.branches?.address_line2 || "",
         fromPlace: wb.branches?.city || "",
+        actFromStateCode: fromStateCode,
         fromPincode: Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0,
         fromStateCode,
-        actFromStateCode: fromStateCode,
         toGstin: toGstinResolved,
         toTrdName: toName || (toGstinResolved === "URP" ? "Unregistered Person" : ""),
         toAddr1,
         toAddr2,
         toPlace,
         toPincode,
-        toStateCode,
         actToStateCode: toStateCode,
-        transactionType: 1,
-        totalValue: Number(wb.taxable_value),
-        cgstValue: isInterState ? 0 : Number(wb.cgst_total),
-        sgstValue: isInterState ? 0 : Number(wb.sgst_total),
-        igstValue: isInterState ? Number(wb.igst_total || (Number(wb.cgst_total) + Number(wb.sgst_total))) : 0,
-        cessValue: 0,
-        totInvValue: Number(wb.doc_value),
+        toStateCode,
+        transactionType,
+        totalValue: taxableValue,
+        cgstValue,
+        sgstValue,
+        igstValue,
+        cessValue,
+        cessNonAdvolValue,
+        totInvValue,
+        otherValue: 0,
         transMode,
         transDistance: String(distance),
         transporterName: wb.transporter_name || "",
@@ -265,20 +278,20 @@ Deno.serve(async (req) => {
         transDocDate: wb.transport_doc_date ? new Date(wb.transport_doc_date).toLocaleDateString("en-GB") : "",
         vehicleNo,
         vehicleType: wb.vehicle_type || "R",
-        itemList: items.map((i: any, idx: number) => {
+        itemList: items.map((i: any) => {
           const gstRate = Number(i.gst_rate || 0);
           return {
-            itemNo: idx + 1,
             productName: (i.products?.name || "Product").slice(0, 100),
             productDesc: (i.products?.name || "").slice(0, 100),
             hsnCode: Number((i.hsn_code || i.products?.hsn_code || "0").toString().replace(/\D/g, "")) || 0,
             quantity: Number(i.qty),
             qtyUnit: i.products?.unit || "NOS",
-            cgstRate: isInterState ? 0 : gstRate / 2,
-            sgstRate: isInterState ? 0 : gstRate / 2,
-            igstRate: isInterState ? gstRate : 0,
-            cessRate: 0,
             taxableAmount: Number(i.amount),
+            sgstRate: isInterState ? 0 : gstRate / 2,
+            cgstRate: isInterState ? 0 : gstRate / 2,
+            igstRate: isInterState ? gstRate : 0,
+            cessRate: Number(i.cess_rate || 0),
+            cessNonadvol: Number(i.cess_non_advol || 0),
           };
         }),
       };
