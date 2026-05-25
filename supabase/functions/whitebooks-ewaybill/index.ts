@@ -11,6 +11,30 @@ function enrichEwbError(raw: string): { codes: string[]; friendly: string; origi
   return { codes, friendly: `${explained}${original.includes(explained) ? "" : ` — NIC said: ${original}`}`, original };
 }
 
+// Coerce a value to a numeric GST state code. Accepts numbers, numeric strings,
+// or state names like "Telangana"/"Andhra Pradesh". Falls back if unparseable.
+const STATE_NAME_TO_CODE: Record<string, number> = {
+  "andhra pradesh": 37, "telangana": 36, "karnataka": 29, "tamil nadu": 33,
+  "kerala": 32, "maharashtra": 27, "gujarat": 24, "delhi": 7, "haryana": 6,
+  "punjab": 3, "rajasthan": 8, "uttar pradesh": 9, "madhya pradesh": 23,
+  "west bengal": 19, "odisha": 21, "bihar": 10, "jharkhand": 20,
+  "chhattisgarh": 22, "assam": 18, "goa": 30, "uttarakhand": 5,
+  "himachal pradesh": 2, "jammu and kashmir": 1, "ladakh": 38,
+  "manipur": 14, "meghalaya": 17, "mizoram": 15, "nagaland": 13,
+  "sikkim": 11, "tripura": 16, "arunachal pradesh": 12, "puducherry": 34,
+  "chandigarh": 4, "andaman and nicobar islands": 35,
+  "dadra and nagar haveli and daman and diu": 26, "lakshadweep": 31,
+};
+function toNum(v: unknown, fallback = 0): number {
+  if (v == null) return fallback;
+  if (typeof v === "number") return Number.isFinite(v) ? v : fallback;
+  const s = String(v).trim();
+  if (!s) return fallback;
+  const n = Number(s);
+  if (Number.isFinite(n)) return n;
+  return STATE_NAME_TO_CODE[s.toLowerCase()] ?? fallback;
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -252,7 +276,7 @@ Deno.serve(async (req) => {
       }
 
       // 3. Fetch recipient (dealer for invoice, destination branch for transfer)
-      let toName = "", toAddr1 = "", toAddr2 = "", toPlace = "", toPincode = 0, toGstinResolved = wb.to_gstin || "URP", toStateCode = Number(wb.to_state_code || 36);
+      let toName = "", toAddr1 = "", toAddr2 = "", toPlace = "", toPincode = 0, toGstinResolved = wb.to_gstin || "URP", toStateCode = toNum(wb.to_state_code, 36);
       let docDate = new Date(wb.created_at);
       const lastSegment = (s?: string | null) => {
         const parts = String(s || "").split(",").map((p) => p.trim()).filter(Boolean);
@@ -268,7 +292,7 @@ Deno.serve(async (req) => {
           toPlace = d.shipping_city || d.city || lastSegment(d.shipping_address_line1 || d.address_line1) || d.state || "";
           toPincode = Number((d.shipping_pincode || d.pincode || "0").toString().replace(/\D/g, "")) || 0;
           toGstinResolved = wb.to_gstin || d.gst_number || "URP";
-          toStateCode = Number(wb.to_state_code || d.state_code || 36);
+          toStateCode = toNum(wb.to_state_code ?? d.state_code, 36);
         }
         if (inv?.invoice_date) docDate = new Date(inv.invoice_date);
       } else {
@@ -281,13 +305,13 @@ Deno.serve(async (req) => {
           toPlace = b.city || lastSegment(b.address_line1) || b.state || "";
           toPincode = Number((b.pincode || "0").toString().replace(/\D/g, "")) || 0;
           toGstinResolved = wb.to_gstin || b.gst_number || "";
-          toStateCode = Number(wb.to_state_code || b.state_code || 36);
+          toStateCode = toNum(wb.to_state_code ?? b.state_code, 36);
         }
         if (bt?.transfer_date) docDate = new Date(bt.transfer_date);
       }
 
       // 4. Pre-validation (clearer than NIC error codes)
-      const fromStateCode = Number(wb.from_state_code || wb.branches?.state_code || 36);
+      const fromStateCode = toNum(wb.from_state_code ?? wb.branches?.state_code, 36);
       const isInterState = fromStateCode !== toStateCode;
       const distance = Number(wb.distance_km || 0);
       const vehicleNo = (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
