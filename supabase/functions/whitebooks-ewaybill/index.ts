@@ -355,7 +355,7 @@ Deno.serve(async (req) => {
         transMode,
         transDistance: String(distance),
         transporterName: wb.transporter_name || "",
-        transporterId: wb.transporter_gstin || "",
+        transporterId: transporterGstinRaw || "",
         transDocNo: wb.transport_doc_no || "",
         transDocDate: wb.transport_doc_date ? new Date(wb.transport_doc_date).toLocaleDateString("en-GB") : "",
         vehicleNo,
