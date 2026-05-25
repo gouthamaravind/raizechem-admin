@@ -215,7 +215,7 @@ function ItemsTable({ items, isIntra }: { items: any[]; isIntra: boolean }) {
         {items.map((it: any, idx: number) => (
           <tr key={it.id}>
             <td className="border border-foreground/30 p-1.5">{idx + 1}</td>
-            <td className="border border-foreground/30 p-1.5">{it.products?.name}</td>
+            <td className="border border-foreground/30 p-1.5">{it.products?.brand ? <><span className="font-semibold">{it.products.brand}</span><div className="text-[10px] text-foreground/70">{it.products.name}</div></> : it.products?.name}</td>
             <td className="border border-foreground/30 p-1.5 text-center">{it.hsn_code || it.products?.hsn_code || "—"}</td>
             <td className="border border-foreground/30 p-1.5 text-right">{it.qty}</td>
             <td className="border border-foreground/30 p-1.5 text-center">{it.products?.unit}</td>
