@@ -25,21 +25,26 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
-  const res = await fetch(`${WHITEBOOKS_BASE}authenticate?email=${encodeURIComponent(EWB_USERNAME)}`, {
-    method: "GET",
+  const res = await fetch(`${WHITEBOOKS_BASE}authenticate`, {
+    method: "POST",
     headers: {
+      "Content-Type": "application/json",
       "client-id": CLIENT_ID,
       "client-secret": CLIENT_SECRET,
       "gstin": GSTIN,
-      "username": EWB_USERNAME,
-      "password": EWB_PASSWORD,
     },
+    body: JSON.stringify({
+      action: "ACCESSTOKEN",
+      username: EWB_USERNAME,
+      password: EWB_PASSWORD,
+    }),
   });
   const json = await res.json().catch(() => ({}));
   const token = json?.authtoken || json?.data?.authtoken || json?.AuthToken;
   if (!res.ok || !token) {
-    throw new Error(`NIC auth failed: ${JSON.stringify(json).slice(0, 400)}`);
+    throw new Error(`NIC auth failed [${res.status}]: ${JSON.stringify(json).slice(0, 400)}`);
   }
+
   cachedAuthToken = token;
   cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000; // 5h30m safety
   return token;
