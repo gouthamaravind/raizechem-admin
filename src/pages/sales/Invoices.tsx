@@ -165,6 +165,7 @@ export default function Invoices() {
     setDeliveryTo(inv.delivery_to || "");
     setItems((invItems || []).map((it: any) => ({
       product_id: it.product_id,
+      pack_id: it.pack_id || null,
       batch_id: it.batch_id,
       qty: Number(it.qty),
       rate: Number(it.rate),
