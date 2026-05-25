@@ -33,7 +33,7 @@ type Product = Database["public"]["Tables"]["products"]["Row"];
 type Batch = Database["public"]["Tables"]["product_batches"]["Row"];
 type Invoice = Database["public"]["Tables"]["invoices"]["Row"] & { dealers: { name: string } | null };
 
-type InvItem = { product_id: string; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number; pack_id?: string | null };
+type InvItem = { product_id: string; pack_id?: string | null; batch_id: string; qty: number; rate: number; gst_rate: number; hsn_code: string; discount_pct: number; discount_amount: number };
 
 export default function Invoices() {
   const { user, hasRole, isAdmin } = useAuth();
