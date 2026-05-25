@@ -15,6 +15,7 @@ import {
   Plus, Trash2, RotateCcw, Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { DashboardLayout } from "@/components/DashboardLayout";
 
 const HSN_RE = /^(\d{4}|\d{6}|\d{8})$/;
 const isValidHsn = (v: string) => !v || HSN_RE.test(v.trim());
