@@ -113,7 +113,7 @@ function RetailTemplate({ inv, dealer, items, company, isIntra, placeOfSupply }:
         <tbody>
           {items.map((it: any) => (
             <tr key={it.id}>
-              <td>{it.products?.name}</td>
+              <td>{it.products?.brand ? `${it.products.brand} — ${it.products.name}` : it.products?.name}</td>
               <td className="text-right">{it.qty}</td>
               <td className="text-right">₹{Number(it.total_amount).toFixed(2)}</td>
             </tr>
@@ -215,7 +215,7 @@ function ItemsTable({ items, isIntra }: { items: any[]; isIntra: boolean }) {
         {items.map((it: any, idx: number) => (
           <tr key={it.id}>
             <td className="border border-foreground/30 p-1.5">{idx + 1}</td>
-            <td className="border border-foreground/30 p-1.5">{it.products?.name}</td>
+            <td className="border border-foreground/30 p-1.5">{it.products?.brand ? <><span className="font-semibold">{it.products.brand}</span><div className="text-[10px] text-foreground/70">{it.products.name}</div></> : it.products?.name}</td>
             <td className="border border-foreground/30 p-1.5 text-center">{it.hsn_code || it.products?.hsn_code || "—"}</td>
             <td className="border border-foreground/30 p-1.5 text-right">{it.qty}</td>
             <td className="border border-foreground/30 p-1.5 text-center">{it.products?.unit}</td>
@@ -292,7 +292,7 @@ export default function InvoicePrint() {
     queryKey: ["invoice-items-print", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("invoice_items")
-        .select("*, products(name, unit, hsn_code), product_batches(batch_no)")
+        .select("*, products(name, brand, unit, hsn_code), product_batches(batch_no)")
         .eq("invoice_id", id!);
       if (error) throw error;
       return data || [];
@@ -326,7 +326,7 @@ export default function InvoicePrint() {
       delivery_to: inv.delivery_to || `${dealer?.shipping_city || dealer?.city}, ${dealer?.shipping_state || dealer?.state}`,
       total_value: inv.total_amount,
       items: items.map((it: any) => ({
-        hsn_code: it.hsn_code || it.products?.hsn_code, product: it.products?.name,
+        hsn_code: it.hsn_code || it.products?.hsn_code, product: it.products?.brand ? `${it.products.brand} — ${it.products.name}` : it.products?.name,
         qty: it.qty, unit: it.products?.unit, rate: it.rate, taxable_value: it.amount,
         cgst: it.cgst_amount, sgst: it.sgst_amount, igst: it.igst_amount,
       })),

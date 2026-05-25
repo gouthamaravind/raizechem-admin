@@ -39,6 +39,7 @@ const navGroups = [
       { title: "Dealers", url: "/masters/dealers", icon: Users },
       { title: "Suppliers", url: "/masters/suppliers", icon: Truck },
       { title: "Products", url: "/masters/products", icon: Package },
+      { title: "Price List", url: "/masters/price-list", icon: Receipt },
       { title: "Price Levels", url: "/masters/price-levels", icon: Receipt },
       { title: "Transporters", url: "/masters/transporters", icon: Truck },
     ],
