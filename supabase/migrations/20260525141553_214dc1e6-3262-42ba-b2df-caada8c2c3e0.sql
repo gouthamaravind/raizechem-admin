@@ -1,0 +1,1 @@
+ALTER TABLE public.product_packs ADD COLUMN IF NOT EXISTS batch_no text;

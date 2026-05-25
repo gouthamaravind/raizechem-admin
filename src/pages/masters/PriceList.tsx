@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const HSN_RE = /^(\d{4}|\d{6}|\d{8})$/;
 const isValidHsn = (v: string) => !v || HSN_RE.test(v.trim());
@@ -28,6 +30,7 @@ type Product = {
 type Pack = {
   id: string; product_id: string; pack_label: string; units_per_case: number;
   unit_size: number | null; unit_uom: string | null;
+  batch_no: string | null;
   purchase_price: number; packing_cost: number; price_finished_goods: number;
   scheme_1: number; scheme_2: number; margin: number;
   basic_price: number; gst_amount: number; price_inclusive_gst: number; mrp: number;
@@ -77,6 +80,44 @@ export default function PriceList() {
   const [bulkGst, setBulkGst] = useState<string>("");
   const [bulkApplying, setBulkApplying] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [newProductOpen, setNewProductOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState({ brand: "", name: "", category: "Fungicide", hsn_code: "", gst_rate: 18 });
+  const [creatingProduct, setCreatingProduct] = useState(false);
+
+  const createNewProduct = async () => {
+    if (!newProduct.brand.trim() || !newProduct.name.trim()) {
+      toast.error("Brand and technical name are required");
+      return;
+    }
+    if (newProduct.hsn_code && !HSN_RE.test(newProduct.hsn_code.trim())) {
+      toast.error("HSN must be 4, 6, or 8 digits");
+      return;
+    }
+    setCreatingProduct(true);
+    try {
+      const { count } = await supabase.from("products").select("*", { count: "exact", head: true });
+      const slug = `rc-${String((count || 0) + 1).padStart(3, "0")}`;
+      const { error } = await supabase.from("products").insert({
+        brand: newProduct.brand.trim(),
+        name: newProduct.name.trim(),
+        category: newProduct.category,
+        slug,
+        hsn_code: newProduct.hsn_code.trim() || null,
+        gst_rate: newProduct.gst_rate,
+        unit: "L",
+        is_active: true,
+      });
+      if (error) throw error;
+      toast.success(`Added ${newProduct.brand}`);
+      setNewProduct({ brand: "", name: "", category: "Fungicide", hsn_code: "", gst_rate: 18 });
+      setNewProductOpen(false);
+      qc.invalidateQueries({ queryKey: ["pricelist-products"] });
+    } catch (e: any) {
+      toast.error(e.message || "Could not add product");
+    } finally {
+      setCreatingProduct(false);
+    }
+  };
 
   const { data: products = [], isLoading: lp } = useQuery<Product[]>({
     queryKey: ["pricelist-products"],
@@ -152,7 +193,7 @@ export default function PriceList() {
       ...prev,
       [productId]: [
         ...(prev[productId] || []),
-        { pack_label: "", units_per_case: 1, unit_size: 1, unit_uom: "L" },
+        { pack_label: "", units_per_case: 1, unit_size: 1, unit_uom: "L", batch_no: "" },
       ],
     }));
   };
@@ -380,6 +421,9 @@ export default function PriceList() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={() => setNewProductOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> Add Product
+          </Button>
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
             onChange={e => e.target.files?.[0] && importXlsx(e.target.files[0])} />
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
@@ -477,12 +521,13 @@ export default function PriceList() {
           {/* Sticky column header */}
           <div className="bg-muted/40 border-b text-[11px] uppercase tracking-wide text-muted-foreground font-medium sticky top-0 z-10">
             <div className="grid items-center gap-2 px-3 py-2"
-              style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}>
+              style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}>
               <div></div>
               <div>Pack</div>
               <div className="text-right">Units</div>
               <div className="text-right">Size</div>
               <div>UOM</div>
+              <div>Batch No</div>
               {cols.map(c => <div key={c.key} className="text-right">{c.label}</div>)}
               <div></div>
             </div>
@@ -620,6 +665,7 @@ export default function PriceList() {
                               units_per_case: getVal(pk, "units_per_case") as any,
                               unit_size: getVal(pk, "unit_size") as any,
                               unit_uom: getVal(pk, "unit_uom") as any,
+                              batch_no: getVal(pk, "batch_no") as any,
                               ...Object.fromEntries(cols.map(c => [c.key, getVal(pk, c.key)])) as any,
                             }}
                             onChange={(f, v) => setVal(pk, f, v)}
@@ -637,6 +683,7 @@ export default function PriceList() {
                             units_per_case: (row.units_per_case as any) ?? 1,
                             unit_size: (row.unit_size as any) ?? 1,
                             unit_uom: (row.unit_uom as any) ?? "L",
+                            batch_no: (row.batch_no as any) ?? "",
                             ...Object.fromEntries(cols.map(c => [c.key, (row as any)[c.key] ?? 0])) as any,
                           }}
                           onChange={(f, v) => setNewVal(p.id, idx, f, v)}
@@ -669,6 +716,55 @@ export default function PriceList() {
         confirmText="Apply"
         onConfirm={applyBulk}
       />
+
+      <Dialog open={newProductOpen} onOpenChange={setNewProductOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader><DialogTitle>Add New Product</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Brand *</Label>
+              <Input value={newProduct.brand} onChange={e => setNewProduct(s => ({ ...s, brand: e.target.value }))} placeholder="e.g. ShieldX" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Technical Name *</Label>
+              <Input value={newProduct.name} onChange={e => setNewProduct(s => ({ ...s, name: e.target.value }))} placeholder="e.g. Azoxystrobin 11% + Tebuconazole 18.3% SC" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Category</Label>
+                <Select value={newProduct.category} onValueChange={v => setNewProduct(s => ({ ...s, category: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["Fungicide", "Herbicide", "Insecticide", "Botanical", "PGR"].map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">GST %</Label>
+                <Select value={String(newProduct.gst_rate)} onValueChange={v => setNewProduct(s => ({ ...s, gst_rate: Number(v) }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {[0, 5, 12, 18, 28].map(r => <SelectItem key={r} value={String(r)}>{r}%</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">HSN Code (optional)</Label>
+              <Input value={newProduct.hsn_code} onChange={e => setNewProduct(s => ({ ...s, hsn_code: e.target.value }))} placeholder="e.g. 38089390" />
+            </div>
+            <p className="text-[11px] text-muted-foreground">After creating, expand the product and click <span className="font-medium">+ Pack</span> to add pack sizes & prices.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewProductOpen(false)}>Cancel</Button>
+            <Button onClick={createNewProduct} disabled={creatingProduct}>
+              {creatingProduct ? "Adding…" : "Add Product"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </DashboardLayout>
   );
@@ -692,7 +788,7 @@ function PackRow({
         dirty && "bg-yellow-500/10",
         isNew && "bg-emerald-500/10",
       )}
-      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
+      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
     >
       <div className="text-muted-foreground text-[11px]">{isNew ? "NEW" : ""}</div>
       <Input className={inputCls} placeholder="e.g. 10 x 1"
@@ -707,6 +803,8 @@ function PackRow({
           {UOM_OPTIONS.map(u => <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>)}
         </SelectContent>
       </Select>
+      <Input className={inputCls} placeholder="Batch #"
+        value={values.batch_no ?? ""} onChange={e => onChange("batch_no" as any, e.target.value)} />
       {cols.map(c => (
         <Input key={c.key} className={cn(inputCls, "text-right")} type="number" step="0.01"
           value={values[c.key]} onChange={e => onChange(c.key, e.target.value)} />
