@@ -146,9 +146,10 @@ export default function WaybillLog() {
 
   const generate = useMutation({
     mutationFn: async (waybill_id: string) => {
-      const { data, error } = await supabase.functions.invoke("whitebooks-ewaybill?action=generate", {
-        body: { waybill_id },
+      const { data, error } = await supabase.functions.invoke("whitebooks-ewaybill", {
+        body: { waybill_id, action: "generate" },
       });
+
       if (error) throw error;
       if ((data as any)?.error) throw new Error(JSON.stringify((data as any).error));
       return data;
@@ -164,9 +165,10 @@ export default function WaybillLog() {
     mutationFn: async (waybill_id: string) => {
       const reason = prompt("Cancellation reason?", "Data entry error");
       if (!reason) throw new Error("Cancelled");
-      const { data, error } = await supabase.functions.invoke("whitebooks-ewaybill?action=cancel", {
-        body: { waybill_id, reason },
+      const { data, error } = await supabase.functions.invoke("whitebooks-ewaybill", {
+        body: { waybill_id, reason, action: "cancel" },
       });
+
       if (error) throw error;
       return data;
     },

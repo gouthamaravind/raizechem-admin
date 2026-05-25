@@ -79,10 +79,11 @@ export default function Invoices() {
   });
   const invoices = invoicesRaw.slice(0, pg.pageSize);
 
-  const { data: dealers = [] } = useQuery<Dealer[]>({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
+  const { data: dealers = [] } = useQuery<Dealer[]>({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return (data || []) as unknown as Dealer[]; } });
   const { data: companySettings } = useQuery({ queryKey: ["company-settings"], queryFn: async () => { const { data } = await supabase.from("company_settings").select("state_code, state").limit(1).single(); return data; } });
-  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return data || []; } });
-  const { data: batches = [] } = useQuery<Batch[]>({ queryKey: ["batches-available", branchId], queryFn: async () => { let q = supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); if (branchId) q = q.or(`branch_id.eq.${branchId},branch_id.is.null`); const { data } = await q; return data || []; } });
+  const { data: products = [] } = useQuery<Product[]>({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return (data || []) as unknown as Product[]; } });
+  const { data: batches = [] } = useQuery<Batch[]>({ queryKey: ["batches-available", branchId], queryFn: async () => { let q = supabase.from("product_batches").select("id, product_id, batch_no, current_qty").gt("current_qty", 0); if (branchId) q = q.or(`branch_id.eq.${branchId},branch_id.is.null`); const { data } = await q; return (data || []) as unknown as Batch[]; } });
+
   const { data: priceLevelPrices = [] } = useQuery({ queryKey: ["price-level-prices"], queryFn: async () => { const { data } = await supabase.from("product_price_levels").select("product_id, price_level_id, price"); return data || []; } });
 
   // Dealer advance balance

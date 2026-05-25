@@ -46,3 +46,7 @@ verify_jwt = false
 
 [functions.google-roads]
 verify_jwt = false
+
+[functions.whitebooks-ewaybill]
+verify_jwt = false
+
