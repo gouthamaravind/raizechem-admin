@@ -28,6 +28,7 @@ type Product = {
 type Pack = {
   id: string; product_id: string; pack_label: string; units_per_case: number;
   unit_size: number | null; unit_uom: string | null;
+  batch_no: string | null;
   purchase_price: number; packing_cost: number; price_finished_goods: number;
   scheme_1: number; scheme_2: number; margin: number;
   basic_price: number; gst_amount: number; price_inclusive_gst: number; mrp: number;
