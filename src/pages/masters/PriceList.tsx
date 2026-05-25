@@ -696,7 +696,7 @@ function PackRow({
         dirty && "bg-yellow-500/10",
         isNew && "bg-emerald-500/10",
       )}
-      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
+      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
     >
       <div className="text-muted-foreground text-[11px]">{isNew ? "NEW" : ""}</div>
       <Input className={inputCls} placeholder="e.g. 10 x 1"
@@ -711,6 +711,8 @@ function PackRow({
           {UOM_OPTIONS.map(u => <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>)}
         </SelectContent>
       </Select>
+      <Input className={inputCls} placeholder="Batch #"
+        value={values.batch_no ?? ""} onChange={e => onChange("batch_no" as any, e.target.value)} />
       {cols.map(c => (
         <Input key={c.key} className={cn(inputCls, "text-right")} type="number" step="0.01"
           value={values[c.key]} onChange={e => onChange(c.key, e.target.value)} />
