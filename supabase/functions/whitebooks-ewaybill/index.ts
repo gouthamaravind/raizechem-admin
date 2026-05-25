@@ -47,14 +47,35 @@ async function getAuthToken(): Promise<string> {
     method: "GET",
     headers: baseHeaders(),
   });
-  const json = await res.json().catch(() => ({}));
+  const rawText = await res.text();
+  let json: any = {};
+  try { json = JSON.parse(rawText); } catch { /* keep raw */ }
   const token =
     json?.authtoken ||
     json?.data?.authtoken ||
     json?.AuthToken ||
     json?.result?.authtoken;
   if (!res.ok || !token) {
-    throw new Error(`Whitebooks auth failed [${res.status}]: ${JSON.stringify(json).slice(0, 500)}`);
+    const respHeaders: Record<string, string> = {};
+    res.headers.forEach((v, k) => { respHeaders[k] = v; });
+    const sent = baseHeaders();
+    const sentMasked = {
+      email: sent.email,
+      gst_username: sent.gst_username,
+      password_len: sent.password.length,
+      client_id_preview: sent.client_id.slice(0, 6) + "...",
+      client_secret_len: sent.client_secret.length,
+      Gstin: sent.Gstin,
+      ip_address: sent.ip_address,
+    };
+    throw new Error(JSON.stringify({
+      msg: "Whitebooks auth failed",
+      status: res.status,
+      raw: rawText.slice(0, 800),
+      response_headers: respHeaders,
+      sent_headers: sentMasked,
+      url: `${WHITEBOOKS_BASE}authenticate`,
+    }));
   }
   cachedAuthToken = token;
   cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000;
