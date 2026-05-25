@@ -11,14 +11,48 @@ const WHITEBOOKS_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://apisandb
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
+const EWB_USERNAME = Deno.env.get("WHITEBOOKS_EWB_USERNAME") ?? "";
+const EWB_PASSWORD = Deno.env.get("WHITEBOOKS_EWB_PASSWORD") ?? "";
 
-// Auth headers required for every request to Whitebooks
-const getHeaders = () => ({
-  "Content-Type": "application/json",
-  "client-id": CLIENT_ID,
-  "client-secret": CLIENT_SECRET,
-  "gstin": GSTIN,
-});
+// In-memory auth token cache (per-instance, ~6h TTL on NIC side)
+let cachedAuthToken: string | null = null;
+let cachedAuthExpiry = 0;
+
+async function getAuthToken(): Promise<string> {
+  if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
+  const res = await fetch(`${WHITEBOOKS_BASE}authenticate?email=${encodeURIComponent(EWB_USERNAME)}`, {
+    method: "GET",
+    headers: {
+      "client-id": CLIENT_ID,
+      "client-secret": CLIENT_SECRET,
+      "gstin": GSTIN,
+      "username": EWB_USERNAME,
+      "password": EWB_PASSWORD,
+    },
+  });
+  const json = await res.json().catch(() => ({}));
+  const token = json?.authtoken || json?.data?.authtoken || json?.AuthToken;
+  if (!res.ok || !token) {
+    throw new Error(`NIC auth failed: ${JSON.stringify(json).slice(0, 400)}`);
+  }
+  cachedAuthToken = token;
+  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000; // 5h30m safety
+  return token;
+}
+
+// Auth headers required for every Whitebooks request
+async function getHeaders() {
+  const authToken = await getAuthToken();
+  return {
+    "Content-Type": "application/json",
+    "client-id": CLIENT_ID,
+    "client-secret": CLIENT_SECRET,
+    "gstin": GSTIN,
+    "username": EWB_USERNAME,
+    "authtoken": authToken,
+  };
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -116,7 +150,7 @@ Deno.serve(async (req) => {
       // 4. Call Whitebooks API
       const response = await fetch(`${WHITEBOOKS_BASE}generate`, {
         method: "POST",
-        headers: getHeaders(),
+        headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -158,7 +192,7 @@ Deno.serve(async (req) => {
 
       const response = await fetch(`${WHITEBOOKS_BASE}cancel`, {
         method: "POST",
-        headers: getHeaders(),
+        headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
 
