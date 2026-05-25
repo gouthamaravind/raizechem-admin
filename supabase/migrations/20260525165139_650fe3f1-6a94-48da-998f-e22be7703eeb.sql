@@ -1,0 +1,2 @@
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS transporter_id uuid REFERENCES public.transporters(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_invoices_transporter_id ON public.invoices(transporter_id);
