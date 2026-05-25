@@ -80,8 +80,44 @@ export default function PriceList() {
   const [bulkGst, setBulkGst] = useState<string>("");
   const [bulkApplying, setBulkApplying] = useState(false);
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [newProductOpen, setNewProductOpen] = useState(false);
+  const [newProduct, setNewProduct] = useState({ brand: "", name: "", category: "Fungicide", hsn_code: "", gst_rate: 18 });
+  const [creatingProduct, setCreatingProduct] = useState(false);
 
-  const { data: products = [], isLoading: lp } = useQuery<Product[]>({
+  const createNewProduct = async () => {
+    if (!newProduct.brand.trim() || !newProduct.name.trim()) {
+      toast.error("Brand and technical name are required");
+      return;
+    }
+    if (newProduct.hsn_code && !HSN_RE.test(newProduct.hsn_code.trim())) {
+      toast.error("HSN must be 4, 6, or 8 digits");
+      return;
+    }
+    setCreatingProduct(true);
+    try {
+      const { count } = await supabase.from("products").select("*", { count: "exact", head: true });
+      const slug = `rc-${String((count || 0) + 1).padStart(3, "0")}`;
+      const { error } = await supabase.from("products").insert({
+        brand: newProduct.brand.trim(),
+        name: newProduct.name.trim(),
+        category: newProduct.category,
+        slug,
+        hsn_code: newProduct.hsn_code.trim() || null,
+        gst_rate: newProduct.gst_rate,
+        unit: "L",
+        is_active: true,
+      });
+      if (error) throw error;
+      toast.success(`Added ${newProduct.brand}`);
+      setNewProduct({ brand: "", name: "", category: "Fungicide", hsn_code: "", gst_rate: 18 });
+      setNewProductOpen(false);
+      qc.invalidateQueries({ queryKey: ["pricelist-products"] });
+    } catch (e: any) {
+      toast.error(e.message || "Could not add product");
+    } finally {
+      setCreatingProduct(false);
+    }
+  };
     queryKey: ["pricelist-products"],
     queryFn: async () => {
       const { data, error } = await supabase
