@@ -162,9 +162,16 @@ Deno.serve(async (req) => {
       });
 
       const result = await response.json();
+      const data = result?.data ?? result;
+      const ewbNo = data?.ewayBillNo ?? data?.ewbNo;
+      const isOk = response.ok && (result?.status === 1 || result?.status_cd === 1 || ewbNo);
 
-      if (!response.ok || result.error || !result.ewayBillNo) {
-        const errorMsg = result.error?.message || result.message || JSON.stringify(result);
+      if (!isOk || !ewbNo) {
+        const errorMsg = result?.error?.message
+          || (Array.isArray(result?.error) ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ") : null)
+          || result?.message
+          || data?.message
+          || JSON.stringify(result).slice(0, 500);
         await supabase.from("waybills").update({
           status: "failed",
           error_msg: errorMsg,
@@ -172,21 +179,21 @@ Deno.serve(async (req) => {
           gsp_response: result,
         }).eq("id", wb.id);
 
-        return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: errorMsg, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // 5. Update Waybill with Success
       await supabase.from("waybills").update({
-        ewb_number: String(result.ewayBillNo),
+        ewb_number: String(ewbNo),
         status: "generated",
-        ewb_date: result.ewayBillDate || new Date().toISOString(),
-        valid_until: result.validUpto,
+        ewb_date: data?.ewayBillDate || new Date().toISOString(),
+        valid_until: data?.validUpto,
         gsp_request: payload,
         gsp_response: result,
         error_msg: null,
       }).eq("id", wb.id);
 
-      return new Response(JSON.stringify({ ok: true, ewb_number: result.ewayBillNo }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, ewb_number: ewbNo }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "cancel") {
