@@ -292,7 +292,7 @@ Deno.serve(async (req) => {
           toPlace = d.shipping_city || d.city || lastSegment(d.shipping_address_line1 || d.address_line1) || d.state || "";
           toPincode = Number((d.shipping_pincode || d.pincode || "0").toString().replace(/\D/g, "")) || 0;
           toGstinResolved = wb.to_gstin || d.gst_number || "URP";
-          toStateCode = Number(wb.to_state_code || d.state_code || 36);
+          toStateCode = toNum(wb.to_state_code ?? d.state_code, 36);
         }
         if (inv?.invoice_date) docDate = new Date(inv.invoice_date);
       } else {
