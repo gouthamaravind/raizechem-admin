@@ -3,12 +3,18 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
-import { Download, Upload, Save, Search } from "lucide-react";
+import {
+  Download, Upload, Save, Search, ChevronRight, ChevronDown,
+  Plus, Trash2, RotateCcw,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Product = {
   id: string; name: string; brand: string | null; category: string | null;
@@ -23,21 +29,45 @@ type Pack = {
   is_active: boolean; sort_order: number;
 };
 
-const NUM_COLS: (keyof Pack)[] = [
+const NUM_FIELDS = new Set<keyof Pack>([
   "units_per_case", "unit_size", "purchase_price", "packing_cost",
   "price_finished_goods", "scheme_1", "scheme_2", "margin",
   "basic_price", "gst_amount", "price_inclusive_gst", "mrp",
+]);
+
+type ViewMode = "pricing" | "costing" | "all";
+
+const PRICING_COLS: Array<{ key: keyof Pack; label: string }> = [
+  { key: "basic_price", label: "Basic" },
+  { key: "gst_amount", label: "GST" },
+  { key: "price_inclusive_gst", label: "Incl GST" },
+  { key: "mrp", label: "MRP" },
 ];
+const COSTING_COLS: Array<{ key: keyof Pack; label: string }> = [
+  { key: "purchase_price", label: "Purchase" },
+  { key: "packing_cost", label: "Packing" },
+  { key: "price_finished_goods", label: "PFG" },
+  { key: "scheme_1", label: "Sch1" },
+  { key: "scheme_2", label: "Sch2" },
+  { key: "margin", label: "Margin" },
+];
+
+const UOM_OPTIONS = ["L", "ml", "kg", "g"];
+const fmt = (n: number) => n ? `₹${n.toLocaleString("en-IN", { maximumFractionDigits: 0 })}` : "—";
 
 export default function PriceList() {
   const qc = useQueryClient();
   const fileRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("all");
+  const [view, setView] = useState<ViewMode>("pricing");
   const [edits, setEdits] = useState<Record<string, Partial<Pack>>>({});
+  const [pendingNew, setPendingNew] = useState<Record<string, Partial<Pack>[]>>({});
   const [saving, setSaving] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [confirmDel, setConfirmDel] = useState<{ id: string; label: string } | null>(null);
 
-  const { data: products = [] } = useQuery<Product[]>({
+  const { data: products = [], isLoading: lp } = useQuery<Product[]>({
     queryKey: ["pricelist-products"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -49,7 +79,7 @@ export default function PriceList() {
     },
   });
 
-  const { data: packs = [] } = useQuery<Pack[]>({
+  const { data: packs = [], isLoading: lk } = useQuery<Pack[]>({
     queryKey: ["pricelist-packs"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -63,7 +93,7 @@ export default function PriceList() {
   });
 
   const categories = useMemo(
-    () => Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[],
+    () => Array.from(new Set(products.map(p => p.category).filter(Boolean))).sort() as string[],
     [products]
   );
 
@@ -92,29 +122,95 @@ export default function PriceList() {
   };
 
   const setVal = (pk: Pack, field: keyof Pack, raw: string) => {
-    const v = NUM_COLS.includes(field) ? (raw === "" ? 0 : Number(raw)) : raw;
+    const v = NUM_FIELDS.has(field) ? (raw === "" ? 0 : Number(raw)) : raw;
     setEdits(prev => ({ ...prev, [pk.id]: { ...(prev[pk.id] || {}), [field]: v } }));
   };
 
-  const dirtyCount = Object.keys(edits).length;
+  const setNewVal = (productId: string, idx: number, field: keyof Pack, raw: string) => {
+    const v = NUM_FIELDS.has(field) ? (raw === "" ? 0 : Number(raw)) : raw;
+    setPendingNew(prev => {
+      const list = [...(prev[productId] || [])];
+      list[idx] = { ...(list[idx] || {}), [field]: v };
+      return { ...prev, [productId]: list };
+    });
+  };
+
+  const addPackRow = (productId: string) => {
+    setCollapsed(prev => { const n = new Set(prev); n.delete(productId); return n; });
+    setPendingNew(prev => ({
+      ...prev,
+      [productId]: [
+        ...(prev[productId] || []),
+        { pack_label: "", units_per_case: 1, unit_size: 1, unit_uom: "L" },
+      ],
+    }));
+  };
+
+  const removePendingNew = (productId: string, idx: number) => {
+    setPendingNew(prev => {
+      const list = [...(prev[productId] || [])];
+      list.splice(idx, 1);
+      const next = { ...prev };
+      if (list.length) next[productId] = list; else delete next[productId];
+      return next;
+    });
+  };
+
+  const toggle = (id: string) => setCollapsed(p => {
+    const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const expandAll = () => setCollapsed(new Set());
+  const collapseAll = () => setCollapsed(new Set(filtered.map(p => p.id)));
+
+  const editCount = Object.keys(edits).length;
+  const newCount = Object.values(pendingNew).reduce((n, l) => n + l.length, 0);
+  const dirty = editCount + newCount;
+
+  const resetAll = () => { setEdits({}); setPendingNew({}); };
 
   const saveAll = async () => {
-    if (!dirtyCount) return;
+    if (!dirty) return;
     setSaving(true);
     try {
-      const rows = Object.entries(edits).map(([id, patch]) => ({ id, ...patch }));
-      for (const row of rows) {
+      const updates = Object.entries(edits).map(([id, patch]) => ({ id, ...patch }));
+      for (const row of updates) {
         const { id, ...patch } = row as any;
         const { error } = await supabase.from("product_packs").update(patch).eq("id", id);
         if (error) throw error;
       }
-      toast.success(`Saved ${rows.length} pack${rows.length === 1 ? "" : "s"}`);
-      setEdits({});
+      const inserts: any[] = [];
+      for (const [productId, list] of Object.entries(pendingNew)) {
+        for (const row of list) {
+          if (!row.pack_label) continue;
+          inserts.push({ ...row, product_id: productId, is_active: true });
+        }
+      }
+      if (inserts.length) {
+        const { error } = await supabase.from("product_packs").insert(inserts);
+        if (error) throw error;
+      }
+      toast.success(`Saved ${updates.length + inserts.length} pack${updates.length + inserts.length === 1 ? "" : "s"}`);
+      setEdits({}); setPendingNew({});
       qc.invalidateQueries({ queryKey: ["pricelist-packs"] });
     } catch (e: any) {
       toast.error(e.message || "Save failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deletePack = async () => {
+    if (!confirmDel) return;
+    try {
+      const { error } = await supabase
+        .from("product_packs").update({ is_active: false }).eq("id", confirmDel.id);
+      if (error) throw error;
+      toast.success(`Removed pack ${confirmDel.label}`);
+      qc.invalidateQueries({ queryKey: ["pricelist-packs"] });
+    } catch (e: any) {
+      toast.error(e.message || "Delete failed");
+    } finally {
+      setConfirmDel(null);
     }
   };
 
@@ -155,11 +251,9 @@ export default function PriceList() {
       const wb = XLSX.read(buf, { type: "array" });
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<any>(ws, { defval: null });
-
       const bySlug = new Map(products.map(p => [p.slug, p]));
       const byName = new Map(products.map(p => [p.name.toLowerCase(), p]));
       let updated = 0, missing = 0;
-
       for (const r of rows) {
         const slug = r["Slug"] || r.slug;
         const nm = (r["Technical Name"] || r.name || "").toString().toLowerCase();
@@ -167,12 +261,9 @@ export default function PriceList() {
         if (!product) { missing++; continue; }
         const packLabel = r["Pack Label"] || r.pack_label;
         if (!packLabel) continue;
-        const existing = (packsByProduct[product.id] || []).find(
-          x => x.pack_label === packLabel
-        );
+        const existing = (packsByProduct[product.id] || []).find(x => x.pack_label === packLabel);
         const patch: any = {
-          product_id: product.id,
-          pack_label: packLabel,
+          product_id: product.id, pack_label: packLabel,
           units_per_case: Number(r["Units/Case"] ?? r.units_per_case ?? 0),
           unit_size: r["Unit Size"] != null ? Number(r["Unit Size"]) : null,
           unit_uom: r["UOM"] ?? r.unit_uom ?? null,
@@ -206,143 +297,266 @@ export default function PriceList() {
     }
   };
 
+  const cols = view === "pricing" ? PRICING_COLS : view === "costing" ? COSTING_COLS : [...PRICING_COLS, ...COSTING_COLS];
+  const totalPacks = filtered.reduce((n, p) => n + (packsByProduct[p.id]?.length || 0), 0);
+
   return (
     <div className="container mx-auto py-6 space-y-4 max-w-[1400px]">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Price List</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Price List</h1>
           <p className="text-sm text-muted-foreground">
-            Bulk-manage pack pricing for all products. Edits are highlighted; click Save to commit.
+            Bulk-manage carton pricing. Edits are highlighted; click Save to commit.
           </p>
         </div>
-        <div className="flex gap-2">
-          <input
-            ref={fileRef} type="file" accept=".xlsx,.xls"
-            className="hidden"
-            onChange={e => e.target.files?.[0] && importXlsx(e.target.files[0])}
-          />
-          <Button variant="outline" onClick={() => fileRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-2" /> Import Excel
+        <div className="flex flex-wrap gap-2">
+          <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
+            onChange={e => e.target.files?.[0] && importXlsx(e.target.files[0])} />
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
+            <Upload className="h-4 w-4 mr-1.5" /> Import
           </Button>
-          <Button variant="outline" onClick={exportXlsx}>
-            <Download className="h-4 w-4 mr-2" /> Export Excel
+          <Button variant="outline" size="sm" onClick={exportXlsx}>
+            <Download className="h-4 w-4 mr-1.5" /> Export
           </Button>
-          <Button onClick={saveAll} disabled={!dirtyCount || saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Saving…" : `Save${dirtyCount ? ` (${dirtyCount})` : ""}`}
+          {dirty > 0 && (
+            <Button variant="ghost" size="sm" onClick={resetAll}>
+              <RotateCcw className="h-4 w-4 mr-1.5" /> Discard
+            </Button>
+          )}
+          <Button size="sm" onClick={saveAll} disabled={!dirty || saving}>
+            <Save className="h-4 w-4 mr-1.5" />
+            {saving ? "Saving…" : dirty ? `Save (${dirty})` : "Save"}
           </Button>
         </div>
       </div>
 
+      {/* Filters */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 pt-4">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search brand, technical name, or slug…"
-                className="pl-8" value={search}
+                className="pl-9 h-9" value={search}
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
             <Tabs value={category} onValueChange={setCategory}>
-              <TabsList>
-                <TabsTrigger value="all">All</TabsTrigger>
+              <TabsList className="h-9">
+                <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
                 {categories.map(c => (
-                  <TabsTrigger key={c} value={c}>{c}</TabsTrigger>
+                  <TabsTrigger key={c} value={c} className="text-xs">{c}</TabsTrigger>
                 ))}
               </TabsList>
             </Tabs>
-            <Badge variant="secondary">
-              {filtered.length} products · {filtered.reduce((n, p) => n + (packsByProduct[p.id]?.length || 0), 0)} packs
-            </Badge>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">View:</span>
+              <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
+                <TabsList className="h-9">
+                  <TabsTrigger value="pricing" className="text-xs">Pricing</TabsTrigger>
+                  <TabsTrigger value="costing" className="text-xs">Costing</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            <div className="flex items-center gap-1.5 ml-auto">
+              <Button variant="ghost" size="sm" className="text-xs h-8" onClick={expandAll}>Expand all</Button>
+              <Button variant="ghost" size="sm" className="text-xs h-8" onClick={collapseAll}>Collapse all</Button>
+              <Badge variant="secondary" className="ml-1">
+                {filtered.length} products · {totalPacks} packs
+              </Badge>
+            </div>
           </div>
         </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="bg-muted/50 sticky top-0">
-                <tr className="text-left">
-                  <th className="p-2 min-w-[220px]">Product</th>
-                  <th className="p-2">Pack</th>
-                  <th className="p-2 text-right">Units</th>
-                  <th className="p-2 text-right">Size</th>
-                  <th className="p-2">UOM</th>
-                  <th className="p-2 text-right">Purchase</th>
-                  <th className="p-2 text-right">Packing</th>
-                  <th className="p-2 text-right">PFG</th>
-                  <th className="p-2 text-right">Sch1</th>
-                  <th className="p-2 text-right">Sch2</th>
-                  <th className="p-2 text-right">Margin</th>
-                  <th className="p-2 text-right">Basic</th>
-                  <th className="p-2 text-right">GST Amt</th>
-                  <th className="p-2 text-right">Incl GST</th>
-                  <th className="p-2 text-right">MRP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(p => {
-                  const ps = packsByProduct[p.id] || [];
-                  return (
-                    <>
-                      <tr key={p.id} className="bg-accent/30 border-t">
-                        <td className="p-2 font-semibold" colSpan={15}>
-                          <span className="text-primary">{p.brand || "—"}</span>
-                          <span className="text-muted-foreground"> · {p.name}</span>
-                          {p.category && <Badge variant="outline" className="ml-2">{p.category}</Badge>}
-                          <span className="ml-2 text-[10px] text-muted-foreground">
-                            {p.slug} · HSN {p.hsn_code || "—"} · GST {p.gst_rate}%
-                          </span>
-                        </td>
-                      </tr>
-                      {ps.length === 0 && (
-                        <tr><td className="p-2 text-muted-foreground italic" colSpan={15}>
-                          No packs configured.
-                        </td></tr>
+        <CardContent className="p-0 border-t">
+          {/* Sticky column header */}
+          <div className="bg-muted/40 border-b text-[11px] uppercase tracking-wide text-muted-foreground font-medium sticky top-0 z-10">
+            <div className="grid items-center gap-2 px-3 py-2"
+              style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}>
+              <div></div>
+              <div>Pack</div>
+              <div className="text-right">Units</div>
+              <div className="text-right">Size</div>
+              <div>UOM</div>
+              {cols.map(c => <div key={c.key} className="text-right">{c.label}</div>)}
+              <div></div>
+            </div>
+          </div>
+
+          {(lp || lk) && (
+            <div className="p-8 text-center text-sm text-muted-foreground">Loading price list…</div>
+          )}
+
+          {!lp && !lk && filtered.length === 0 && (
+            <div className="p-12 text-center text-sm text-muted-foreground">
+              No products match the current filter.
+            </div>
+          )}
+
+          <div className="divide-y">
+            {filtered.map(p => {
+              const ps = packsByProduct[p.id] || [];
+              const isCollapsed = collapsed.has(p.id);
+              const newRows = pendingNew[p.id] || [];
+              const prices = ps.map(x => x.price_inclusive_gst).filter(Boolean);
+              const min = prices.length ? Math.min(...prices) : 0;
+              const max = prices.length ? Math.max(...prices) : 0;
+
+              return (
+                <div key={p.id} className="bg-card">
+                  {/* Product header */}
+                  <button
+                    type="button"
+                    onClick={() => toggle(p.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent/30 transition-colors text-left"
+                  >
+                    {isCollapsed
+                      ? <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      : <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-sm text-primary">
+                          {p.brand || <span className="text-muted-foreground italic">No brand</span>}
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-sm truncate">{p.name}</span>
+                        {p.category && <Badge variant="outline" className="text-[10px] h-5">{p.category}</Badge>}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span>{p.slug || "—"}</span>
+                        <span>·</span>
+                        <span>HSN {p.hsn_code || "—"}</span>
+                        <span>·</span>
+                        <span>GST {p.gst_rate}%</span>
+                      </div>
+                    </div>
+                    <div className="text-right text-xs">
+                      <div className="font-medium">{ps.length} pack{ps.length === 1 ? "" : "s"}</div>
+                      {prices.length > 0 && (
+                        <div className="text-muted-foreground">
+                          {min === max ? fmt(min) : `${fmt(min)}–${fmt(max)}`}
+                        </div>
+                      )}
+                    </div>
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); addPackRow(p.id); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); addPackRow(p.id); } }}
+                      className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border bg-background hover:bg-accent cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" /> Pack
+                    </div>
+                  </button>
+
+                  {/* Pack rows */}
+                  {!isCollapsed && (
+                    <div className="bg-muted/10 border-t">
+                      {ps.length === 0 && newRows.length === 0 && (
+                        <div className="px-3 py-4 text-xs text-muted-foreground italic">
+                          No packs configured. Click <span className="font-medium">+ Pack</span> to add one.
+                        </div>
                       )}
                       {ps.map(pk => {
-                        const dirty = !!edits[pk.id];
+                        const isDirty = !!edits[pk.id];
                         return (
-                          <tr key={pk.id} className={`border-t ${dirty ? "bg-yellow-500/10" : ""}`}>
-                            <td className="p-1.5"></td>
-                            <td className="p-1.5">
-                              <Input className="h-7 text-xs w-32" value={getVal(pk, "pack_label")}
-                                onChange={e => setVal(pk, "pack_label", e.target.value)} />
-                            </td>
-                            {(["units_per_case", "unit_size"] as const).map(f => (
-                              <td key={f} className="p-1.5">
-                                <Input className="h-7 text-xs w-16 text-right" type="number"
-                                  value={getVal(pk, f)} onChange={e => setVal(pk, f, e.target.value)} />
-                              </td>
-                            ))}
-                            <td className="p-1.5">
-                              <Input className="h-7 text-xs w-16" value={getVal(pk, "unit_uom")}
-                                onChange={e => setVal(pk, "unit_uom", e.target.value)} />
-                            </td>
-                            {(["purchase_price", "packing_cost", "price_finished_goods",
-                               "scheme_1", "scheme_2", "margin", "basic_price",
-                               "gst_amount", "price_inclusive_gst", "mrp"] as const).map(f => (
-                              <td key={f} className="p-1.5">
-                                <Input className="h-7 text-xs w-20 text-right" type="number" step="0.01"
-                                  value={getVal(pk, f)} onChange={e => setVal(pk, f, e.target.value)} />
-                              </td>
-                            ))}
-                          </tr>
+                          <PackRow
+                            key={pk.id}
+                            cols={cols}
+                            dirty={isDirty}
+                            values={{
+                              pack_label: getVal(pk, "pack_label") as any,
+                              units_per_case: getVal(pk, "units_per_case") as any,
+                              unit_size: getVal(pk, "unit_size") as any,
+                              unit_uom: getVal(pk, "unit_uom") as any,
+                              ...Object.fromEntries(cols.map(c => [c.key, getVal(pk, c.key)])) as any,
+                            }}
+                            onChange={(f, v) => setVal(pk, f, v)}
+                            onDelete={() => setConfirmDel({ id: pk.id, label: pk.pack_label })}
+                          />
                         );
                       })}
-                    </>
-                  );
-                })}
-                {filtered.length === 0 && (
-                  <tr><td colSpan={15} className="p-8 text-center text-muted-foreground">
-                    No products match the current filter.
-                  </td></tr>
-                )}
-              </tbody>
-            </table>
+                      {newRows.map((row, idx) => (
+                        <PackRow
+                          key={`new-${p.id}-${idx}`}
+                          cols={cols}
+                          isNew
+                          values={{
+                            pack_label: (row.pack_label as any) ?? "",
+                            units_per_case: (row.units_per_case as any) ?? 1,
+                            unit_size: (row.unit_size as any) ?? 1,
+                            unit_uom: (row.unit_uom as any) ?? "L",
+                            ...Object.fromEntries(cols.map(c => [c.key, (row as any)[c.key] ?? 0])) as any,
+                          }}
+                          onChange={(f, v) => setNewVal(p.id, idx, f, v)}
+                          onDelete={() => removePendingNew(p.id, idx)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!confirmDel}
+        onOpenChange={(o) => !o && setConfirmDel(null)}
+        title="Remove this pack?"
+        description={confirmDel ? `Pack "${confirmDel.label}" will be deactivated. You can re-add it later.` : ""}
+        confirmText="Remove"
+        variant="destructive"
+        onConfirm={deletePack}
+      />
+    </div>
+  );
+}
+
+function PackRow({
+  cols, dirty, isNew, values, onChange, onDelete,
+}: {
+  cols: Array<{ key: keyof Pack; label: string }>;
+  dirty?: boolean;
+  isNew?: boolean;
+  values: Record<string, any>;
+  onChange: (field: keyof Pack, value: string) => void;
+  onDelete: () => void;
+}) {
+  const inputCls = "h-8 text-xs bg-background border-input focus:ring-1 focus:ring-primary";
+  return (
+    <div
+      className={cn(
+        "grid items-center gap-2 px-3 py-1.5 border-b last:border-b-0 transition-colors",
+        dirty && "bg-yellow-500/10",
+        isNew && "bg-emerald-500/10",
+      )}
+      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
+    >
+      <div className="text-muted-foreground text-[11px]">{isNew ? "NEW" : ""}</div>
+      <Input className={inputCls} placeholder="e.g. 10 x 1"
+        value={values.pack_label} onChange={e => onChange("pack_label", e.target.value)} />
+      <Input className={cn(inputCls, "text-right")} type="number" min={0}
+        value={values.units_per_case} onChange={e => onChange("units_per_case", e.target.value)} />
+      <Input className={cn(inputCls, "text-right")} type="number" min={0} step="0.01"
+        value={values.unit_size} onChange={e => onChange("unit_size", e.target.value)} />
+      <Select value={values.unit_uom || ""} onValueChange={(v) => onChange("unit_uom", v)}>
+        <SelectTrigger className={cn(inputCls, "px-2")}><SelectValue placeholder="—" /></SelectTrigger>
+        <SelectContent>
+          {UOM_OPTIONS.map(u => <SelectItem key={u} value={u} className="text-xs">{u}</SelectItem>)}
+        </SelectContent>
+      </Select>
+      {cols.map(c => (
+        <Input key={c.key} className={cn(inputCls, "text-right")} type="number" step="0.01"
+          value={values[c.key]} onChange={e => onChange(c.key, e.target.value)} />
+      ))}
+      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+        onClick={onDelete}>
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
     </div>
   );
 }
