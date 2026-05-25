@@ -124,36 +124,34 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              {activeBranch ? `${activeBranch.branch_name} Branch` : "Welcome back to Raizechem Admin Panel"}
+        {/* Hero header */}
+        <div className="glass-card rounded-2xl p-5 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              {activeBranch ? `${activeBranch.branch_name} Branch` : "Overview"}
             </p>
+            <h1 className="text-2xl md:text-3xl font-display tracking-tight">
+              {format(new Date(), "EEEE")}, <span className="text-primary">{format(new Date(), "d MMM")}</span>
+            </h1>
+            <p className="text-sm text-muted-foreground">Welcome back — here's what's moving today.</p>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground bg-card border rounded-lg px-3 py-1.5">
-            <CalendarDays className="h-4 w-4" />
-            {format(new Date(), "dd MMM yyyy")}
+          <div className="flex flex-wrap items-center gap-2">
+            <Link to="/sales/invoices"><Button size="sm" className="gap-1.5 shadow-sm"><Plus className="h-3.5 w-3.5" />New Invoice</Button></Link>
+            <Link to="/finance/payments"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Payment</Button></Link>
+            <Link to="/sales/orders"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Order</Button></Link>
+            <Link to="/masters/dealers"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Dealer</Button></Link>
+            <Link to="/inventory/stock-in"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Stock In</Button></Link>
           </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-2">
-          <Link to="/sales/invoices"><Button size="sm" className="gap-1.5"><Plus className="h-3.5 w-3.5" />New Invoice</Button></Link>
-          <Link to="/finance/payments"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Record Payment</Button></Link>
-          <Link to="/sales/orders"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />New Order</Button></Link>
-          <Link to="/masters/dealers"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Add Dealer</Button></Link>
-          <Link to="/inventory/stock-in"><Button size="sm" variant="outline" className="gap-1.5"><Plus className="h-3.5 w-3.5" />Stock In</Button></Link>
         </div>
 
         {/* Primary Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Link key={stat.title} to={stat.link}>
-              <Card className="hover:shadow-md transition-all hover:border-primary/20 cursor-pointer group">
+              <Card className="glass-card glass-card-hover border-border/40 cursor-pointer group h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
-                  <div className={`p-2 rounded-lg bg-muted/50 group-hover:bg-primary/10 transition-colors`}>
+                  <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{stat.title}</CardTitle>
+                  <div className="p-2 rounded-lg bg-primary/5 group-hover:bg-primary/10 transition-colors">
                     <stat.icon className={`h-4 w-4 ${stat.color}`} />
                   </div>
                 </CardHeader>
@@ -161,7 +159,7 @@ export default function Dashboard() {
                   {isLoading ? (
                     <div className="h-8 w-24 animate-pulse rounded bg-muted" />
                   ) : (
-                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <div className="text-2xl font-bold font-mono tabular-nums">{stat.value}</div>
                   )}
                 </CardContent>
               </Card>
@@ -173,9 +171,9 @@ export default function Dashboard() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {secondaryStats.map((stat) => (
             <Link key={stat.title} to={stat.link}>
-              <Card className="hover:shadow-md transition-all hover:border-primary/20 cursor-pointer group">
+              <Card className="glass-card glass-card-hover border-border/40 cursor-pointer group h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+                  <CardTitle className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{stat.title}</CardTitle>
                   <div className="p-2 rounded-lg bg-muted/50 group-hover:bg-primary/10 transition-colors">
                     <stat.icon className="h-4 w-4 text-muted-foreground" />
                   </div>
@@ -184,13 +182,14 @@ export default function Dashboard() {
                   {isLoading ? (
                     <div className="h-8 w-16 animate-pulse rounded bg-muted" />
                   ) : (
-                    <div className="text-2xl font-bold">{stat.value}</div>
+                    <div className="text-2xl font-bold font-mono tabular-nums">{stat.value}</div>
                   )}
                 </CardContent>
               </Card>
             </Link>
           ))}
         </div>
+
 
         {/* Three-column grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
