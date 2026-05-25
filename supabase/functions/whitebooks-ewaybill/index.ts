@@ -7,17 +7,17 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const RAW_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://apisandbox.whitebooks.in/api/ewaybill/v1.03/";
-// Normalize: must end with / and contain the API path
-const NORMALIZED = RAW_BASE.endsWith("/") ? RAW_BASE : RAW_BASE + "/";
-const WHITEBOOKS_BASE = /\/api\/ewaybill\/v\d/.test(NORMALIZED)
-  ? NORMALIZED
-  : NORMALIZED.replace(/\/?$/, "/") + "api/ewaybill/v1.03/";
+// Whitebooks base. Production: https://api.whitebooks.in  Sandbox: https://api-sandbox.whitebooks.in
+const RAW_BASE = Deno.env.get("WHITEBOOKS_BASE_URL") ?? "https://api.whitebooks.in";
+// Strip any path the user pasted, then append the canonical API path.
+const ORIGIN = RAW_BASE.replace(/\/+$/, "").replace(/\/(api\/)?ewaybill(api)?\/v[\d.]+\/?$/i, "");
+const WHITEBOOKS_BASE = `${ORIGIN}/ewaybillapi/v1.03/`;
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
 const EWB_USERNAME = Deno.env.get("WHITEBOOKS_EWB_USERNAME") ?? "";
 const EWB_PASSWORD = Deno.env.get("WHITEBOOKS_EWB_PASSWORD") ?? "";
+const IP_ADDRESS = Deno.env.get("WHITEBOOKS_IP_ADDRESS") ?? "127.0.0.1";
 
 // In-memory auth token cache (per-instance, ~6h TTL on NIC side)
 let cachedAuthToken: string | null = null;
@@ -25,28 +25,27 @@ let cachedAuthExpiry = 0;
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
+  // Whitebooks authenticate is GET with credentials in headers
   const res = await fetch(`${WHITEBOOKS_BASE}authenticate`, {
-    method: "POST",
+    method: "GET",
     headers: {
       "Content-Type": "application/json",
-      "client-id": CLIENT_ID,
-      "client-secret": CLIENT_SECRET,
+      "username": EWB_USERNAME,
+      "password": EWB_PASSWORD,
+      "client_id": CLIENT_ID,
+      "client_secret": CLIENT_SECRET,
+      "ip_address": IP_ADDRESS,
       "gstin": GSTIN,
     },
-    body: JSON.stringify({
-      action: "ACCESSTOKEN",
-      username: EWB_USERNAME,
-      password: EWB_PASSWORD,
-    }),
   });
   const json = await res.json().catch(() => ({}));
   const token = json?.authtoken || json?.data?.authtoken || json?.AuthToken;
   if (!res.ok || !token) {
-    throw new Error(`NIC auth failed [${res.status}]: ${JSON.stringify(json).slice(0, 400)}`);
+    throw new Error(`Whitebooks auth failed [${res.status}]: ${JSON.stringify(json).slice(0, 400)}`);
   }
 
   cachedAuthToken = token;
-  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000; // 5h30m safety
+  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000;
   return token;
 }
 
@@ -55,8 +54,9 @@ async function getHeaders() {
   const authToken = await getAuthToken();
   return {
     "Content-Type": "application/json",
-    "client-id": CLIENT_ID,
-    "client-secret": CLIENT_SECRET,
+    "client_id": CLIENT_ID,
+    "client_secret": CLIENT_SECRET,
+      "ip_address": IP_ADDRESS,
     "gstin": GSTIN,
     "username": EWB_USERNAME,
     "authtoken": authToken,
@@ -158,16 +158,23 @@ Deno.serve(async (req) => {
       };
 
       // 4. Call Whitebooks API
-      const response = await fetch(`${WHITEBOOKS_BASE}generate`, {
+      const response = await fetch(`${WHITEBOOKS_BASE}ewayapi/genewaybill`, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
 
       const result = await response.json();
+      const data = result?.data ?? result;
+      const ewbNo = data?.ewayBillNo ?? data?.ewbNo;
+      const isOk = response.ok && (result?.status === 1 || result?.status_cd === 1 || ewbNo);
 
-      if (!response.ok || result.error || !result.ewayBillNo) {
-        const errorMsg = result.error?.message || result.message || JSON.stringify(result);
+      if (!isOk || !ewbNo) {
+        const errorMsg = result?.error?.message
+          || (Array.isArray(result?.error) ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ") : null)
+          || result?.message
+          || data?.message
+          || JSON.stringify(result).slice(0, 500);
         await supabase.from("waybills").update({
           status: "failed",
           error_msg: errorMsg,
@@ -175,21 +182,21 @@ Deno.serve(async (req) => {
           gsp_response: result,
         }).eq("id", wb.id);
 
-        return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: errorMsg, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // 5. Update Waybill with Success
       await supabase.from("waybills").update({
-        ewb_number: String(result.ewayBillNo),
+        ewb_number: String(ewbNo),
         status: "generated",
-        ewb_date: result.ewayBillDate || new Date().toISOString(),
-        valid_until: result.validUpto,
+        ewb_date: data?.ewayBillDate || new Date().toISOString(),
+        valid_until: data?.validUpto,
         gsp_request: payload,
         gsp_response: result,
         error_msg: null,
       }).eq("id", wb.id);
 
-      return new Response(JSON.stringify({ ok: true, ewb_number: result.ewayBillNo }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, ewb_number: ewbNo }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     if (action === "cancel") {
@@ -200,7 +207,7 @@ Deno.serve(async (req) => {
         cancelRmrk: reason || "Cancelled from ERP",
       };
 
-      const response = await fetch(`${WHITEBOOKS_BASE}cancel`, {
+      const response = await fetch(`${WHITEBOOKS_BASE}ewayapi/canewb`, {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
