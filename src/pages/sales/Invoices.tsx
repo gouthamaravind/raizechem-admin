@@ -289,7 +289,7 @@ export default function Invoices() {
       const wasAlter = !!alteringFrom;
       setDialogOpen(false); setDealerId("");
       setItems([{ product_id: "", pack_id: null, batch_id: "", qty: 1, rate: 0, gst_rate: 18, hsn_code: "", discount_pct: 0, discount_amount: 0 }]);
-      setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo("");
+      setTransportMode(""); setVehicleNo(""); setDispatchFrom(""); setDeliveryTo(""); setTransporterId("");
       setAdjustAdvance(false); setAdvanceAdjustAmount(0);
       setAlteringFrom(null);
       toast.success(wasAlter ? "Invoice altered — original voided, replacement created" : "Invoice created with GST and ledger entry");
