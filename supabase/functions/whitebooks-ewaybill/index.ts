@@ -90,6 +90,16 @@ async function getHeaders() {
   return { ...baseHeaders(), authtoken: authToken };
 }
 
+async function readWhitebooksJson(response: Response) {
+  const raw = await response.text();
+  if (!raw.trim()) return { raw, json: {} };
+  try {
+    return { raw, json: JSON.parse(raw) };
+  } catch {
+    return { raw, json: { status_cd: "0", error: { message: raw.slice(0, 500) } } };
+  }
+}
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -199,7 +209,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const { raw, json: result } = await readWhitebooksJson(response);
       const data = result?.data ?? result;
       const ewbNo = data?.ewayBillNo ?? data?.ewbNo;
       const isOk = response.ok && (result?.status === 1 || result?.status_cd === 1 || ewbNo);
@@ -209,7 +219,9 @@ Deno.serve(async (req) => {
           || (Array.isArray(result?.error) ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ") : null)
           || result?.message
           || data?.message
-          || JSON.stringify(result).slice(0, 500);
+          || raw.slice(0, 500)
+          || JSON.stringify(result).slice(0, 500)
+          || `WhiteBooks returned HTTP ${response.status} with an empty response`;
         await supabase.from("waybills").update({
           status: "failed",
           error_msg: errorMsg,
@@ -248,7 +260,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify(payload),
       });
 
-      const result = await response.json();
+      const { json: result } = await readWhitebooksJson(response);
 
       if (!response.ok || result.error) {
         return new Response(JSON.stringify({ error: result.error?.message || "Cancel failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
