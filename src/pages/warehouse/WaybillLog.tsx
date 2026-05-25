@@ -188,7 +188,7 @@ export default function WaybillLog() {
       });
 
       if (error) throw error;
-      if ((data as any)?.error) throw new Error(JSON.stringify((data as any).error));
+      if ((data as any)?.error && !(data as any)?.recoverable) throw new Error(JSON.stringify((data as any).error));
       return data;
     },
     onSuccess: (data: any) => {
