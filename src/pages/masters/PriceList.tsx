@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const HSN_RE = /^(\d{4}|\d{6}|\d{8})$/;
 const isValidHsn = (v: string) => !v || HSN_RE.test(v.trim());
