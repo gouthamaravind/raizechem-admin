@@ -12,9 +12,13 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
 import {
   Download, Upload, Save, Search, ChevronRight, ChevronDown,
-  Plus, Trash2, RotateCcw,
+  Plus, Trash2, RotateCcw, Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const HSN_RE = /^(\d{4}|\d{6}|\d{8})$/;
+const isValidHsn = (v: string) => !v || HSN_RE.test(v.trim());
+
 
 type Product = {
   id: string; name: string; brand: string | null; category: string | null;
