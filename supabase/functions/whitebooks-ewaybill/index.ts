@@ -15,7 +15,7 @@ const ORIGIN = RAW_BASE
   .replace(/\/(api\/)?ewaybill(api)?\/?(v[\d.]+)?\/?$/i, "")
   .replace(/\/eway\/?.*$/i, "");
 // Whitebooks simplified e-Way Bill wrapper path (matches their Swagger / Postman collection)
-const WHITEBOOKS_BASE = `${ORIGIN}/eway/ewayapi/dec/v1.03/`;
+const WHITEBOOKS_BASE = `${ORIGIN}/ewaybillapi/v1.03/`;
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
