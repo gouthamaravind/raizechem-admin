@@ -444,11 +444,13 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: enriched.friendly || rawErr, codes: enriched.codes, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
+      const nicDistance = Number(data?.distance ?? data?.transDistance ?? 0);
       await supabase.from("waybills").update({
         ewb_number: String(ewbNo),
         status: "generated",
         ewb_date: data?.ewayBillDate ? new Date(data.ewayBillDate).toISOString() : new Date().toISOString(),
         valid_until: data?.validUpto ? new Date(data.validUpto).toISOString() : null,
+        distance_km: nicDistance > 0 ? nicDistance : distance,
         gsp_request: payload,
         gsp_response: result,
         error_msg: null,
