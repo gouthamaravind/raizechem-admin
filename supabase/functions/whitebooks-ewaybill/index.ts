@@ -1,4 +1,15 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { EWB_ERROR_CODES } from "./error-codes.ts";
+
+function enrichEwbError(raw: string): { codes: string[]; friendly: string; original: string } {
+  const original = String(raw ?? "").trim();
+  if (!original) return { codes: [], friendly: "", original };
+  const matches = Array.from(original.matchAll(/\b(\d{3})\b/g)).map((m) => m[1]);
+  const codes = Array.from(new Set(matches)).filter((c) => EWB_ERROR_CODES[c]);
+  if (!codes.length) return { codes: [], friendly: original, original };
+  const explained = codes.map((c) => `${c}: ${EWB_ERROR_CODES[c]}`).join(" • ");
+  return { codes, friendly: `${explained}${original.includes(explained) ? "" : ` — NIC said: ${original}`}`, original };
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
