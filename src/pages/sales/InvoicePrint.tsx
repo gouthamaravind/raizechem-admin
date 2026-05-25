@@ -113,7 +113,7 @@ function RetailTemplate({ inv, dealer, items, company, isIntra, placeOfSupply }:
         <tbody>
           {items.map((it: any) => (
             <tr key={it.id}>
-              <td>{it.products?.name}</td>
+              <td>{it.products?.brand ? `${it.products.brand} — ${it.products.name}` : it.products?.name}</td>
               <td className="text-right">{it.qty}</td>
               <td className="text-right">₹{Number(it.total_amount).toFixed(2)}</td>
             </tr>
