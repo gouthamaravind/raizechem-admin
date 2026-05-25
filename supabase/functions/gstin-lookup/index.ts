@@ -79,34 +79,25 @@ Deno.serve(async (req) => {
       endpoint: "gstin-lookup",
     });
 
-    // Call external GST API
-    const apiBaseUrl = Deno.env.get("GST_API_BASE_URL");
-    const apiKey = Deno.env.get("GST_API_KEY");
+    // Call Appyflow GST verification API
+    const apiKey = Deno.env.get("APPFLOW_SECRET");
 
-    if (!apiBaseUrl || !apiKey) {
-      // Log the attempt
+    if (!apiKey) {
       await adminClient.from("audit_logs").insert({
         table_name: "dealers",
         record_id: "00000000-0000-0000-0000-000000000000",
         action: "GSTIN_LOOKUP_FAILED",
         actor_user_id: userId,
         actor_role: userRoles.join(","),
-        new_data: { gstin, error: "API keys not configured" },
+        new_data: { gstin, error: "APPFLOW_SECRET not configured" },
       });
-      return json({ error: "GSTIN verification API is not configured. Please add GST_API_BASE_URL and GST_API_KEY secrets." }, 503);
+      return json({ error: "GSTIN verification API is not configured. Please add APPFLOW_SECRET." }, 503);
     }
 
-    // Make API call (generic provider pattern)
     let apiResponse: Response;
     try {
-      const url = `${apiBaseUrl.replace(/\/$/, "")}/commonapi/v1.1/search?gstin=${gstin}&consent=Y`;
-      apiResponse = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-      });
+      const url = `https://appyflow.in/api/verifyGST?gstNo=${gstin}&key_secret=${encodeURIComponent(apiKey)}`;
+      apiResponse = await fetch(url, { method: "GET" });
     } catch (fetchErr) {
       await adminClient.from("audit_logs").insert({
         table_name: "dealers",
@@ -121,9 +112,12 @@ Deno.serve(async (req) => {
 
     const raw = await apiResponse.json();
 
-    // Normalize response (adapt to your provider's response shape)
-    // Common providers: MasterGST, ClearTax, GSTN Setu, KYC API
-    const data = raw.data || raw.result || raw;
+    if (raw.error === true || raw.error === "true") {
+      return json({ error: raw.message || "GSTIN not found or invalid" }, 404);
+    }
+
+    // Appyflow returns { taxpayerInfo: {...} }
+    const data = raw.taxpayerInfo || raw.data || raw.result || raw;
 
     const pradrAddr = data.pradr?.addr || {};
     const normalized = {
