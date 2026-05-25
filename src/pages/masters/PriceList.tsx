@@ -164,6 +164,31 @@ export default function PriceList() {
   const expandAll = () => setCollapsed(new Set());
   const collapseAll = () => setCollapsed(new Set(filtered.map(p => p.id)));
 
+  const getProdVal = (p: Product, field: "hsn_code" | "gst_rate") => {
+    const e = productEdits[p.id];
+    return (e && field in e ? (e as any)[field] : (p as any)[field]) ?? "";
+  };
+  const setProdVal = (p: Product, field: "hsn_code" | "gst_rate", raw: string) => {
+    const v = field === "gst_rate" ? (raw === "" ? 0 : Number(raw)) : raw;
+    setProductEdits(prev => ({ ...prev, [p.id]: { ...(prev[p.id] || {}), [field]: v } }));
+  };
+  const saveProduct = async (p: Product) => {
+    const patch = productEdits[p.id];
+    if (!patch) return;
+    setSavingProduct(p.id);
+    try {
+      const { error } = await supabase.from("products").update(patch).eq("id", p.id);
+      if (error) throw error;
+      toast.success(`Updated ${p.brand || p.name}`);
+      setProductEdits(prev => { const n = { ...prev }; delete n[p.id]; return n; });
+      qc.invalidateQueries({ queryKey: ["pricelist-products"] });
+    } catch (e: any) {
+      toast.error(e.message || "Save failed");
+    } finally {
+      setSavingProduct(null);
+    }
+  };
+
   const editCount = Object.keys(edits).length;
   const newCount = Object.values(pendingNew).reduce((n, l) => n + l.length, 0);
   const dirty = editCount + newCount;
