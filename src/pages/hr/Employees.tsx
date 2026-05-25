@@ -68,6 +68,33 @@ export default function Employees() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const toggleStatus = useMutation({
+    mutationFn: async (emp: any) => {
+      const next = emp.status === "active" ? "inactive" : "active";
+      const { error } = await supabase.from("employees").update({ status: next }).eq("id", emp.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Status updated");
+      setConfirmAction(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteEmp = useMutation({
+    mutationFn: async (emp: any) => {
+      const { error } = await supabase.from("employees").delete().eq("id", emp.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["employees"] });
+      toast.success("Employee removed");
+      setConfirmAction(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const filtered = employees.filter((emp: any) => {
     const s = search.toLowerCase();
