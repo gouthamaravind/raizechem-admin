@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
       // 4. Call Whitebooks API
       const response = await fetch(`${WHITEBOOKS_BASE}generate`, {
         method: "POST",
-        headers: getHeaders(),
+        headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
 
@@ -192,7 +192,7 @@ Deno.serve(async (req) => {
 
       const response = await fetch(`${WHITEBOOKS_BASE}cancel`, {
         method: "POST",
-        headers: getHeaders(),
+        headers: await getHeaders(),
         body: JSON.stringify(payload),
       });
 
