@@ -558,12 +558,19 @@ export default function PriceList() {
                         <div className="flex flex-col gap-1">
                           <label className="text-[10px] uppercase tracking-wide text-muted-foreground">HSN Code</label>
                           <Input
-                            className="h-8 text-xs w-32"
+                            className={cn(
+                              "h-8 text-xs w-32",
+                              !isValidHsn(String(getProdVal(p, "hsn_code") || "")) && "border-destructive"
+                            )}
                             placeholder="e.g. 38089390"
                             value={getProdVal(p, "hsn_code") as string}
                             onChange={e => setProdVal(p, "hsn_code", e.target.value)}
                           />
+                          {!isValidHsn(String(getProdVal(p, "hsn_code") || "")) && (
+                            <span className="text-[10px] text-destructive">Must be 4, 6, or 8 digits</span>
+                          )}
                         </div>
+
                         <div className="flex flex-col gap-1">
                           <label className="text-[10px] uppercase tracking-wide text-muted-foreground">GST %</label>
                           <Select
