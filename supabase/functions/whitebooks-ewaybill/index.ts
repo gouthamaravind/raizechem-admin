@@ -169,65 +169,121 @@ Deno.serve(async (req) => {
     }
 
     if (action === "generate") {
-      // 2. Fetch items
+      // 2. Fetch line items
       const items = wb.source_type === "invoice"
         ? (await supabase.from("invoice_items").select("*, products(name, hsn_code, unit)").eq("invoice_id", wb.source_id)).data ?? []
         : (await supabase.from("branch_transfer_items").select("*, products(name, hsn_code, unit)").eq("branch_transfer_id", wb.source_id)).data ?? [];
 
-      // 3. Construct Whitebooks Simplified JSON Payload
+      if (!items.length) {
+        return new Response(JSON.stringify({ error: "Source document has no items" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // 3. Fetch recipient (dealer for invoice, destination branch for transfer)
+      let toName = "", toAddr1 = "", toAddr2 = "", toPlace = "", toPincode = 0, toGstinResolved = wb.to_gstin || "URP", toStateCode = Number(wb.to_state_code || 36);
+      let docDate = new Date(wb.created_at);
+      if (wb.source_type === "invoice") {
+        const { data: inv } = await supabase.from("invoices").select("*, dealers(*)").eq("id", wb.source_id).single();
+        const d = inv?.dealers;
+        if (d) {
+          toName = d.gst_legal_name || d.gst_trade_name || d.name || "";
+          toAddr1 = d.shipping_address_line1 || d.address_line1 || "";
+          toAddr2 = d.shipping_address_line2 || d.address_line2 || "";
+          toPlace = d.shipping_city || d.city || "";
+          toPincode = Number((d.shipping_pincode || d.pincode || "0").toString().replace(/\D/g, "")) || 0;
+          toGstinResolved = wb.to_gstin || d.gst_number || "URP";
+          toStateCode = Number(wb.to_state_code || d.state_code || 36);
+        }
+        if (inv?.invoice_date) docDate = new Date(inv.invoice_date);
+      } else {
+        const { data: bt } = await supabase.from("branch_transfers").select("*, to_branch:branches!branch_transfers_to_branch_id_fkey(*)").eq("id", wb.source_id).single();
+        const b = bt?.to_branch;
+        if (b) {
+          toName = b.legal_name || b.branch_name || "";
+          toAddr1 = b.address_line1 || "";
+          toAddr2 = b.address_line2 || "";
+          toPlace = b.city || "";
+          toPincode = Number((b.pincode || "0").toString().replace(/\D/g, "")) || 0;
+          toGstinResolved = wb.to_gstin || b.gst_number || "";
+          toStateCode = Number(wb.to_state_code || b.state_code || 36);
+        }
+        if (bt?.transfer_date) docDate = new Date(bt.transfer_date);
+      }
+
+      // 4. Pre-validation (clearer than NIC error codes)
+      const fromStateCode = Number(wb.from_state_code || wb.branches?.state_code || 36);
+      const isInterState = fromStateCode !== toStateCode;
+      const distance = Number(wb.distance_km || 0);
+      const vehicleNo = (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
+      const transMode = wb.transport_mode === "rail" ? "2" : wb.transport_mode === "air" ? "3" : wb.transport_mode === "ship" ? "4" : "1";
+
+      const errors: string[] = [];
+      if (distance < 1 || distance > 4000) errors.push("distance_km must be 1-4000");
+      if (transMode === "1" && !vehicleNo) errors.push("vehicle_no required for road");
+      if (!toAddr1) errors.push("recipient address missing");
+      if (!toPlace) errors.push("recipient city missing");
+      if (!toPincode) errors.push("recipient pincode missing");
+      if (toGstinResolved !== "URP" && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9A-Z]$/.test(toGstinResolved)) errors.push("recipient GSTIN invalid");
+      if (errors.length) {
+        return new Response(JSON.stringify({ error: "Validation: " + errors.join(", ") }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      // 5. Construct Whitebooks/NIC payload
       const payload = {
         supplyType: "O",
-        subSupplyType: wb.source_type === "branch_transfer" ? "5" : "1", // 5 = Own use, 1 = Supply
+        subSupplyType: wb.source_type === "branch_transfer" ? "5" : "1",
         docType: wb.source_type === "branch_transfer" ? "CHL" : "INV",
         docNo: wb.source_number,
-        docDate: new Date(wb.created_at).toLocaleDateString("en-GB"), // DD/MM/YYYY
+        docDate: docDate.toLocaleDateString("en-GB"),
         fromGstin: wb.from_gstin || GSTIN,
         fromTrdName: wb.branches?.legal_name || wb.branches?.branch_name || "",
         fromAddr1: wb.branches?.address_line1 || "",
         fromAddr2: wb.branches?.address_line2 || "",
         fromPlace: wb.branches?.city || "",
-        fromPincode: Number(wb.branches?.pincode || 0),
-        fromStateCode: Number(wb.from_state_code || 36),
-        actFromStateCode: Number(wb.from_state_code || 36),
-        toGstin: wb.to_gstin || "URP",
-        toTrdName: wb.to_gstin === "URP" ? "Unregistered Person" : "",
-        toAddr1: "",
-        toAddr2: "",
-        toPlace: "",
-        toPincode: 0,
-        toStateCode: Number(wb.to_state_code || 36),
-        actToStateCode: Number(wb.to_state_code || 36),
+        fromPincode: Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0,
+        fromStateCode,
+        actFromStateCode: fromStateCode,
+        toGstin: toGstinResolved,
+        toTrdName: toName || (toGstinResolved === "URP" ? "Unregistered Person" : ""),
+        toAddr1,
+        toAddr2,
+        toPlace,
+        toPincode,
+        toStateCode,
+        actToStateCode: toStateCode,
         transactionType: 1,
         totalValue: Number(wb.taxable_value),
-        cgstValue: Number(wb.cgst_total),
-        sgstValue: Number(wb.sgst_total),
-        igstValue: Number(wb.igst_total),
+        cgstValue: isInterState ? 0 : Number(wb.cgst_total),
+        sgstValue: isInterState ? 0 : Number(wb.sgst_total),
+        igstValue: isInterState ? Number(wb.igst_total || (Number(wb.cgst_total) + Number(wb.sgst_total))) : 0,
         cessValue: 0,
         totInvValue: Number(wb.doc_value),
-        transMode: wb.transport_mode === "road" ? "1" : "1",
-        transDistance: String(wb.distance_km || 0),
+        transMode,
+        transDistance: String(distance),
         transporterName: wb.transporter_name || "",
         transporterId: wb.transporter_gstin || "",
         transDocNo: wb.transport_doc_no || "",
         transDocDate: wb.transport_doc_date ? new Date(wb.transport_doc_date).toLocaleDateString("en-GB") : "",
-        vehicleNo: (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase(),
+        vehicleNo,
         vehicleType: wb.vehicle_type || "R",
-        itemList: items.map((i: any, idx: number) => ({
-          itemNo: idx + 1,
-          productName: i.products?.name || "Product",
-          productDesc: i.products?.name || "",
-          hsnCode: Number(i.hsn_code || i.products?.hsn_code || 0),
-          quantity: Number(i.qty),
-          qtyUnit: i.products?.unit || "NOS",
-          cgstRate: Number(i.gst_rate || 0) / 2,
-          sgstRate: Number(i.gst_rate || 0) / 2,
-          igstRate: 0,
-          cessRate: 0,
-          taxableAmount: Number(i.amount),
-        })),
+        itemList: items.map((i: any, idx: number) => {
+          const gstRate = Number(i.gst_rate || 0);
+          return {
+            itemNo: idx + 1,
+            productName: (i.products?.name || "Product").slice(0, 100),
+            productDesc: (i.products?.name || "").slice(0, 100),
+            hsnCode: Number((i.hsn_code || i.products?.hsn_code || "0").toString().replace(/\D/g, "")) || 0,
+            quantity: Number(i.qty),
+            qtyUnit: i.products?.unit || "NOS",
+            cgstRate: isInterState ? 0 : gstRate / 2,
+            sgstRate: isInterState ? 0 : gstRate / 2,
+            igstRate: isInterState ? gstRate : 0,
+            cessRate: 0,
+            taxableAmount: Number(i.amount),
+          };
+        }),
       };
 
-      // 4. Call Whitebooks API
+      // 6. Call Whitebooks
       const response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
         method: "POST",
         headers: await getHeaders(),
@@ -237,46 +293,47 @@ Deno.serve(async (req) => {
       const { raw, json: result } = await readWhitebooksJson(response);
       const data = result?.data ?? result;
       const ewbNo = data?.ewayBillNo ?? data?.ewbNo;
-      const isOk = response.ok && (result?.status === 1 || result?.status_cd === 1 || ewbNo);
+      const statusCd = String(result?.status_cd ?? result?.status ?? "");
+      const isOk = response.ok && (statusCd === "1" || !!ewbNo);
 
       if (!isOk || !ewbNo) {
-        const errorMsg = result?.error?.message
-          || (Array.isArray(result?.error) ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ") : null)
-          || result?.message
-          || data?.message
-          || raw.slice(0, 500)
-          || JSON.stringify(result).slice(0, 500)
-          || `WhiteBooks returned HTTP ${response.status} with an empty response`;
+        const errs = Array.isArray(result?.error)
+          ? result.error.map((e: any) => e.errorMessage || e.errorCode || JSON.stringify(e)).join("; ")
+          : (result?.error?.message || result?.error?.errorMessage || result?.errorDesc || result?.message || data?.message);
+        const errorMsg = errs || raw.slice(0, 500) || `WhiteBooks HTTP ${response.status}`;
         await supabase.from("waybills").update({
           status: "failed",
           error_msg: errorMsg,
           gsp_request: payload,
           gsp_response: result,
         }).eq("id", wb.id);
-
         return new Response(JSON.stringify({ error: errorMsg, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
-      // 5. Update Waybill with Success
       await supabase.from("waybills").update({
         ewb_number: String(ewbNo),
         status: "generated",
-        ewb_date: data?.ewayBillDate || new Date().toISOString(),
-        valid_until: data?.validUpto,
+        ewb_date: data?.ewayBillDate ? new Date(data.ewayBillDate).toISOString() : new Date().toISOString(),
+        valid_until: data?.validUpto ? new Date(data.validUpto).toISOString() : null,
         gsp_request: payload,
         gsp_response: result,
         error_msg: null,
+        generated_at: new Date().toISOString(),
       }).eq("id", wb.id);
 
-      return new Response(JSON.stringify({ ok: true, ewb_number: ewbNo }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ ok: true, ewb_number: ewbNo, valid_until: data?.validUpto }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+
     if (action === "cancel") {
-      const { reason } = body;
+      const { reason, cancel_reason_code } = body;
+      if (!wb.ewb_number) {
+        return new Response(JSON.stringify({ error: "Waybill has no EWB number to cancel" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const payload = {
         ewbNo: Number(wb.ewb_number),
-        cancelRsnCode: 4, // 4 = Data entry error
-        cancelRmrk: reason || "Cancelled from ERP",
+        cancelRsnCode: Number(cancel_reason_code || 4), // 1=Duplicate, 2=Order Cancelled, 3=Data Entry Mistake, 4=Others
+        cancelRmrk: (reason || "Cancelled from ERP").slice(0, 100),
       };
 
       const response = await fetch(WHITEBOOKS_CANCEL_ENDPOINT, {
@@ -285,20 +342,26 @@ Deno.serve(async (req) => {
         body: JSON.stringify(payload),
       });
 
-      const { json: result } = await readWhitebooksJson(response);
-
-      if (!response.ok || result.error) {
-        return new Response(JSON.stringify({ error: result.error?.message || "Cancel failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { raw, json: result } = await readWhitebooksJson(response);
+      const statusCd = String(result?.status_cd ?? result?.status ?? "");
+      const okCancel = response.ok && (statusCd === "1" || result?.data?.cancelDate);
+      if (!okCancel) {
+        const errs = Array.isArray(result?.error)
+          ? result.error.map((e: any) => e.errorMessage || e.errorCode).join("; ")
+          : (result?.error?.message || result?.errorDesc || result?.message);
+        return new Response(JSON.stringify({ error: errs || raw.slice(0, 500) || "Cancel failed", raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       await supabase.from("waybills").update({
         status: "cancelled",
         cancelled_at: new Date().toISOString(),
         cancel_reason: reason,
+        gsp_response: result,
       }).eq("id", wb.id);
 
       return new Response(JSON.stringify({ ok: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
 
     return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
