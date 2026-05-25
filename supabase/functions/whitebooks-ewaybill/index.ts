@@ -53,6 +53,8 @@ function authHeaders(): Record<string, string> {
 }
 
 function apiHeaders(authToken: string): Record<string, string> {
+  // Per Whitebooks Swagger (genewaybill): only ip_address, client_id, client_secret,
+  // gstin and authtoken are accepted as headers. Do NOT send username/gst_username here.
   return {
     "Content-Type": "application/json",
     "accept": "*/*",
@@ -60,10 +62,14 @@ function apiHeaders(authToken: string): Record<string, string> {
     "client_id": CLIENT_ID,
     "client_secret": CLIENT_SECRET,
     "gstin": GSTIN,
-    "gst_username": GST_USERNAME,
-    "username": GST_USERNAME,
     "authtoken": authToken,
   };
+}
+
+function withEmail(endpoint: string): string {
+  const u = new URL(endpoint);
+  if (EMAIL) u.searchParams.set("email", EMAIL);
+  return u.toString();
 }
 
 let cachedAuthToken: string | null = null;
@@ -368,7 +374,7 @@ Deno.serve(async (req) => {
       };
 
       // 6. Call Whitebooks (retry once with fresh token if response is the bare {status_cd:"0"} auth-rejection)
-      let response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
+      let response = await fetch(withEmail(WHITEBOOKS_GENERATE_ENDPOINT), {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
@@ -378,7 +384,7 @@ Deno.serve(async (req) => {
         r && typeof r === "object" && String(r.status_cd ?? "") === "0" && !r.error && !r.errorDesc && !r.message && !r.data;
       if (isBareAuthReject(parsed.json)) {
         cachedAuthToken = null; cachedAuthExpiry = 0;
-        response = await fetch(WHITEBOOKS_GENERATE_ENDPOINT, {
+        response = await fetch(withEmail(WHITEBOOKS_GENERATE_ENDPOINT), {
           method: "POST",
           headers: await getHeaders(),
           body: JSON.stringify(payload),
@@ -435,7 +441,7 @@ Deno.serve(async (req) => {
         cancelRmrk: (reason || "Cancelled from ERP").slice(0, 100),
       };
 
-      const response = await fetch(WHITEBOOKS_CANCEL_ENDPOINT, {
+      const response = await fetch(withEmail(WHITEBOOKS_CANCEL_ENDPOINT), {
         method: "POST",
         headers: await getHeaders(),
         body: JSON.stringify(payload),
