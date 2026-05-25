@@ -71,31 +71,32 @@ async function getAuthToken(): Promise<string> {
   const rawText = await res.text();
   let json: any = {};
   try { json = JSON.parse(rawText); } catch { /* keep raw */ }
+  const status_cd = String(json?.status_cd ?? "");
   const token =
     json?.authtoken ||
     json?.data?.authtoken ||
     json?.AuthToken ||
     json?.result?.authtoken;
-  if (!res.ok || !token) {
+  if (!res.ok || status_cd !== "1" || !token) {
     const respHeaders: Record<string, string> = {};
     res.headers.forEach((v, k) => { respHeaders[k] = v; });
-    const sent = baseHeaders();
     const sentMasked = {
-      email: sent.email,
-      gst_username: sent.gst_username,
-      password_len: sent.password.length,
-      client_id_preview: sent.client_id.slice(0, 6) + "...",
-      client_secret_len: sent.client_secret.length,
-      Gstin: sent.Gstin,
-      ip_address: sent.ip_address,
+      email: EMAIL,
+      username: GST_USERNAME,
+      password_len: GST_PASSWORD.length,
+      client_id_preview: CLIENT_ID.slice(0, 6) + "...",
+      client_secret_len: CLIENT_SECRET.length,
+      gstin: GSTIN,
+      ip_address: IP_ADDRESS,
     };
     throw new Error(JSON.stringify({
       msg: "Whitebooks auth failed",
       status: res.status,
+      status_cd,
       raw: rawText.slice(0, 800),
       response_headers: respHeaders,
-      sent_headers: sentMasked,
-      url: WHITEBOOKS_AUTH_ENDPOINT,
+      sent: sentMasked,
+      url: url.toString().replace(GST_PASSWORD, "***"),
     }));
   }
   cachedAuthToken = token;
@@ -105,8 +106,9 @@ async function getAuthToken(): Promise<string> {
 
 async function getHeaders() {
   const authToken = await getAuthToken();
-  return { ...baseHeaders(), authtoken: authToken };
+  return apiHeaders(authToken);
 }
+
 
 async function readWhitebooksJson(response: Response) {
   const raw = await response.text();
