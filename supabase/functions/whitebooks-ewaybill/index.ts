@@ -355,16 +355,17 @@ Deno.serve(async (req) => {
 
       if (!isOk || !ewbNo) {
         const errs = Array.isArray(result?.error)
-          ? result.error.map((e: any) => e.errorMessage || e.errorCode || JSON.stringify(e)).join("; ")
+          ? result.error.map((e: any) => `${e.errorCode ?? ""} ${e.errorMessage ?? e.error_msg ?? ""}`.trim()).join("; ")
           : (result?.error?.message || result?.error?.errorMessage || result?.errorDesc || result?.message || data?.message);
-        const errorMsg = errs || raw.slice(0, 500) || `WhiteBooks HTTP ${response.status}`;
+        const rawErr = errs || raw.slice(0, 500) || `WhiteBooks HTTP ${response.status}`;
+        const enriched = enrichEwbError(rawErr);
         await supabase.from("waybills").update({
           status: "failed",
-          error_msg: errorMsg,
+          error_msg: enriched.friendly || rawErr,
           gsp_request: payload,
           gsp_response: result,
         }).eq("id", wb.id);
-        return new Response(JSON.stringify({ error: errorMsg, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ error: enriched.friendly || rawErr, codes: enriched.codes, raw: result }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       await supabase.from("waybills").update({
