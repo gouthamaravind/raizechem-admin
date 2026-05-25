@@ -1,5 +1,6 @@
 // AUTO-GENERATED from NIC e-Way Bill error code list. Do not edit by hand.
 export const EWB_ERROR_CODES: Record<string, string> = {
+  "702": "Distance between dispatch and delivery pincodes is out of range. Enter the actual road distance (NIC allows ±10% of their pincode-to-pincode distance). Try the distance shown on Google Maps between the two pincodes.",
   "100": "Invalid Json",
   "101": "Invalid Username",
   "102": "Invalid Password",
