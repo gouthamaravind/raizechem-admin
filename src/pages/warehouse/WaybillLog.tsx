@@ -65,6 +65,18 @@ export default function WaybillLog() {
     },
   });
 
+  const { data: branchRow } = useQuery({
+    queryKey: ["branch-row", branchId],
+    enabled: !!branchId,
+    queryFn: async () => {
+      const { data } = await supabase.from("branches").select("id, branch_name, pincode, gst_number").eq("id", branchId!).single();
+      return data;
+    },
+  });
+  const branchMissing: string[] = [];
+  if (branchRow && !branchRow.pincode) branchMissing.push("pincode");
+  if (branchRow && !branchRow.gst_number) branchMissing.push("GSTIN");
+
   const { data: sources = [] } = useQuery({
     queryKey: ["wb-sources", sourceType, branchId],
     enabled: openNew,
@@ -72,7 +84,7 @@ export default function WaybillLog() {
       if (sourceType === "invoice") {
         const { data } = await supabase
           .from("invoices")
-          .select("id, invoice_number, total_amount, dealer_id, branch_id, dealers(name, gst_number, state_code)")
+          .select("id, invoice_number, total_amount, dealer_id, branch_id, transporter_id, dealers(name, gst_number, state_code)")
           .eq("branch_id", branchId!)
           .order("invoice_date", { ascending: false })
           .limit(100);
@@ -88,6 +100,20 @@ export default function WaybillLog() {
       }
     },
   });
+
+  // Prefill transporter when invoice source is picked
+  useEffect(() => {
+    if (sourceType !== "invoice" || !sourceId) return;
+    const src: any = (sources as any[]).find((s) => s.id === sourceId);
+    if (!src?.transporter_id) return;
+    supabase.from("transporters" as any).select("id, name, gst_number").eq("id", src.transporter_id).single().then(({ data }) => {
+      if (data) {
+        setTransporterId((data as any).id);
+        setTransporterName((data as any).name || "");
+        setTransporterGstin((data as any).gst_number || "");
+      }
+    });
+  }, [sourceId, sourceType, sources]);
 
   const createWb = useMutation({
     mutationFn: async () => {
