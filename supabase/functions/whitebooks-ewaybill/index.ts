@@ -82,6 +82,14 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = url.searchParams.get("action") ?? (body as any).action ?? "generate";
 
+    if (action === "auth_test") {
+      try {
+        const token = await getAuthToken();
+        return new Response(JSON.stringify({ ok: true, token_preview: token.slice(0, 12) + "...", base: ORIGIN }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: String(e), base: ORIGIN }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     if (!body.waybill_id) {
       return new Response(
