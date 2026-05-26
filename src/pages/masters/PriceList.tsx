@@ -476,7 +476,7 @@ export default function PriceList() {
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
             <Upload className="h-4 w-4 mr-1.5" /> Import
           </Button>
-          <Button variant="outline" size="sm" onClick={exportXlsx}>
+          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4 mr-1.5" /> Export
           </Button>
           {dirty > 0 && (
