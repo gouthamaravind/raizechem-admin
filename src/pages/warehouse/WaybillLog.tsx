@@ -384,7 +384,7 @@ export default function WaybillLog() {
                       <TableCell className="font-mono text-xs">{w.doc_number}</TableCell>
                       <TableCell className="font-mono">{w.ewb_number ?? "—"}</TableCell>
                       <TableCell className="text-xs">{w.source_type === "invoice" ? "Invoice" : "Branch Tx"} • {w.source_number}</TableCell>
-                      <TableCell className="text-xs">{w.vehicle_no || "—"}</TableCell>
+                      <TableCell className="text-xs">{w.transporter_name || "—"}</TableCell>
                       <TableCell>₹{Number(w.doc_value).toLocaleString("en-IN")}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
