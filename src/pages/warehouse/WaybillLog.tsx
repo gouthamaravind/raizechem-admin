@@ -120,8 +120,8 @@ export default function WaybillLog() {
       if (!sourceId) throw new Error("Pick a source document");
       const src: any = (sources as any[]).find((s: any) => s.id === sourceId);
       if (!src) throw new Error("Source not loaded");
-      if (transportMode === "road") {
-        if (!vehicleNo || vehicleNo.trim().length < 6) throw new Error("Vehicle No is required for road transport (e.g. TS09EE1234)");
+      if (!transporterGstin || transporterGstin.length !== 15) {
+        throw new Error("Transporter with valid 15-char GSTIN required (we generate Part-A only)");
       }
 
       const { data: branch } = await supabase.from("branches").select("*").eq("id", branchId!).single();
