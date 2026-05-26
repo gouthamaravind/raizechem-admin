@@ -512,12 +512,21 @@ export default function InvoicePrint() {
     },
   });
 
+  const { data: branch } = useQuery({
+    queryKey: ["invoice-branch-print", (invoice as any)?.branch_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("branches").select("*").eq("id", (invoice as any).branch_id).maybeSingle();
+      return data;
+    },
+    enabled: !!(invoice as any)?.branch_id,
+  });
+
   if (isLoading) return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" /></div>;
   if (!invoice) return <div className="p-8 text-center">Invoice not found</div>;
 
   const inv = invoice as any;
   const dealer = inv.dealers;
-  const isIntra = dealer?.state_code === ((company as any)?.state_code || "36");
+  const isIntra = dealer?.state_code === ((branch as any)?.state_code || (company as any)?.state_code || "36");
   const placeOfSupply = inv.place_of_supply || dealer?.state || "Telangana";
   const template = (company as any)?.invoice_template || "standard";
 
