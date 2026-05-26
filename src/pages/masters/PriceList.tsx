@@ -708,6 +708,10 @@ export default function PriceList() {
                           <PackRow
                             key={pk.id}
                             cols={cols}
+                            customCols={customCols}
+                            customValues={customValues[pk.id] || {}}
+                            onCustomChange={(colId, v) => setCustomVal(pk.id, colId, v)}
+                            packId={pk.id}
                             dirty={isDirty}
                             values={{
                               pack_label: getVal(pk, "pack_label") as any,
@@ -726,6 +730,10 @@ export default function PriceList() {
                         <PackRow
                           key={`new-${p.id}-${idx}`}
                           cols={cols}
+                          customCols={customCols}
+                          customValues={{}}
+                          onCustomChange={() => {}}
+                          packId={`new-${p.id}-${idx}`}
                           isNew
                           values={{
                             pack_label: (row.pack_label as any) ?? "",
