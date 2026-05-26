@@ -23,6 +23,26 @@ function enrichEwbError(raw: any): { codes: string[]; friendly: string; original
 }
 
 /**
+ * Parse NIC Custom Date String (e.g., "26/05/2026 11:30:00 AM") into ISO
+ */
+function parseNicDate(s: any): string | null {
+  if (!s) return null;
+  const str = String(s).trim();
+  // Match DD/MM/YYYY HH:MM:SS AM/PM
+  const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i);
+  if (m) {
+    let [, d, mo, y, hh = "0", mm = "0", ss = "0", ap] = m;
+    let h = parseInt(hh);
+    if (ap?.toUpperCase() === "PM" && h < 12) h += 12;
+    if (ap?.toUpperCase() === "AM" && h === 12) h = 0;
+    const dt = new Date(Date.UTC(+y, +mo - 1, +d, h, +mm, +ss));
+    return isNaN(dt.getTime()) ? null : dt.toISOString();
+  }
+  const dt = new Date(str);
+  return isNaN(dt.getTime()) ? null : dt.toISOString();
+}
+
+/**
  * Safe numeric conversion
  */
 function toNum(v: unknown, fallback = 0): number {
@@ -100,7 +120,6 @@ async function getAuthToken(): Promise<string> {
   let json: any = {};
   try { json = JSON.parse(rawText); } catch { /* ignore */ }
   
-  // Whitebooks sometimes nests the token in 'data'
   const token = json?.data?.authtoken || json?.authtoken || (json?.status_cd === "1" ? "VALIDATED" : "");
   
   if (!res.ok || !token || json?.status_cd === "0") {
@@ -109,7 +128,7 @@ async function getAuthToken(): Promise<string> {
   }
   
   cachedAuthToken = token;
-  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000; // 5.5 hours
+  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000;
   return token;
 }
 
@@ -146,7 +165,7 @@ Deno.serve(async (req) => {
         ? (await supabase.from("invoice_items").select("*, products(name, hsn_code, unit)").eq("invoice_id", wb.source_id)).data ?? []
         : (await supabase.from("branch_transfer_items").select("*, products(name, hsn_code, unit)").eq("branch_transfer_id", wb.source_id)).data ?? [];
 
-      if (!items.length) return new Response(JSON.stringify({ error: "No items found in source document" }), { status: 400, headers: corsHeaders });
+      if (!items.length) return new Response(JSON.stringify({ error: "No items found" }), { status: 400, headers: corsHeaders });
 
       const branch = wb.branches;
       let toGstin = wb.to_gstin || "URP", 
@@ -158,7 +177,6 @@ Deno.serve(async (req) => {
           toStateCode = 36;
       let docDate = wb.created_at;
 
-      // 1. Resolve Recipient Data
       if (wb.source_type === "invoice") {
         const { data: inv } = await supabase.from("invoices").select("*, dealers(*)").eq("id", wb.source_id).single();
         const d = inv?.dealers;
@@ -190,7 +208,6 @@ Deno.serve(async (req) => {
       const fromStateCode = toNum(wb.from_state_code || branch?.state_code || branch?.gst_number?.slice(0, 2), 36);
       const isInterState = fromStateCode !== toStateCode;
 
-      // 2. Construct NIC/Whitebooks Payload
       const payload = {
         supplyType: "O",
         subSupplyType: wb.source_type === "branch_transfer" ? "5" : "1",
@@ -204,7 +221,7 @@ Deno.serve(async (req) => {
         fromPlace: (branch?.city || "City").slice(0, 49),
         fromPincode: toNum(branch?.pincode),
         fromStateCode: fromStateCode,
-        actualFromStateCode: fromStateCode, // Mandatory for Part-A
+        actualFromStateCode: fromStateCode,
         toGstin: toGstin === "URP" ? "URP" : toGstin,
         toTrdName: toName,
         toAddr1: toAddr1,
@@ -220,8 +237,8 @@ Deno.serve(async (req) => {
         igstValue: isInterState ? Number(wb.igst_total) : 0,
         cessValue: 0,
         totInvValue: Number(wb.doc_value),
-        transMode: (wb.vehicle_no || "").length >= 6 ? "1" : (wb.transporter_gstin ? "" : ""), 
-        transDistance: 0, // Number 0 triggers NIC auto-calculation
+        transMode: (wb.vehicle_no || "").length >= 6 ? "1" : "",
+        transDistance: 0,
         transporterName: (wb.transporter_name || "").slice(0, 99),
         transporterId: wb.transporter_gstin || "",
         vehicleNo: (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase(),
@@ -244,8 +261,6 @@ Deno.serve(async (req) => {
         }),
       };
 
-      console.log(`[EWB] Generating for ${wb.source_number}...`);
-      
       const response = await fetch(withEmail(WHITEBOOKS_GENERATE_ENDPOINT), {
         method: "POST",
         headers: await getHeaders(),
@@ -258,27 +273,15 @@ Deno.serve(async (req) => {
       if (!response.ok || !data?.ewayBillNo) {
         const rawErr = result?.error?.message || result?.message || JSON.stringify(result);
         const enriched = enrichEwbError(rawErr);
-        console.error(`[EWB] NIC Error: ${rawErr}`);
-        
-        await supabase.from("waybills").update({ 
-          status: "failed", 
-          error_msg: enriched.friendly, 
-          gsp_request: payload, 
-          gsp_response: result 
-        }).eq("id", wb.id);
-        
-        return new Response(JSON.stringify({ error: enriched.friendly, codes: enriched.codes }), { 
-          status: 400, 
-          headers: corsHeaders 
-        });
+        await supabase.from("waybills").update({ status: "failed", error_msg: enriched.friendly, gsp_request: payload, gsp_response: result }).eq("id", wb.id);
+        return new Response(JSON.stringify({ error: enriched.friendly }), { status: 400, headers: corsHeaders });
       }
 
-      // Success
       await supabase.from("waybills").update({
         ewb_number: String(data.ewayBillNo),
         status: "generated",
-        ewb_date: data.ewayBillDate || new Date().toISOString(),
-        valid_until: data.validUpto,
+        ewb_date: parseNicDate(data.ewayBillDate) || new Date().toISOString(),
+        valid_until: parseNicDate(data.validUpto),
         gsp_request: payload,
         gsp_response: result,
         error_msg: null,
@@ -288,36 +291,16 @@ Deno.serve(async (req) => {
     }
 
     if (action === "cancel") {
-      const payload = { 
-        ewbNo: Number(wb.ewb_number), 
-        cancelRsnCode: toNum(body.cancel_reason_code, 4), 
-        cancelRmrk: (body.reason || "Cancelled from ERP").slice(0, 99)
-      };
-      
-      const response = await fetch(withEmail(WHITEBOOKS_CANCEL_ENDPOINT), { 
-        method: "POST", 
-        headers: await getHeaders(), 
-        body: JSON.stringify(payload) 
-      });
-      
+      const payload = { ewbNo: Number(wb.ewb_number), cancelRsnCode: 4, cancelRmrk: (body.reason || "Cancelled").slice(0, 99) };
+      const response = await fetch(withEmail(WHITEBOOKS_CANCEL_ENDPOINT), { method: "POST", headers: await getHeaders(), body: JSON.stringify(payload) });
       const result = await response.json();
-      if (!response.ok || result?.status_cd === "0") {
-        const err = result?.error?.message || "Cancel failed";
-        throw new Error(err);
-      }
-
-      await supabase.from("waybills").update({ 
-        status: "cancelled", 
-        cancelled_at: new Date().toISOString(),
-        gsp_response: result
-      }).eq("id", wb.id);
-      
+      if (!response.ok || result?.status_cd === "0") throw new Error(result?.error?.message || "Cancel failed");
+      await supabase.from("waybills").update({ status: "cancelled", cancelled_at: new Date().toISOString(), gsp_response: result }).eq("id", wb.id);
       return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
     }
 
     return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: corsHeaders });
   } catch (err) {
-    console.error(`[EWB] System Error: ${err.message}`);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });
