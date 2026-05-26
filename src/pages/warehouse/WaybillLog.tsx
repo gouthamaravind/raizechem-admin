@@ -173,7 +173,7 @@ export default function WaybillLog() {
     onSuccess: (id) => {
       toast.success("Waybill draft created");
       setOpenNew(false);
-      setSourceId(""); setVehicleNo(""); setDistance("");
+      setSourceId(""); setDistance("");
       setTransporterId(""); setTransporterName(""); setTransporterGstin("");
       qc.invalidateQueries({ queryKey: ["waybills"] });
       generate.mutate(id);
