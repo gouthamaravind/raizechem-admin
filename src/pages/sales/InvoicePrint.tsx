@@ -571,7 +571,7 @@ export default function InvoicePrint() {
     }
   };
 
-  const templateProps = { inv, dealer, items, company, isIntra, placeOfSupply };
+  const templateProps = { inv, dealer, items, company, branch, isIntra, placeOfSupply };
 
   return (
     <div>
