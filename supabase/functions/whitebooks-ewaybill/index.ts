@@ -424,7 +424,9 @@ Deno.serve(async (req) => {
       }
       const { raw, json: result } = parsed;
       const data = result?.data ?? result;
-      const ewbNo = data?.ewayBillNo ?? data?.ewbNo;
+      // Read EWB number from raw text to avoid JS number-precision loss on large IDs.
+      const ewbRawMatch = raw.match(/"(?:ewayBillNo|ewbNo)"\s*:\s*"?(\d{10,16})"?/);
+      const ewbNo = ewbRawMatch ? ewbRawMatch[1] : (data?.ewayBillNo ?? data?.ewbNo);
       const statusCd = String(result?.status_cd ?? result?.status ?? "");
       const isOk = response.ok && (statusCd === "1" || !!ewbNo);
 
