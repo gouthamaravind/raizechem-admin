@@ -1,16 +1,30 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { EWB_ERROR_CODES } from "./error-codes.ts";
 
-function enrichEwbError(raw: string): { codes: string[]; friendly: string; original: string } {
-  const original = String(raw ?? "").trim();
-  if (!original) return { codes: [], friendly: "", original };
-  const matches = Array.from(original.matchAll(/\b(\d{3})\b/g)).map((m) => m[1]);
+/**
+ * Enhanced Error Parsing
+ * Extracts 3-digit NIC error codes and provides friendly explanations.
+ */
+function enrichEwbError(raw: any): { codes: string[]; friendly: string; original: string } {
+  const original = typeof raw === 'string' ? raw : JSON.stringify(raw);
+  if (!original || original === '{}') return { codes: [], friendly: "Unknown Error", original };
+  
+  const matches = Array.from(original.matchAll(/\b(\d{3,4})\b/g)).map((m) => m[1]);
   const codes = Array.from(new Set(matches)).filter((c) => EWB_ERROR_CODES[c]);
-  if (!codes.length) return { codes: [], friendly: original, original };
+  
+  if (!codes.length) return { codes: [], friendly: original.slice(0, 500), original };
+  
   const explained = codes.map((c) => `${c}: ${EWB_ERROR_CODES[c]}`).join(" • ");
-  return { codes, friendly: `${explained}${original.includes(explained) ? "" : ` — NIC said: ${original}`}`, original };
+  return { 
+    codes, 
+    friendly: explained.length > 500 ? explained.slice(0, 500) + "..." : explained, 
+    original 
+  };
 }
 
+/**
+ * Safe numeric conversion
+ */
 function toNum(v: unknown, fallback = 0): number {
   if (v == null) return fallback;
   if (typeof v === "number") return Number.isFinite(v) ? v : fallback;
@@ -18,6 +32,19 @@ function toNum(v: unknown, fallback = 0): number {
   if (!s) return fallback;
   const n = parseInt(s);
   return isNaN(n) ? fallback : n;
+}
+
+/**
+ * Format Date as DD/MM/YYYY (NIC standard)
+ */
+function formatNicDate(date: Date | string | null): string {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 const corsHeaders = {
@@ -52,6 +79,8 @@ function withEmail(endpoint: string): string {
 
 async function getAuthToken(): Promise<string> {
   if (cachedAuthToken && Date.now() < cachedAuthExpiry) return cachedAuthToken;
+  
+  console.log(`[EWB] Authenticating for GSTIN: ${GSTIN}...`);
   const url = new URL(withEmail(WHITEBOOKS_AUTH_ENDPOINT));
   url.searchParams.set("username", GST_USERNAME);
   url.searchParams.set("password", GST_PASSWORD);
@@ -69,16 +98,18 @@ async function getAuthToken(): Promise<string> {
 
   const rawText = await res.text();
   let json: any = {};
-  try { json = JSON.parse(rawText); } catch { /* keep raw */ }
+  try { json = JSON.parse(rawText); } catch { /* ignore */ }
   
+  // Whitebooks sometimes nests the token in 'data'
   const token = json?.data?.authtoken || json?.authtoken || (json?.status_cd === "1" ? "VALIDATED" : "");
   
-  if (!res.ok || !token) {
-    throw new Error(`Whitebooks auth failed: ${rawText.slice(0, 200)}`);
+  if (!res.ok || !token || json?.status_cd === "0") {
+    console.error(`[EWB] Auth Failed: ${rawText}`);
+    throw new Error(`Whitebooks auth failed: ${json?.error?.message || rawText.slice(0, 100)}`);
   }
   
   cachedAuthToken = token;
-  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000;
+  cachedAuthExpiry = Date.now() + 5.5 * 60 * 60 * 1000; // 5.5 hours
   return token;
 }
 
@@ -111,68 +142,74 @@ Deno.serve(async (req) => {
     if (wbErr || !wb) return new Response(JSON.stringify({ error: "Waybill not found" }), { status: 404, headers: corsHeaders });
 
     if (action === "generate") {
-      // 1. Fetch Source & Items
       const items = wb.source_type === "invoice"
         ? (await supabase.from("invoice_items").select("*, products(name, hsn_code, unit)").eq("invoice_id", wb.source_id)).data ?? []
         : (await supabase.from("branch_transfer_items").select("*, products(name, hsn_code, unit)").eq("branch_transfer_id", wb.source_id)).data ?? [];
 
-      if (!items.length) return new Response(JSON.stringify({ error: "No items found" }), { status: 400, headers: corsHeaders });
+      if (!items.length) return new Response(JSON.stringify({ error: "No items found in source document" }), { status: 400, headers: corsHeaders });
 
-      // 2. Resolve From/To Details
       const branch = wb.branches;
-      let toGstin = wb.to_gstin || "URP", toName = "Unregistered Person", toAddr1 = "", toAddr2 = "", toCity = "", toPincode = 0, toStateCode = 36;
-      let docDate = new Date(wb.created_at);
+      let toGstin = wb.to_gstin || "URP", 
+          toName = "Unregistered Person", 
+          toAddr1 = "", 
+          toAddr2 = "", 
+          toCity = "", 
+          toPincode = 0, 
+          toStateCode = 36;
+      let docDate = wb.created_at;
 
+      // 1. Resolve Recipient Data
       if (wb.source_type === "invoice") {
         const { data: inv } = await supabase.from("invoices").select("*, dealers(*)").eq("id", wb.source_id).single();
         const d = inv?.dealers;
         if (d) {
           toGstin = d.gst_number || "URP";
-          toName = d.gst_legal_name || d.name;
-          toAddr1 = (d.shipping_address_line1 || d.address_line1 || "").slice(0, 100);
-          toAddr2 = (d.shipping_address_line2 || d.address_line2 || "").slice(0, 100);
-          toCity = d.shipping_city || d.city || "";
+          toName = (d.gst_legal_name || d.name || "Customer").slice(0, 99);
+          toAddr1 = (d.shipping_address_line1 || d.address_line1 || "Address").slice(0, 99);
+          toAddr2 = (d.shipping_address_line2 || d.address_line2 || "").slice(0, 99);
+          toCity = (d.shipping_city || d.city || "City").slice(0, 49);
           toPincode = toNum(d.shipping_pincode || d.pincode);
-          toStateCode = toNum(d.state_code, 36);
+          toStateCode = toNum(d.state_code || d.gst_number?.slice(0, 2), 36);
         }
-        if (inv?.invoice_date) docDate = new Date(inv.invoice_date);
+        if (inv?.invoice_date) docDate = inv.invoice_date;
       } else {
         const { data: bt } = await supabase.from("branch_transfers").select("*, to_branch:branches!branch_transfers_to_branch_id_fkey(*)").eq("id", wb.source_id).single();
         const b = bt?.to_branch;
         if (b) {
           toGstin = b.gst_number || "";
-          toName = b.legal_name || b.branch_name;
-          toAddr1 = (b.address_line1 || "").slice(0, 100);
-          toAddr2 = (b.address_line2 || "").slice(0, 100);
-          toCity = b.city || "";
+          toName = (b.legal_name || b.branch_name || "Branch").slice(0, 99);
+          toAddr1 = (b.address_line1 || "Address").slice(0, 99);
+          toAddr2 = (b.address_line2 || "").slice(0, 99);
+          toCity = (b.city || "City").slice(0, 49);
           toPincode = toNum(b.pincode);
-          toStateCode = toNum(b.state_code, 36);
+          toStateCode = toNum(b.state_code || b.gst_number?.slice(0, 2), 36);
         }
+        if (bt?.transfer_date) docDate = bt.transfer_date;
       }
 
-      const fromStateCode = toNum(wb.from_state_code || branch?.state_code, 36);
+      const fromStateCode = toNum(wb.from_state_code || branch?.state_code || branch?.gst_number?.slice(0, 2), 36);
       const isInterState = fromStateCode !== toStateCode;
 
-      // 3. Construct Payload
+      // 2. Construct NIC/Whitebooks Payload
       const payload = {
         supplyType: "O",
         subSupplyType: wb.source_type === "branch_transfer" ? "5" : "1",
         docType: wb.source_type === "branch_transfer" ? "CHL" : "INV",
         docNo: wb.source_number,
-        docDate: docDate.toLocaleDateString("en-GB"),
+        docDate: formatNicDate(docDate),
         fromGstin: branch?.gst_number || GSTIN,
-        fromTrdName: branch?.legal_name || branch?.branch_name || "",
-        fromAddr1: (branch?.address_line1 || "").slice(0, 100),
-        fromAddr2: (branch?.address_line2 || "").slice(0, 100),
-        fromPlace: branch?.city || "",
+        fromTrdName: (branch?.legal_name || branch?.branch_name || "Seller").slice(0, 99),
+        fromAddr1: (branch?.address_line1 || "Address").slice(0, 99),
+        fromAddr2: (branch?.address_line2 || "").slice(0, 99),
+        fromPlace: (branch?.city || "City").slice(0, 49),
         fromPincode: toNum(branch?.pincode),
         fromStateCode: fromStateCode,
-        actualFromStateCode: fromStateCode,
+        actualFromStateCode: fromStateCode, // Mandatory for Part-A
         toGstin: toGstin === "URP" ? "URP" : toGstin,
         toTrdName: toName,
-        toAddr1: toAddr1 || "Address",
+        toAddr1: toAddr1,
         toAddr2: toAddr2,
-        toPlace: toCity || "City",
+        toPlace: toCity,
         toPincode: toPincode,
         toStateCode: toStateCode,
         actualToStateCode: toStateCode,
@@ -183,9 +220,9 @@ Deno.serve(async (req) => {
         igstValue: isInterState ? Number(wb.igst_total) : 0,
         cessValue: 0,
         totInvValue: Number(wb.doc_value),
-        transMode: (wb.vehicle_no || "").length > 5 ? "1" : "",
-        transDistance: "0",
-        transporterName: wb.transporter_name || "",
+        transMode: (wb.vehicle_no || "").length >= 6 ? "1" : (wb.transporter_gstin ? "" : ""), 
+        transDistance: 0, // Number 0 triggers NIC auto-calculation
+        transporterName: (wb.transporter_name || "").slice(0, 99),
         transporterId: wb.transporter_gstin || "",
         vehicleNo: (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase(),
         vehicleType: wb.vehicle_type || "R",
@@ -197,16 +234,18 @@ Deno.serve(async (req) => {
             productDesc: (i.products?.name || "").slice(0, 100),
             hsnCode: toNum(i.hsn_code || i.products?.hsn_code),
             quantity: Number(i.qty),
-            qtyUnit: i.products?.unit || "NOS",
-            cgstRate: isInterState ? 0 : gstRate / 2,
-            sgstRate: isInterState ? 0 : gstRate / 2,
-            igstRate: isInterState ? gstRate : 0,
+            qtyUnit: (i.products?.unit || "NOS").slice(0, 8),
             taxableAmount: Number(i.amount),
+            sgstRate: isInterState ? 0 : gstRate / 2,
+            cgstRate: isInterState ? 0 : gstRate / 2,
+            igstRate: isInterState ? gstRate : 0,
+            cessRate: 0,
           };
         }),
       };
 
-      // 4. API Call
+      console.log(`[EWB] Generating for ${wb.source_number}...`);
+      
       const response = await fetch(withEmail(WHITEBOOKS_GENERATE_ENDPOINT), {
         method: "POST",
         headers: await getHeaders(),
@@ -217,38 +256,68 @@ Deno.serve(async (req) => {
       const data = result?.data || result;
 
       if (!response.ok || !data?.ewayBillNo) {
-        const err = result?.error?.message || result?.message || JSON.stringify(result);
-        const enriched = enrichEwbError(err);
-        await supabase.from("waybills").update({ status: "failed", error_msg: enriched.friendly, gsp_request: payload, gsp_response: result }).eq("id", wb.id);
-        return new Response(JSON.stringify({ error: enriched.friendly }), { status: 400, headers: corsHeaders });
+        const rawErr = result?.error?.message || result?.message || JSON.stringify(result);
+        const enriched = enrichEwbError(rawErr);
+        console.error(`[EWB] NIC Error: ${rawErr}`);
+        
+        await supabase.from("waybills").update({ 
+          status: "failed", 
+          error_msg: enriched.friendly, 
+          gsp_request: payload, 
+          gsp_response: result 
+        }).eq("id", wb.id);
+        
+        return new Response(JSON.stringify({ error: enriched.friendly, codes: enriched.codes }), { 
+          status: 400, 
+          headers: corsHeaders 
+        });
       }
 
+      // Success
       await supabase.from("waybills").update({
         ewb_number: String(data.ewayBillNo),
         status: "generated",
-        ewb_date: new Date().toISOString(),
+        ewb_date: data.ewayBillDate || new Date().toISOString(),
         valid_until: data.validUpto,
         gsp_request: payload,
         gsp_response: result,
+        error_msg: null,
       }).eq("id", wb.id);
 
       return new Response(JSON.stringify({ ok: true, ewb_number: data.ewayBillNo }), { headers: corsHeaders });
     }
 
     if (action === "cancel") {
-      const payload = { ewbNo: Number(wb.ewb_number), cancelRsnCode: 4, cancelRmrk: body.reason || "Cancelled" };
+      const payload = { 
+        ewbNo: Number(wb.ewb_number), 
+        cancelRsnCode: toNum(body.cancel_reason_code, 4), 
+        cancelRmrk: (body.reason || "Cancelled from ERP").slice(0, 99)
+      };
+      
       const response = await fetch(withEmail(WHITEBOOKS_CANCEL_ENDPOINT), { 
         method: "POST", 
         headers: await getHeaders(), 
         body: JSON.stringify(payload) 
       });
-      if (!response.ok) throw new Error("Cancel failed");
-      await supabase.from("waybills").update({ status: "cancelled", cancelled_at: new Date().toISOString() }).eq("id", wb.id);
+      
+      const result = await response.json();
+      if (!response.ok || result?.status_cd === "0") {
+        const err = result?.error?.message || "Cancel failed";
+        throw new Error(err);
+      }
+
+      await supabase.from("waybills").update({ 
+        status: "cancelled", 
+        cancelled_at: new Date().toISOString(),
+        gsp_response: result
+      }).eq("id", wb.id);
+      
       return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
     }
 
     return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: corsHeaders });
   } catch (err) {
+    console.error(`[EWB] System Error: ${err.message}`);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });
