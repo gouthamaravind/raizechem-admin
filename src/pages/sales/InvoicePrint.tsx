@@ -39,7 +39,7 @@ function numberToWords(num: number): string {
 
 // --- Template renderers ---
 
-function StandardTemplate({ inv, dealer, items, company, isIntra, placeOfSupply }: any) {
+function StandardTemplate({ inv, dealer, items, company, branch, isIntra, placeOfSupply }: any) {
   // HSN-wise tax summary
   const hsnMap = new Map<string, { taxable: number; cgst: number; sgst: number; igst: number; rate: number }>();
   items.forEach((it: any) => {
