@@ -384,8 +384,8 @@ Deno.serve(async (req) => {
         transporterId: transporterGstinRaw || "",
         transDocNo: wb.transport_doc_no || "",
         transDocDate: wb.transport_doc_date ? new Date(wb.transport_doc_date).toLocaleDateString("en-GB") : "",
-        vehicleNo,
-        vehicleType: wb.vehicle_type || "R",
+        vehicleNo: hasVehicle ? vehicleNo : "",
+        vehicleType: hasVehicle ? (wb.vehicle_type || "R") : "",
         itemList: items.map((i: any) => {
           const gstRate = Number(i.gst_rate || 0);
           return {
