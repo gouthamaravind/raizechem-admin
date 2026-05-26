@@ -84,6 +84,52 @@ export default function PriceList() {
   const [newProduct, setNewProduct] = useState({ brand: "", name: "", category: "Fungicide", hsn_code: "", gst_rate: 18 });
   const [creatingProduct, setCreatingProduct] = useState(false);
 
+  // ---- Export column picker & custom columns ----
+  type ExportColDef = { id: string; label: string; group: "Product" | "Pack" | "Pricing" | "Costing" | "Custom"; getValue?: (p: Product, pk?: Pack) => any };
+  const baseExportCols: ExportColDef[] = [
+    { id: "Category", label: "Category", group: "Product", getValue: (p) => p.category },
+    { id: "Brand", label: "Brand", group: "Product", getValue: (p) => p.brand },
+    { id: "Technical Name", label: "Technical Name", group: "Product", getValue: (p) => p.name },
+    { id: "Slug", label: "Slug", group: "Product", getValue: (p) => p.slug },
+    { id: "HSN", label: "HSN", group: "Product", getValue: (p) => p.hsn_code },
+    { id: "GST %", label: "GST %", group: "Product", getValue: (p) => p.gst_rate },
+    { id: "Pack Label", label: "Pack Label", group: "Pack", getValue: (_p, pk) => pk?.pack_label },
+    { id: "Units/Case", label: "Units/Case", group: "Pack", getValue: (_p, pk) => pk?.units_per_case },
+    { id: "Unit Size", label: "Unit Size", group: "Pack", getValue: (_p, pk) => pk?.unit_size },
+    { id: "UOM", label: "UOM", group: "Pack", getValue: (_p, pk) => pk?.unit_uom },
+    { id: "Purchase Price", label: "Purchase Price", group: "Costing", getValue: (_p, pk) => pk?.purchase_price },
+    { id: "Packing Cost", label: "Packing Cost", group: "Costing", getValue: (_p, pk) => pk?.packing_cost },
+    { id: "PFG", label: "PFG", group: "Costing", getValue: (_p, pk) => pk?.price_finished_goods },
+    { id: "Scheme1", label: "Scheme1", group: "Costing", getValue: (_p, pk) => pk?.scheme_1 },
+    { id: "Scheme2", label: "Scheme2", group: "Costing", getValue: (_p, pk) => pk?.scheme_2 },
+    { id: "Margin", label: "Margin", group: "Costing", getValue: (_p, pk) => pk?.margin },
+    { id: "Basic Price", label: "Basic Price", group: "Pricing", getValue: (_p, pk) => pk?.basic_price },
+    { id: "GST Amt", label: "GST Amt", group: "Pricing", getValue: (_p, pk) => pk?.gst_amount },
+    { id: "Price Incl GST", label: "Price Incl GST", group: "Pricing", getValue: (_p, pk) => pk?.price_inclusive_gst },
+    { id: "MRP", label: "MRP", group: "Pricing", getValue: (_p, pk) => pk?.mrp },
+  ];
+  const [customCols, setCustomCols] = useState<{ id: string; label: string }[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, Record<string, string>>>({});
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectedCols, setSelectedCols] = useState<Set<string>>(() => new Set(baseExportCols.map(c => c.id)));
+  const [newColLabel, setNewColLabel] = useState("");
+
+  const addCustomCol = () => {
+    const lbl = newColLabel.trim();
+    if (!lbl) return;
+    const id = `custom_${Date.now()}`;
+    setCustomCols(prev => [...prev, { id, label: lbl }]);
+    setSelectedCols(prev => new Set(prev).add(id));
+    setNewColLabel("");
+  };
+  const removeCustomCol = (id: string) => {
+    setCustomCols(prev => prev.filter(c => c.id !== id));
+    setSelectedCols(prev => { const n = new Set(prev); n.delete(id); return n; });
+  };
+  const setCustomVal = (packId: string, colId: string, value: string) => {
+    setCustomValues(prev => ({ ...prev, [packId]: { ...(prev[packId] || {}), [colId]: value } }));
+  };
+
   const createNewProduct = async () => {
     if (!newProduct.brand.trim() || !newProduct.name.trim()) {
       toast.error("Brand and technical name are required");
