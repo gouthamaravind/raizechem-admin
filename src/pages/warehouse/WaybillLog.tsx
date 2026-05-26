@@ -37,7 +37,6 @@ export default function WaybillLog() {
   const [sourceType, setSourceType] = useState<"invoice" | "branch_transfer">("invoice");
   const [sourceId, setSourceId] = useState("");
   const [transportMode, setTransportMode] = useState("road");
-  const [vehicleNo, setVehicleNo] = useState("");
   const [distance, setDistance] = useState("");
   const [transporterId, setTransporterId] = useState("");
   const [transporterName, setTransporterName] = useState("");
@@ -120,8 +119,8 @@ export default function WaybillLog() {
       if (!sourceId) throw new Error("Pick a source document");
       const src: any = (sources as any[]).find((s: any) => s.id === sourceId);
       if (!src) throw new Error("Source not loaded");
-      if (transportMode === "road") {
-        if (!vehicleNo || vehicleNo.trim().length < 6) throw new Error("Vehicle No is required for road transport (e.g. TS09EE1234)");
+      if (!transporterGstin || transporterGstin.length !== 15) {
+        throw new Error("Transporter with valid 15-char GSTIN required (we generate Part-A only)");
       }
 
       const { data: branch } = await supabase.from("branches").select("*").eq("id", branchId!).single();
@@ -156,7 +155,7 @@ export default function WaybillLog() {
         source_number: sourceType === "invoice" ? src.invoice_number : src.transfer_number,
         status: "pending",
         transport_mode: transportMode,
-        vehicle_no: vehicleNo,
+        vehicle_no: null,
         distance_km: 0,
         transporter_name: transporterName || null,
         transporter_gstin: transporterGstin || null,
@@ -173,7 +172,7 @@ export default function WaybillLog() {
     onSuccess: (id) => {
       toast.success("Waybill draft created");
       setOpenNew(false);
-      setSourceId(""); setVehicleNo(""); setDistance("");
+      setSourceId(""); setDistance("");
       setTransporterId(""); setTransporterName(""); setTransporterGstin("");
       qc.invalidateQueries({ queryKey: ["waybills"] });
       generate.mutate(id);
@@ -277,6 +276,9 @@ export default function WaybillLog() {
             <DialogContent>
               <DialogHeader><DialogTitle>Generate New E-Way Bill</DialogTitle></DialogHeader>
               <div className="space-y-3">
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-2.5 text-xs text-muted-foreground">
+                  <strong className="text-foreground">Part-A only.</strong> We register the consignment & transporter on NIC. The transporter then adds the vehicle number on the NIC portal to generate Part-B.
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <Label>Source</Label>
@@ -315,12 +317,7 @@ export default function WaybillLog() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Vehicle No <span className="text-destructive">*</span></Label>
-                  <Input value={vehicleNo} onChange={(e) => setVehicleNo(e.target.value.toUpperCase())} placeholder="TS09EE1234" required />
-                  <p className="text-xs text-muted-foreground mt-1">Distance is auto-computed by NIC from dispatch & delivery pincodes.</p>
-                </div>
-                <div>
-                  <Label>Transporter</Label>
+                  <Label>Transporter <span className="text-destructive">*</span></Label>
                   <TransporterPicker
                     value={transporterId}
                     branchId={branchId}
@@ -330,6 +327,9 @@ export default function WaybillLog() {
                       setTransporterGstin(t?.gst_number || "");
                     }}
                   />
+                  {transporterGstin && transporterGstin.length !== 15 && (
+                    <p className="text-xs text-destructive mt-1">Transporter GSTIN must be 15 characters. Fix in transporter master.</p>
+                  )}
                 </div>
                 {branchMissing.length > 0 && (
                   <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-xs">
@@ -370,7 +370,7 @@ export default function WaybillLog() {
                     <TableHead>Doc #</TableHead>
                     <TableHead>EWB #</TableHead>
                     <TableHead>Source</TableHead>
-                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Transporter</TableHead>
                     <TableHead>Value</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Valid Until</TableHead>
@@ -383,7 +383,7 @@ export default function WaybillLog() {
                       <TableCell className="font-mono text-xs">{w.doc_number}</TableCell>
                       <TableCell className="font-mono">{w.ewb_number ?? "—"}</TableCell>
                       <TableCell className="text-xs">{w.source_type === "invoice" ? "Invoice" : "Branch Tx"} • {w.source_number}</TableCell>
-                      <TableCell className="text-xs">{w.vehicle_no || "—"}</TableCell>
+                      <TableCell className="text-xs">{w.transporter_name || "—"}</TableCell>
                       <TableCell>₹{Number(w.doc_value).toLocaleString("en-IN")}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">

@@ -81,6 +81,21 @@ export default function Invoices() {
   });
   const invoices = invoicesRaw.slice(0, pg.pageSize);
 
+  const invoiceIds = useMemo(() => invoices.map((i: any) => i.id), [invoices]);
+  const { data: ewbInvoiceIds = new Set<string>() } = useQuery({
+    queryKey: ["invoice-waybills", invoiceIds],
+    enabled: invoiceIds.length > 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("waybills" as any)
+        .select("source_id")
+        .eq("source_type", "invoice")
+        .eq("status", "generated")
+        .in("source_id", invoiceIds);
+      return new Set<string>(((data as any[]) || []).map((w) => w.source_id));
+    },
+  });
+
   const { data: dealers = [] } = useQuery<Dealer[]>({ queryKey: ["dealers-list", branchId], queryFn: async () => { let q = supabase.from("dealers").select("id, name, state_code, state, payment_terms_days, price_level_id").eq("status", "active").order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return (data || []) as unknown as Dealer[]; } });
   const { data: companySettings } = useQuery({ queryKey: ["company-settings"], queryFn: async () => { const { data } = await supabase.from("company_settings").select("state_code, state").limit(1).single(); return data; } });
   const { data: products = [] } = useQuery<Product[]>({ queryKey: ["products-list", branchId], queryFn: async () => { let q = supabase.from("products").select("id, name, brand, sale_price, gst_rate, hsn_code, unit").eq("is_active", true).order("name"); if (branchId) q = q.eq("branch_id", branchId); const { data } = await q; return (data || []) as unknown as Product[]; } });
@@ -458,7 +473,7 @@ export default function Invoices() {
                         {inv.status !== "void" && (
                           <Button variant="ghost" size="icon" title="Generate E-Way Bill" onClick={() => navigate("/warehouse/waybills", { state: { prefillInvoiceId: inv.id } })}><Truck className="h-4 w-4" /></Button>
                         )}
-                        {isAdmin && inv.status !== "void" && (
+                        {isAdmin && inv.status !== "void" && !(ewbInvoiceIds as Set<string>).has(inv.id) && (
                           <AlterButton onClick={() => setAlterTarget({ id: inv.id, label: inv.invoice_number })} />
                         )}
                         {canVoid && inv.status !== "void" && (

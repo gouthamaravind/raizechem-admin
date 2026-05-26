@@ -315,14 +315,16 @@ Deno.serve(async (req) => {
       const isInterState = fromStateCode !== toStateCode;
       const distance = Number(wb.distance_km || 0); // 0 = let NIC auto-compute from pincodes
       const vehicleNo = (wb.vehicle_no || "").replace(/[^A-Z0-9]/gi, "").toUpperCase();
-      const transMode = wb.transport_mode === "rail" ? "2" : wb.transport_mode === "air" ? "3" : wb.transport_mode === "ship" ? "4" : "1";
+      const hasVehicle = vehicleNo.length >= 6;
+      // Part-A only: omit transMode if no vehicle — transporter sets it & vehicle in Part-B on NIC portal.
+      const transMode = !hasVehicle ? "" : wb.transport_mode === "rail" ? "2" : wb.transport_mode === "air" ? "3" : wb.transport_mode === "ship" ? "4" : "1";
       const fromPincode = Number((wb.branches?.pincode || "0").toString().replace(/\D/g, "")) || 0;
       const transporterGstinRaw = (wb.transporter_gstin || "").toString().trim().toUpperCase();
       const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9][A-Z][0-9A-Z]$/;
 
       const errors: string[] = [];
       if (distance < 0 || distance > 4000) errors.push("distance_km must be 0-4000 (0 = auto)");
-      if (transMode === "1" && !vehicleNo) errors.push("vehicle_no required for road");
+      if (!hasVehicle && !transporterGstinRaw) errors.push("Transporter GSTIN required (Part-A only — transporter will complete Part-B)");
       if (!toAddr1) errors.push("recipient address missing");
       if (!toPlace) errors.push("recipient city missing");
       if (!toPincode) errors.push("recipient pincode missing");
@@ -382,8 +384,8 @@ Deno.serve(async (req) => {
         transporterId: transporterGstinRaw || "",
         transDocNo: wb.transport_doc_no || "",
         transDocDate: wb.transport_doc_date ? new Date(wb.transport_doc_date).toLocaleDateString("en-GB") : "",
-        vehicleNo,
-        vehicleType: wb.vehicle_type || "R",
+        vehicleNo: hasVehicle ? vehicleNo : "",
+        vehicleType: hasVehicle ? (wb.vehicle_type || "R") : "",
         itemList: items.map((i: any) => {
           const gstRate = Number(i.gst_rate || 0);
           return {

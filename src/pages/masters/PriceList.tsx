@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const HSN_RE = /^(\d{4}|\d{6}|\d{8})$/;
 const isValidHsn = (v: string) => !v || HSN_RE.test(v.trim());
@@ -83,6 +84,52 @@ export default function PriceList() {
   const [newProductOpen, setNewProductOpen] = useState(false);
   const [newProduct, setNewProduct] = useState({ brand: "", name: "", category: "Fungicide", hsn_code: "", gst_rate: 18 });
   const [creatingProduct, setCreatingProduct] = useState(false);
+
+  // ---- Export column picker & custom columns ----
+  type ExportColDef = { id: string; label: string; group: "Product" | "Pack" | "Pricing" | "Costing" | "Custom"; getValue?: (p: Product, pk?: Pack) => any };
+  const baseExportCols: ExportColDef[] = [
+    { id: "Category", label: "Category", group: "Product", getValue: (p) => p.category },
+    { id: "Brand", label: "Brand", group: "Product", getValue: (p) => p.brand },
+    { id: "Technical Name", label: "Technical Name", group: "Product", getValue: (p) => p.name },
+    { id: "Slug", label: "Slug", group: "Product", getValue: (p) => p.slug },
+    { id: "HSN", label: "HSN", group: "Product", getValue: (p) => p.hsn_code },
+    { id: "GST %", label: "GST %", group: "Product", getValue: (p) => p.gst_rate },
+    { id: "Pack Label", label: "Pack Label", group: "Pack", getValue: (_p, pk) => pk?.pack_label },
+    { id: "Units/Case", label: "Units/Case", group: "Pack", getValue: (_p, pk) => pk?.units_per_case },
+    { id: "Unit Size", label: "Unit Size", group: "Pack", getValue: (_p, pk) => pk?.unit_size },
+    { id: "UOM", label: "UOM", group: "Pack", getValue: (_p, pk) => pk?.unit_uom },
+    { id: "Purchase Price", label: "Purchase Price", group: "Costing", getValue: (_p, pk) => pk?.purchase_price },
+    { id: "Packing Cost", label: "Packing Cost", group: "Costing", getValue: (_p, pk) => pk?.packing_cost },
+    { id: "PFG", label: "PFG", group: "Costing", getValue: (_p, pk) => pk?.price_finished_goods },
+    { id: "Scheme1", label: "Scheme1", group: "Costing", getValue: (_p, pk) => pk?.scheme_1 },
+    { id: "Scheme2", label: "Scheme2", group: "Costing", getValue: (_p, pk) => pk?.scheme_2 },
+    { id: "Margin", label: "Margin", group: "Costing", getValue: (_p, pk) => pk?.margin },
+    { id: "Basic Price", label: "Basic Price", group: "Pricing", getValue: (_p, pk) => pk?.basic_price },
+    { id: "GST Amt", label: "GST Amt", group: "Pricing", getValue: (_p, pk) => pk?.gst_amount },
+    { id: "Price Incl GST", label: "Price Incl GST", group: "Pricing", getValue: (_p, pk) => pk?.price_inclusive_gst },
+    { id: "MRP", label: "MRP", group: "Pricing", getValue: (_p, pk) => pk?.mrp },
+  ];
+  const [customCols, setCustomCols] = useState<{ id: string; label: string }[]>([]);
+  const [customValues, setCustomValues] = useState<Record<string, Record<string, string>>>({});
+  const [exportOpen, setExportOpen] = useState(false);
+  const [selectedCols, setSelectedCols] = useState<Set<string>>(() => new Set(baseExportCols.map(c => c.id)));
+  const [newColLabel, setNewColLabel] = useState("");
+
+  const addCustomCol = () => {
+    const lbl = newColLabel.trim();
+    if (!lbl) return;
+    const id = `custom_${Date.now()}`;
+    setCustomCols(prev => [...prev, { id, label: lbl }]);
+    setSelectedCols(prev => new Set(prev).add(id));
+    setNewColLabel("");
+  };
+  const removeCustomCol = (id: string) => {
+    setCustomCols(prev => prev.filter(c => c.id !== id));
+    setSelectedCols(prev => { const n = new Set(prev); n.delete(id); return n; });
+  };
+  const setCustomVal = (packId: string, colId: string, value: string) => {
+    setCustomValues(prev => ({ ...prev, [packId]: { ...(prev[packId] || {}), [colId]: value } }));
+  };
 
   const createNewProduct = async () => {
     if (!newProduct.brand.trim() || !newProduct.name.trim()) {
@@ -322,34 +369,35 @@ export default function PriceList() {
   };
 
   const exportXlsx = () => {
+    const allCols: ExportColDef[] = [
+      ...baseExportCols,
+      ...customCols.map(c => ({ id: c.id, label: c.label, group: "Custom" as const })),
+    ];
+    const chosen = allCols.filter(c => selectedCols.has(c.id));
+    if (chosen.length === 0) { toast.error("Pick at least one column"); return; }
     const rows: any[] = [];
-    for (const p of products) {
+    const buildRow = (p: Product, pk?: Pack) => {
+      const row: Record<string, any> = {};
+      for (const c of chosen) {
+        if (c.group === "Custom") {
+          row[c.label] = pk ? (customValues[pk.id]?.[c.id] ?? "") : "";
+        } else {
+          row[c.label] = c.getValue ? c.getValue(p, pk) : "";
+        }
+      }
+      return row;
+    };
+    for (const p of filtered) {
       const ps = packsByProduct[p.id] || [];
-      if (!ps.length) {
-        rows.push({
-          Category: p.category, Brand: p.brand, "Technical Name": p.name,
-          Slug: p.slug, HSN: p.hsn_code, "GST %": p.gst_rate,
-        });
-        continue;
-      }
-      for (const pk of ps) {
-        rows.push({
-          Category: p.category, Brand: p.brand, "Technical Name": p.name,
-          Slug: p.slug, HSN: p.hsn_code, "GST %": p.gst_rate,
-          "Pack Label": pk.pack_label, "Units/Case": pk.units_per_case,
-          "Unit Size": pk.unit_size, UOM: pk.unit_uom,
-          "Purchase Price": pk.purchase_price, "Packing Cost": pk.packing_cost,
-          PFG: pk.price_finished_goods, Scheme1: pk.scheme_1, Scheme2: pk.scheme_2,
-          Margin: pk.margin, "Basic Price": pk.basic_price,
-          "GST Amt": pk.gst_amount, "Price Incl GST": pk.price_inclusive_gst, MRP: pk.mrp,
-        });
-      }
+      if (!ps.length) { rows.push(buildRow(p)); continue; }
+      for (const pk of ps) rows.push(buildRow(p, pk));
     }
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(rows, { header: chosen.map(c => c.label) });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Price List");
     const stamp = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `Raizechem_Price_List_${stamp}.xlsx`);
+    setExportOpen(false);
   };
 
   const importXlsx = async (file: File) => {
@@ -429,7 +477,7 @@ export default function PriceList() {
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
             <Upload className="h-4 w-4 mr-1.5" /> Import
           </Button>
-          <Button variant="outline" size="sm" onClick={exportXlsx}>
+          <Button variant="outline" size="sm" onClick={() => setExportOpen(true)}>
             <Download className="h-4 w-4 mr-1.5" /> Export
           </Button>
           {dirty > 0 && (
@@ -521,7 +569,7 @@ export default function PriceList() {
           {/* Sticky column header */}
           <div className="bg-muted/40 border-b text-[11px] uppercase tracking-wide text-muted-foreground font-medium sticky top-0 z-10">
             <div className="grid items-center gap-2 px-3 py-2"
-              style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}>
+              style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${[...cols, ...customCols].map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}>
               <div></div>
               <div>Pack</div>
               <div className="text-right">Units</div>
@@ -529,6 +577,7 @@ export default function PriceList() {
               <div>UOM</div>
               <div>Batch No</div>
               {cols.map(c => <div key={c.key} className="text-right">{c.label}</div>)}
+              {customCols.map(c => <div key={c.id} className="text-right truncate" title={c.label}>{c.label}</div>)}
               <div></div>
             </div>
           </div>
@@ -659,6 +708,10 @@ export default function PriceList() {
                           <PackRow
                             key={pk.id}
                             cols={cols}
+                            customCols={customCols}
+                            customValues={customValues[pk.id] || {}}
+                            onCustomChange={(colId, v) => setCustomVal(pk.id, colId, v)}
+                            packId={pk.id}
                             dirty={isDirty}
                             values={{
                               pack_label: getVal(pk, "pack_label") as any,
@@ -677,6 +730,10 @@ export default function PriceList() {
                         <PackRow
                           key={`new-${p.id}-${idx}`}
                           cols={cols}
+                          customCols={customCols}
+                          customValues={{}}
+                          onCustomChange={() => {}}
+                          packId={`new-${p.id}-${idx}`}
                           isNew
                           values={{
                             pack_label: (row.pack_label as any) ?? "",
@@ -716,6 +773,86 @@ export default function PriceList() {
         confirmText="Apply"
         onConfirm={applyBulk}
       />
+
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Export to Excel — pick columns</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {(["Product","Pack","Pricing","Costing","Custom"] as const).map(group => {
+              const groupCols = group === "Custom"
+                ? customCols.map(c => ({ id: c.id, label: c.label, group: "Custom" as const }))
+                : baseExportCols.filter(c => c.group === group);
+              if (groupCols.length === 0 && group !== "Custom") return null;
+              const allOn = groupCols.length > 0 && groupCols.every(c => selectedCols.has(c.id));
+              return (
+                <div key={group} className="space-y-2">
+                  <div className="flex items-center justify-between border-b pb-1">
+                    <Label className="text-xs font-semibold uppercase tracking-wide">{group}</Label>
+                    {groupCols.length > 0 && (
+                      <button
+                        type="button"
+                        className="text-[11px] text-primary hover:underline"
+                        onClick={() => setSelectedCols(prev => {
+                          const n = new Set(prev);
+                          if (allOn) groupCols.forEach(c => n.delete(c.id));
+                          else groupCols.forEach(c => n.add(c.id));
+                          return n;
+                        })}
+                      >{allOn ? "Deselect all" : "Select all"}</button>
+                    )}
+                  </div>
+                  {group === "Custom" && (
+                    <div className="flex gap-2 items-center">
+                      <Input className="h-8 text-xs flex-1" placeholder="New column label (e.g. Remarks)"
+                        value={newColLabel}
+                        onChange={e => setNewColLabel(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomCol(); } }}
+                      />
+                      <Button size="sm" variant="outline" onClick={addCustomCol} disabled={!newColLabel.trim()}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />Add column
+                      </Button>
+                    </div>
+                  )}
+                  {groupCols.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground italic">No custom columns yet. Add one above — it will also show in the table for inline data entry.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {groupCols.map(c => (
+                        <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-accent/30 rounded px-1.5 py-1">
+                          <Checkbox
+                            checked={selectedCols.has(c.id)}
+                            onCheckedChange={(v) => setSelectedCols(prev => {
+                              const n = new Set(prev);
+                              if (v) n.add(c.id); else n.delete(c.id);
+                              return n;
+                            })}
+                          />
+                          <span className="flex-1 truncate">{c.label}</span>
+                          {group === "Custom" && (
+                            <button type="button" onClick={(e) => { e.preventDefault(); removeCustomCol(c.id); }}
+                              className="text-destructive hover:text-destructive/80">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <span className="text-[11px] text-muted-foreground mr-auto self-center">
+              {selectedCols.size} columns · {filtered.length} products
+            </span>
+            <Button variant="outline" onClick={() => setExportOpen(false)}>Cancel</Button>
+            <Button onClick={exportXlsx} disabled={selectedCols.size === 0}>
+              <Download className="h-4 w-4 mr-1.5" />Export Excel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={newProductOpen} onOpenChange={setNewProductOpen}>
         <DialogContent className="sm:max-w-md">
@@ -771,9 +908,14 @@ export default function PriceList() {
 }
 
 function PackRow({
-  cols, dirty, isNew, values, onChange, onDelete,
+  cols, customCols, customValues, onCustomChange, packId,
+  dirty, isNew, values, onChange, onDelete,
 }: {
   cols: Array<{ key: keyof Pack; label: string }>;
+  customCols: Array<{ id: string; label: string }>;
+  customValues: Record<string, string>;
+  onCustomChange: (colId: string, value: string) => void;
+  packId: string;
   dirty?: boolean;
   isNew?: boolean;
   values: Record<string, any>;
@@ -788,7 +930,7 @@ function PackRow({
         dirty && "bg-yellow-500/10",
         isNew && "bg-emerald-500/10",
       )}
-      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
+      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${[...cols, ...customCols].map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
     >
       <div className="text-muted-foreground text-[11px]">{isNew ? "NEW" : ""}</div>
       <Input className={inputCls} placeholder="e.g. 10 x 1"
@@ -808,6 +950,11 @@ function PackRow({
       {cols.map(c => (
         <Input key={c.key} className={cn(inputCls, "text-right")} type="number" step="0.01"
           value={values[c.key]} onChange={e => onChange(c.key, e.target.value)} />
+      ))}
+      {customCols.map(c => (
+        <Input key={c.id} className={inputCls} placeholder={c.label}
+          value={customValues[c.id] ?? ""}
+          onChange={e => onCustomChange(c.id, e.target.value)} />
       ))}
       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
         onClick={onDelete}>
