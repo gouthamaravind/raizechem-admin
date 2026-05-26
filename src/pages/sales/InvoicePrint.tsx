@@ -73,9 +73,13 @@ function StandardTemplate({ inv, dealer, items, company, branch, isIntra, placeO
       <div className="border-2 border-foreground">
         {/* Company header band: logo top-left + company name & address as header */}
         <div className="flex items-start gap-3 p-2 border-b-2 border-foreground">
-          {company?.logo_url && (
-            <img src={company.logo_url} alt="" className="h-16 w-16 object-contain shrink-0" crossOrigin="anonymous" />
-          )}
+          <img
+            src={company?.logo_url || "/raizechem-field-logo.png"}
+            alt="Company logo"
+            className="h-16 w-16 object-contain shrink-0"
+            crossOrigin="anonymous"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = "/raizechem-field-logo.png"; }}
+          />
           <div className="flex-1 text-center">
             <p className="font-bold text-[16px] uppercase tracking-wide">{company?.company_name || "Raizechem Pvt. Ltd"}</p>
             {company?.legal_name && company.legal_name !== company.company_name && (
