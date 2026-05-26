@@ -569,7 +569,7 @@ export default function PriceList() {
           {/* Sticky column header */}
           <div className="bg-muted/40 border-b text-[11px] uppercase tracking-wide text-muted-foreground font-medium sticky top-0 z-10">
             <div className="grid items-center gap-2 px-3 py-2"
-              style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}>
+              style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${[...cols, ...customCols].map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}>
               <div></div>
               <div>Pack</div>
               <div className="text-right">Units</div>
@@ -577,6 +577,7 @@ export default function PriceList() {
               <div>UOM</div>
               <div>Batch No</div>
               {cols.map(c => <div key={c.key} className="text-right">{c.label}</div>)}
+              {customCols.map(c => <div key={c.id} className="text-right truncate" title={c.label}>{c.label}</div>)}
               <div></div>
             </div>
           </div>
