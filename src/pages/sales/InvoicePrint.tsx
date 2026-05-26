@@ -71,21 +71,47 @@ function StandardTemplate({ inv, dealer, items, company, branch, isIntra, placeO
   return (
     <div className="max-w-[210mm] mx-auto p-4 print:p-2 print:pt-0 mt-16 print:mt-0 text-[11px] leading-tight">
       <div className="border-2 border-foreground">
+        {/* Company header band: logo top-left + company name & address as header */}
+        <div className="flex items-start gap-3 p-2 border-b-2 border-foreground">
+          {company?.logo_url && (
+            <img src={company.logo_url} alt="" className="h-16 w-16 object-contain shrink-0" crossOrigin="anonymous" />
+          )}
+          <div className="flex-1 text-center">
+            <p className="font-bold text-[16px] uppercase tracking-wide">{company?.company_name || "Raizechem Pvt. Ltd"}</p>
+            {company?.legal_name && company.legal_name !== company.company_name && (
+              <p className="text-[10px] text-foreground/70">{company.legal_name}</p>
+            )}
+            <p className="text-[10.5px]">
+              {company?.address_line1}{company?.address_line2 ? `, ${company.address_line2}` : ""}
+              {company?.city ? `, ${company.city}` : ""}{company?.state ? `, ${company.state}` : ""} {company?.pincode || ""}
+            </p>
+            <p className="text-[10.5px]">
+              GSTIN/UIN: <span className="font-semibold">{company?.gst_number || "—"}</span>
+              {company?.pan_number ? <> &nbsp;|&nbsp; PAN: <span className="font-semibold">{company.pan_number}</span></> : null}
+            </p>
+            {(company?.phone || company?.email) && (
+              <p className="text-[10.5px]">
+                {company?.phone ? <>Contact: {company.phone}</> : null}
+                {company?.phone && company?.email ? " | " : ""}
+                {company?.email ? <>Email: {company.email}</> : null}
+              </p>
+            )}
+          </div>
+        </div>
+
         <h2 className="text-center text-sm font-bold py-1 border-b-2 border-foreground">TAX INVOICE</h2>
 
-        {/* Seller + Invoice metadata */}
+        {/* Invoice metadata */}
         <div className="grid grid-cols-2 border-b-2 border-foreground">
-          <div className="p-2 border-r-2 border-foreground flex gap-2">
-            {company?.logo_url && <img src={company.logo_url} alt="" className="h-14 w-14 object-contain shrink-0" crossOrigin="anonymous" />}
-            <div className="flex-1">
-              <p className="font-bold text-[13px]">{company?.company_name || "Raizechem Pvt. Ltd"}</p>
-              <p>{company?.address_line1}{company?.address_line2 ? `, ${company.address_line2}` : ""}</p>
-              <p>{company?.city}{company?.state ? `, ${company.state}` : ""} {company?.pincode || ""}</p>
-              <p>GSTIN/UIN: <span className="font-semibold">{company?.gst_number || "—"}</span></p>
-              <p>State Name : {company?.state || "—"}, Code : {(company as any)?.state_code || "36"}</p>
-              {company?.phone && <p>Contact : {company.phone}</p>}
-              {company?.email && <p>E-Mail : {company.email}</p>}
-            </div>
+          <div className="p-2 border-r-2 border-foreground">
+            <p className="text-foreground/60 text-[10px]">From (Dispatched From)</p>
+            <p className="font-bold uppercase">{branch?.branch_name || company?.company_name}</p>
+            {branch?.legal_name && <p className="text-[10px] italic">{branch.legal_name}</p>}
+            <p>{branch?.address_line1 || company?.address_line1}{(branch?.address_line2 || company?.address_line2) ? `, ${branch?.address_line2 || company?.address_line2}` : ""}</p>
+            <p>{branch?.city || company?.city}, {branch?.state || company?.state} {branch?.pincode || company?.pincode || ""}</p>
+            <p>GSTIN/UIN : {branch?.gst_number || company?.gst_number || "—"}</p>
+            <p>State Name : {branch?.state || company?.state || "—"}, Code : {branch?.state_code || (company as any)?.state_code || "36"}</p>
+            {branch?.phone && <p>Contact : {branch.phone}</p>}
           </div>
           <div className="grid grid-cols-2 text-[10px]">
             <div className="p-1.5 border-r border-b border-foreground"><div className="text-foreground/60">Invoice No.</div><div className="font-bold">{inv.invoice_number}</div></div>
@@ -103,10 +129,10 @@ function StandardTemplate({ inv, dealer, items, company, branch, isIntra, placeO
           </div>
         </div>
 
-        {/* Consignee + Buyer */}
+        {/* Consignee + Buyer (Ship To / Bill To dealer) */}
         <div className="grid grid-cols-2 border-b-2 border-foreground">
           <div className="p-2 border-r-2 border-foreground">
-            <p className="text-foreground/60 text-[10px]">Consignee (Ship to)</p>
+            <p className="text-foreground/60 text-[10px]">To — Consignee (Ship to)</p>
             <p className="font-bold uppercase">{dealer?.name}</p>
             <p>{dealer?.shipping_address_line1 || dealer?.address_line1}{(dealer?.shipping_address_line2 || dealer?.address_line2) ? `, ${dealer.shipping_address_line2 || dealer.address_line2}` : ""}</p>
             <p>{dealer?.shipping_city || dealer?.city}, {dealer?.shipping_state || dealer?.state} {dealer?.shipping_pincode || dealer?.pincode || ""}</p>
@@ -114,7 +140,7 @@ function StandardTemplate({ inv, dealer, items, company, branch, isIntra, placeO
             <p>State Name : {dealer?.shipping_state || dealer?.state}, Code : {dealer?.state_code || "—"}</p>
           </div>
           <div className="p-2">
-            <p className="text-foreground/60 text-[10px]">Buyer (Bill to)</p>
+            <p className="text-foreground/60 text-[10px]">To — Buyer (Bill to)</p>
             <p className="font-bold uppercase">{dealer?.name}</p>
             <p>{dealer?.address_line1}{dealer?.address_line2 ? `, ${dealer.address_line2}` : ""}</p>
             <p>{dealer?.city}, {dealer?.state} {dealer?.pincode || ""}</p>
@@ -123,6 +149,7 @@ function StandardTemplate({ inv, dealer, items, company, branch, isIntra, placeO
             <p>Place of Supply : {placeOfSupply}</p>
           </div>
         </div>
+
 
         {/* Items table */}
         <table className="w-full border-collapse text-[10.5px]">
