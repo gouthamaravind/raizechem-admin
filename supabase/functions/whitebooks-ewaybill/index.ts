@@ -54,6 +54,8 @@ const WHITEBOOKS_BASE = `${ORIGIN}/ewaybillapi/v1.03/`;
 const WHITEBOOKS_AUTH_ENDPOINT = `${WHITEBOOKS_BASE}authenticate`;
 const WHITEBOOKS_GENERATE_ENDPOINT = `${WHITEBOOKS_BASE}ewayapi/genewaybill`;
 const WHITEBOOKS_CANCEL_ENDPOINT = `${WHITEBOOKS_BASE}ewayapi/canewb`;
+const IS_SANDBOX = /apisandbox|sandbox/i.test(ORIGIN);
+console.log(`[whitebooks-ewaybill] RAW_BASE=${RAW_BASE} ORIGIN=${ORIGIN} sandbox=${IS_SANDBOX}`);
 const CLIENT_ID = Deno.env.get("WHITEBOOKS_CLIENT_ID") ?? "";
 const CLIENT_SECRET = Deno.env.get("WHITEBOOKS_CLIENT_SECRET") ?? "";
 const GSTIN = Deno.env.get("WHITEBOOKS_GSTIN") ?? "";
