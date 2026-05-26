@@ -37,7 +37,6 @@ export default function WaybillLog() {
   const [sourceType, setSourceType] = useState<"invoice" | "branch_transfer">("invoice");
   const [sourceId, setSourceId] = useState("");
   const [transportMode, setTransportMode] = useState("road");
-  const [vehicleNo, setVehicleNo] = useState("");
   const [distance, setDistance] = useState("");
   const [transporterId, setTransporterId] = useState("");
   const [transporterName, setTransporterName] = useState("");
