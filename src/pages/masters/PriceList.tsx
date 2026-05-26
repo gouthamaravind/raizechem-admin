@@ -765,6 +765,86 @@ export default function PriceList() {
         onConfirm={applyBulk}
       />
 
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Export to Excel — pick columns</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {(["Product","Pack","Pricing","Costing","Custom"] as const).map(group => {
+              const groupCols = group === "Custom"
+                ? customCols.map(c => ({ id: c.id, label: c.label, group: "Custom" as const }))
+                : baseExportCols.filter(c => c.group === group);
+              if (groupCols.length === 0 && group !== "Custom") return null;
+              const allOn = groupCols.length > 0 && groupCols.every(c => selectedCols.has(c.id));
+              return (
+                <div key={group} className="space-y-2">
+                  <div className="flex items-center justify-between border-b pb-1">
+                    <Label className="text-xs font-semibold uppercase tracking-wide">{group}</Label>
+                    {groupCols.length > 0 && (
+                      <button
+                        type="button"
+                        className="text-[11px] text-primary hover:underline"
+                        onClick={() => setSelectedCols(prev => {
+                          const n = new Set(prev);
+                          if (allOn) groupCols.forEach(c => n.delete(c.id));
+                          else groupCols.forEach(c => n.add(c.id));
+                          return n;
+                        })}
+                      >{allOn ? "Deselect all" : "Select all"}</button>
+                    )}
+                  </div>
+                  {group === "Custom" && (
+                    <div className="flex gap-2 items-center">
+                      <Input className="h-8 text-xs flex-1" placeholder="New column label (e.g. Remarks)"
+                        value={newColLabel}
+                        onChange={e => setNewColLabel(e.target.value)}
+                        onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustomCol(); } }}
+                      />
+                      <Button size="sm" variant="outline" onClick={addCustomCol} disabled={!newColLabel.trim()}>
+                        <Plus className="h-3.5 w-3.5 mr-1" />Add column
+                      </Button>
+                    </div>
+                  )}
+                  {groupCols.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground italic">No custom columns yet. Add one above — it will also show in the table for inline data entry.</p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                      {groupCols.map(c => (
+                        <label key={c.id} className="flex items-center gap-2 text-xs cursor-pointer hover:bg-accent/30 rounded px-1.5 py-1">
+                          <Checkbox
+                            checked={selectedCols.has(c.id)}
+                            onCheckedChange={(v) => setSelectedCols(prev => {
+                              const n = new Set(prev);
+                              if (v) n.add(c.id); else n.delete(c.id);
+                              return n;
+                            })}
+                          />
+                          <span className="flex-1 truncate">{c.label}</span>
+                          {group === "Custom" && (
+                            <button type="button" onClick={(e) => { e.preventDefault(); removeCustomCol(c.id); }}
+                              className="text-destructive hover:text-destructive/80">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <span className="text-[11px] text-muted-foreground mr-auto self-center">
+              {selectedCols.size} columns · {filtered.length} products
+            </span>
+            <Button variant="outline" onClick={() => setExportOpen(false)}>Cancel</Button>
+            <Button onClick={exportXlsx} disabled={selectedCols.size === 0}>
+              <Download className="h-4 w-4 mr-1.5" />Export Excel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={newProductOpen} onOpenChange={setNewProductOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader><DialogTitle>Add New Product</DialogTitle></DialogHeader>
