@@ -473,7 +473,7 @@ export default function Invoices() {
                         {inv.status !== "void" && (
                           <Button variant="ghost" size="icon" title="Generate E-Way Bill" onClick={() => navigate("/warehouse/waybills", { state: { prefillInvoiceId: inv.id } })}><Truck className="h-4 w-4" /></Button>
                         )}
-                        {isAdmin && inv.status !== "void" && (
+                        {isAdmin && inv.status !== "void" && !(ewbInvoiceIds as Set<string>).has(inv.id) && (
                           <AlterButton onClick={() => setAlterTarget({ id: inv.id, label: inv.invoice_number })} />
                         )}
                         {canVoid && inv.status !== "void" && (
