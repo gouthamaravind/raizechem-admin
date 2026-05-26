@@ -193,13 +193,8 @@ export default function WaybillLog() {
     onSuccess: (data: any) => {
       qc.invalidateQueries({ queryKey: ["waybills"] });
       if (data?.recoverable && data?.reason === "already_generated") {
-        toast(data.error || "NIC already has an E-Way Bill for this document.", {
-          duration: 12000,
-          action: data?.waybill_id ? {
-            label: "Attach #",
-            onClick: () => attachEwb.mutate(data.waybill_id),
-          } : undefined,
-        });
+        toast.info(data.error || "NIC already has an E-Way Bill for this document. Enter the existing EWB # to attach it.", { duration: 8000 });
+        if (data?.waybill_id) attachEwb.mutate(data.waybill_id);
         return;
       }
       toast.success(`E-Way Bill ${data.ewb_number}${data.stub ? " (stub mode)" : ""}`);
@@ -207,14 +202,13 @@ export default function WaybillLog() {
     onError: (e: Error) => {
       const ex = explainEwbError(e.message);
       if (ex.codes.includes("604")) {
-        toast(ex.friendly || "NIC already generated this E-Way Bill. Use Attach # to save the existing number.", {
-          duration: 12000,
-        });
+        toast.info(ex.friendly || "NIC already generated this E-Way Bill. Enter the EWB # to attach it.", { duration: 8000 });
         return;
       }
       toast.error(ex.friendly || ("Generate failed: " + e.message), { duration: 10000 });
     },
   });
+
 
   const attachEwb = useMutation({
     mutationFn: async (waybill_id: string) => {
