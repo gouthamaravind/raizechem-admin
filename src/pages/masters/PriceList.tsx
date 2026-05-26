@@ -900,9 +900,14 @@ export default function PriceList() {
 }
 
 function PackRow({
-  cols, dirty, isNew, values, onChange, onDelete,
+  cols, customCols, customValues, onCustomChange, packId,
+  dirty, isNew, values, onChange, onDelete,
 }: {
   cols: Array<{ key: keyof Pack; label: string }>;
+  customCols: Array<{ id: string; label: string }>;
+  customValues: Record<string, string>;
+  onCustomChange: (colId: string, value: string) => void;
+  packId: string;
   dirty?: boolean;
   isNew?: boolean;
   values: Record<string, any>;
@@ -917,7 +922,7 @@ function PackRow({
         dirty && "bg-yellow-500/10",
         isNew && "bg-emerald-500/10",
       )}
-      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${cols.map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
+      style={{ gridTemplateColumns: `28px minmax(140px,1.2fr) 70px 70px 70px 110px ${[...cols, ...customCols].map(()=>"minmax(80px,1fr)").join(" ")} 36px` }}
     >
       <div className="text-muted-foreground text-[11px]">{isNew ? "NEW" : ""}</div>
       <Input className={inputCls} placeholder="e.g. 10 x 1"
@@ -937,6 +942,11 @@ function PackRow({
       {cols.map(c => (
         <Input key={c.key} className={cn(inputCls, "text-right")} type="number" step="0.01"
           value={values[c.key]} onChange={e => onChange(c.key, e.target.value)} />
+      ))}
+      {customCols.map(c => (
+        <Input key={c.id} className={inputCls} placeholder={c.label}
+          value={customValues[c.id] ?? ""}
+          onChange={e => onCustomChange(c.id, e.target.value)} />
       ))}
       <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
         onClick={onDelete}>
