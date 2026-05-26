@@ -156,7 +156,7 @@ export default function WaybillLog() {
         source_number: sourceType === "invoice" ? src.invoice_number : src.transfer_number,
         status: "pending",
         transport_mode: transportMode,
-        vehicle_no: vehicleNo,
+        vehicle_no: null,
         distance_km: 0,
         transporter_name: transporterName || null,
         transporter_gstin: transporterGstin || null,
