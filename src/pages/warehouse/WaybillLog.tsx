@@ -371,7 +371,7 @@ export default function WaybillLog() {
                     <TableHead>Doc #</TableHead>
                     <TableHead>EWB #</TableHead>
                     <TableHead>Source</TableHead>
-                    <TableHead>Vehicle</TableHead>
+                    <TableHead>Transporter</TableHead>
                     <TableHead>Value</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Valid Until</TableHead>
