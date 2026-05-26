@@ -368,34 +368,35 @@ export default function PriceList() {
   };
 
   const exportXlsx = () => {
+    const allCols: ExportColDef[] = [
+      ...baseExportCols,
+      ...customCols.map(c => ({ id: c.id, label: c.label, group: "Custom" as const })),
+    ];
+    const chosen = allCols.filter(c => selectedCols.has(c.id));
+    if (chosen.length === 0) { toast.error("Pick at least one column"); return; }
     const rows: any[] = [];
-    for (const p of products) {
+    const buildRow = (p: Product, pk?: Pack) => {
+      const row: Record<string, any> = {};
+      for (const c of chosen) {
+        if (c.group === "Custom") {
+          row[c.label] = pk ? (customValues[pk.id]?.[c.id] ?? "") : "";
+        } else {
+          row[c.label] = c.getValue ? c.getValue(p, pk) : "";
+        }
+      }
+      return row;
+    };
+    for (const p of filtered) {
       const ps = packsByProduct[p.id] || [];
-      if (!ps.length) {
-        rows.push({
-          Category: p.category, Brand: p.brand, "Technical Name": p.name,
-          Slug: p.slug, HSN: p.hsn_code, "GST %": p.gst_rate,
-        });
-        continue;
-      }
-      for (const pk of ps) {
-        rows.push({
-          Category: p.category, Brand: p.brand, "Technical Name": p.name,
-          Slug: p.slug, HSN: p.hsn_code, "GST %": p.gst_rate,
-          "Pack Label": pk.pack_label, "Units/Case": pk.units_per_case,
-          "Unit Size": pk.unit_size, UOM: pk.unit_uom,
-          "Purchase Price": pk.purchase_price, "Packing Cost": pk.packing_cost,
-          PFG: pk.price_finished_goods, Scheme1: pk.scheme_1, Scheme2: pk.scheme_2,
-          Margin: pk.margin, "Basic Price": pk.basic_price,
-          "GST Amt": pk.gst_amount, "Price Incl GST": pk.price_inclusive_gst, MRP: pk.mrp,
-        });
-      }
+      if (!ps.length) { rows.push(buildRow(p)); continue; }
+      for (const pk of ps) rows.push(buildRow(p, pk));
     }
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.json_to_sheet(rows, { header: chosen.map(c => c.label) });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Price List");
     const stamp = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `Raizechem_Price_List_${stamp}.xlsx`);
+    setExportOpen(false);
   };
 
   const importXlsx = async (file: File) => {
